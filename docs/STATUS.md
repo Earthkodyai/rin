@@ -11,7 +11,7 @@ Phase: 0 in progress. 0.1–0.3 done; next is 0.4 (user accounts) and spikes S1�
 
 ## Next
 1. User: create the free limited-distribution account (Android Developer Console) and enable 2FA on GitHub. Tell the user a GitHub remote is not created yet (ask before creating/pushing).
-2. User: enable Developer options + USB debugging on the phone, connect USB; read OEM/model via adb (O5).
+2. DONE: test phone connected and authorized: Xiaomi 14T (2406APNFAG, serial GUVWEA6TGUORO76D), Android 15 / SDK 35, HyperOS 2.0 (OS2.0.208.0.VNEMIDC). USB debugging + Install via USB on; 'USB debugging (Security settings)' off. Xiaomi asks to confirm every adb install.
 3. Spike S1 (docs/plan/phase-0.md), then S2–S5.
 
 ## Tool paths (not on PATH in Claude's shell)
@@ -20,7 +20,7 @@ gitleaks: %LOCALAPPDATA%\Microsoft\WinGet\Packages\Gitleaks.Gitleaks_Microsoft.W
 adb: %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
 
 ## Open decisions
-O1 voice vendor (after S4) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O5 test phone (read via adb) · O7 AI budget unlock · O8 minSdk · O9 crash reporting
+O1 voice vendor (after S4) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O7 AI budget unlock · O8 minSdk · O9 crash reporting
 
 ## Parking lot
 (none yet)
