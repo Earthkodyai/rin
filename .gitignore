@@ -1,0 +1,32 @@
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Signing and secrets (never commit)
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+*.pem
+google-services.json
+.dev.vars
+
+# Node / web character layer
+node_modules/
+dist/
+
+# Claude Code personal settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db

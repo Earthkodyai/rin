@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew *)",
+      "Bash(adb *)",
+      "Bash(android *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Read(**/*.vrm)",
+      "Read(**/*.vrma)",
+      "Read(**/*.ogg)",
+      "Read(**/*.png)",
+      "Read(**/build/**)"
+    ]
+  }
+}
