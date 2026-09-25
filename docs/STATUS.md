@@ -1,18 +1,21 @@
 # STATUS — 2026-09-26
 
-Phase: 0 in progress. 0.1–0.3 done; next is 0.4 (user accounts) and spikes S1–S5.
+Phase: 0 in progress. 0.1–0.3 done, S1 done (GO). Next: S2 (WebView + three-vrm perf), then S3–S5. 0.4 accounts still on the user.
 
 ## Done
-- Plan v1.0 split into docs/plan/ (index README.md). User started Phase 0.
-- Installed: Android Studio 2026.1.4.7 (elevated, winget), Android CLI 1.0 (winget, always run with --no-metrics), SDK at %LOCALAPPDATA%\Android\Sdk: platforms/android-36, build-tools 36.0.0, platform-tools 37.0.1 (adb). SDK license accepted by the CLI.
-- 9 official Google Android skills in .claude/skills/ (project scope): android-cli, android-intent-security, android-permissions-security, android-profiler, camerax, edge-to-edge, play-policy-insights, r8-analyzer, testing-setup. Note: android-profiler's trace_processor and play-policy-insights' scraper download/fetch from the network when run.
-- .claude/settings.json: allow gradlew/adb/android/git read cmds; deny Read of *.vrm/*.vrma/*.ogg/*.png/build/. .claude/settings.local.json: syncClaudeAiPlugins=false (hides the Unity plugin here; re-enable for Plan B).
-- git repo (main), local identity Earthkodyai <241633768+Earthkodyai@users.noreply.github.com>, .gitignore, .gitattributes (LF), MIT LICENSE (code only; assets all rights reserved), gitleaks 8.30.1 pre-commit hook (.git/hooks, not versioned).
+- Plan v1.0 in docs/plan/ (index README.md). Tools installed (Android Studio 2026.1.4.7, Android CLI 1.0 with --no-metrics, SDK 36, platform-tools 37.0.1). JDK = Android Studio JBR: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"`.
+- 9 Google Android skills in .claude/skills/; .claude/settings.json allowlist + binary/build Read denies; Unity plugin hidden via settings.local.json.
+- git (main), local identity Earthkodyai (noreply), MIT LICENSE (code only), gitleaks pre-commit hook. No remote yet.
+- Test phone: Xiaomi 14T, Android 15/SDK 35, HyperOS 2.0, serial GUVWEA6TGUORO76D. Every adb install needs a tap on the phone.
+- **S1 GO**: docs/spikes/S1-alarm-reliability.md, prototype spikes/s1-alarm/ (harness s1.sh, results/). 16 alarms, max 850 ms late. Decisions table updated in 01-decisions.md.
 
-## Next
-1. User: create the free limited-distribution account (Android Developer Console) and enable 2FA on GitHub. Tell the user a GitHub remote is not created yet (ask before creating/pushing).
-2. DONE: test phone connected and authorized: Xiaomi 14T (2406APNFAG, serial GUVWEA6TGUORO76D), Android 15 / SDK 35, HyperOS 2.0 (OS2.0.208.0.VNEMIDC). USB debugging + Install via USB on; 'USB debugging (Security settings)' off. Xiaomi asks to confirm every adb install.
-3. Spike S1 (docs/plan/phase-0.md), then S2–S5.
+## Carry into Phase 1 (from S1)
+- FGS type systemExempted; Direct Boot + device-protected storage mandatory; first ring audio must exist pre-unlock.
+- HyperOS full-screen intent op defaults to ignore / reverts; check canUseFullScreenIntent() at schedule+ring, Diagnostics warning, heads-up fallback. Ask user what the "Full-screen perm" settings page showed.
+- Untested: overnight natural Doze, Settings force-stop, time/timezone change, Ultra saver, BT routing, 15-min auto-stop.
+
+## HyperOS adb limits
+Blocked without "USB debugging (Security settings)": install -g, pm grant, input, settings put global, cmd power set-mode. `appops set --uid <pkg> USE_FULL_SCREEN_INTENT allow` works but reverts. Git Bash needs MSYS_NO_PATHCONV=1 for device paths.
 
 ## Tool paths (not on PATH in Claude's shell)
 android: %LOCALAPPDATA%\Microsoft\WinGet\Packages\Google.AndroidCLI_Microsoft.Winget.Source_8wekyb3d8bbwe\android.exe
@@ -20,7 +23,7 @@ gitleaks: %LOCALAPPDATA%\Microsoft\WinGet\Packages\Gitleaks.Gitleaks_Microsoft.W
 adb: %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
 
 ## Open decisions
-O1 voice vendor (after S4) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O7 AI budget unlock · O8 minSdk · O9 crash reporting
+O1 voice vendor (after S4) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O7 AI budget unlock · O8 minSdk (after S1–S3; S1 used 26 without issue) · O9 crash reporting
 
 ## Parking lot
 (none yet)

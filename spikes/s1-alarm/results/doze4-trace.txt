@@ -1,0 +1,34 @@
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+2026-09-26 02:39:52.789,scheduled,365192,doze4
+02:39:55 deep=ACTIVE
+02:40:01 deep=ACTIVE
+02:40:06 deep=INACTIVE
+02:40:11 deep=INACTIVE
+02:40:17 deep=INACTIVE
+02:40:22 deep=INACTIVE
+02:40:27 deep=INACTIVE
+02:40:33 deep=INACTIVE
+02:40:38 deep=INACTIVE
+02:40:43 deep=INACTIVE
+02:40:48 deep=INACTIVE
+02:40:54 deep=INACTIVE
+02:40:59 deep=INACTIVE
+02:41:04 deep=INACTIVE
+02:41:10 deep=INACTIVE
+02:41:15 deep=INACTIVE
+02:41:20 deep=INACTIVE
+02:41:26 deep=INACTIVE
+02:41:31 deep=INACTIVE
+02:41:36 deep=INACTIVE
+02:41:42 deep=INACTIVE
+02:41:47 deep=INACTIVE
+02:41:52 deep=INACTIVE
+02:41:58 deep=INACTIVE
+02:42:03 deep=INACTIVE
+02:42:08 deep=INACTIVE
+02:42:14 deep=INACTIVE
+02:42:19 deep=INACTIVE
+2026-09-26 02:42:22.803,fired,doze4,29,screen=off idle=false saver=false dozeExempt=false dnd=off ringer=silent alarmVol=12/15 exact=true fsi=true notif=true
+2026-09-26 02:42:23.677,ring_start,doze4,903,
+2026-09-26 02:42:23.924,screen_shown,,,label=doze4 locked=true
+2026-09-26 02:42:38.681,ring_stop,doze4,15907,timeout
