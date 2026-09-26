@@ -1,0 +1,24 @@
+{
+  "_note": "Candidate ML Kit labels per target, written before any trial was recorded. Dev-day changes must be the object itself (not context like 'Room') and are listed in docs/spikes/S5-mlkit.md.",
+  "targets": {
+    "cup": ["Cup", "Coffee", "Cappuccino", "Saucer"],
+    "shoes": ["Shoe", "Sneakers"],
+    "sink": ["Sink"],
+    "tv": ["Television"],
+    "clock": ["Clock"],
+    "chair": ["Chair"],
+    "sofa": ["Couch", "Loveseat"],
+    "desk": ["Desk"],
+    "computer": ["Computer"],
+    "shelf": ["Shelf"],
+    "stairs": ["Stairs", "Handrail"],
+    "plant": ["Plant", "Flowerpot", "Flora"],
+    "curtain": ["Curtain"],
+    "cookware": ["Cookware and bakeware"],
+    "kitchen": ["Kitchen", "Countertop", "Cabinetry"],
+    "umbrella": ["Umbrella"],
+    "helmet": ["Helmet"],
+    "motorcycle": ["Motorcycle"],
+    "bag": ["Bag", "Handbag"]
+  }
+}
