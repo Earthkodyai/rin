@@ -1,0 +1,9 @@
+{"phase": "note", "text": "Rebuilt from console output of the S3 logcat at 18:1x; the raw log was cleared by the next replay. endOfSpeechToResultMs counts from onEndOfSpeech, so it excludes the endpointer's silence wait."}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s6-3", "target": 2, "text": "Maybe later", "pred": 2, "ok": true, "endOfSpeechToResultMs": 2, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s2-2", "target": 1, "text": "10 more minutes", "pred": 1, "ok": true, "endOfSpeechToResultMs": 2, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s3-2", "target": 1, "text": "I'm tired", "pred": 1, "ok": true, "endOfSpeechToResultMs": 3, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s8-3", "target": 2, "text": "I had a bad dream", "pred": 2, "ok": true, "endOfSpeechToResultMs": 4, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s4-5", "target": 1, "text": "Let me sleep", "pred": 1, "ok": true, "endOfSpeechToResultMs": 5, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s7-4", "target": 0, "text": "Let's go", "pred": 0, "ok": true, "endOfSpeechToResultMs": 5, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s1-4", "target": 0, "text": "I'm up", "pred": 0, "ok": true, "endOfSpeechToResultMs": 2, "err": "", "via": "results"}
+{"phase": "live-sugg", "network": "OFFLINE", "id": "s5-3", "target": 2, "text": "I'm still sleepy", "pred": 2, "ok": true, "endOfSpeechToResultMs": 1, "err": "", "via": "results"}

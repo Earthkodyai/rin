@@ -1,6 +1,6 @@
 # STATUS — 2026-09-26 (after S3)
 
-Phase: 0 in progress. 0.1–0.3 done, S1 GO, S2 GO (Plan A), S3 dev-set NO-GO for free speech (held-out waits for Azure). Next: S4 (needs Azure account), then S3 held-out, S5. 0.4 accounts still on the user.
+Phase: 0 in progress. 0.1–0.3 done, S1 GO, S2 GO (Plan A), S3 GO for suggested replies (Vosk per-screen grammar), NO-GO for free speech. Next: S4 (needs Azure account; also run the S3 Azure-voice check), then S5. 0.4 accounts still on the user.
 
 ## Done
 - Plan v1.0 in docs/plan/ (index README.md). Tools installed (Android Studio 2026.1.4.7, Android CLI 1.0 with --no-metrics, SDK 36, platform-tools 37.0.1). JDK = Android Studio JBR: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"`.
@@ -9,10 +9,10 @@ Phase: 0 in progress. 0.1–0.3 done, S1 GO, S2 GO (Plan A), S3 dev-set NO-GO fo
 - Test phone: Xiaomi 14T, Android 15/SDK 35, HyperOS 2.0, serial GUVWEA6TGUORO76D. Every adb install needs a tap on the phone.
 - **S1 GO**: docs/spikes/S1-alarm-reliability.md, prototype spikes/s1-alarm/ (harness s1.sh, results/). 16 alarms, max 850 ms late. Decisions table updated in 01-decisions.md.
 - **S2 GO**: docs/spikes/S2-webview-perf.md, prototype spikes/s2-webview/ (s2.sh, summarize.py, results/). VRoid sample 18.4 MB: ~119 fps (120 Hz cap), load 1.1–1.2 s (1.93 s first after install). Model file git-ignored.
-- **S3**: docs/spikes/S3-offline-stt.md, prototype spikes/s3-stt/ (s3.sh, summarize.py, RescoreTest). User's 48 answers (git-ignored recordings/): Android on-device 64.6%, Vosk grammar+norm 77.1%, none reaches 90%. Held-out phrase list frozen (0d64f23); run it with Azure th-TH voices after S4 (`tools/heldout_phrases.json`, still needs a synth script). Live-mic test not done.
+- **S3**: docs/spikes/S3-offline-stt.md, prototype spikes/s3-stt/. Free answers (dev, 48): best 77.1%. Suggested replies (held-out, frozen fb7bea4/edd8b9c): Vosk chips 48/48, Android 87.5–89.6%, live mic offline 8/8. Recordings git-ignored. Azure check list: tools/heldout_phrases.json (needs a synth script).
 
 ## Carry into Phase 4 (from S3)
-- Suggested replies on screen (say or tap), one reprompt, then buttons; no step needs voice. Onboarding downloads Google en-US on-device pack. Final text arrives as partial with final_result=true. Peak-normalize audio. O10 engine choice after held-out.
+- Suggested replies (say or tap), 1 reprompt, then buttons; replies with 2+ content words. O10 leaning Vosk per-screen grammar (+~50 MB). If Google STT is used: onboarding downloads en-US; external-audio final text comes as partial final_result.
 ## Carry into Phase 2 (from S2)
 - Memory ~620–720 MB, mostly textures → atlas + KTX2, model <= 10–15 MB, dispose off-screen. Pixel ratio cap 2, fps cap 30–60, PNG poster while loading, warm WebView after install/update, bridge = addWebMessageListener.
 ## Carry into Phase 1 (from S1)
