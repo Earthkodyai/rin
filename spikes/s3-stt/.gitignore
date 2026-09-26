@@ -1,0 +1,3 @@
+# Vosk model (downloaded, 68 MB) and the user's voice recordings: never commit
+model/
+recordings/
