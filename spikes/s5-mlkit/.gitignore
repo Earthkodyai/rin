@@ -15,3 +15,5 @@
 local.properties
 
 # Pulled trial logs are committed; nothing here holds images (the app never saves frames)
+results/*.jsonl
+results/picked-smoke.json
