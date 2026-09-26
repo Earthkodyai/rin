@@ -1,0 +1,15 @@
+{
+  "_note": "S3 held-out set. Frozen 2026-09-26 before any matcher/audio tuning was applied to it. Read by Azure th-TH neural voices speaking English (synthetic Thai accent), at normal rate and at -20% rate (sleepy). Do not edit after the first run; add a new file instead.",
+  "voices": ["th-TH-PremwadeeNeural", "th-TH-NiwatNeural", "th-TH-AcharaNeural"],
+  "rates": ["+0%", "-20%"],
+  "phrases": {
+    "AFFIRM": ["Yes.", "Okay, I'm getting up.", "Sure thing.", "Yeah, I'm up now.", "Alright, alright.", "Of course."],
+    "DENY": ["No.", "Nope, not today.", "Nah.", "No, I don't want that.", "Not really, sorry.", "No way."],
+    "SNOOZE": ["Five more minutes.", "Ten more minutes, please.", "Let me sleep a little more.", "Later.", "Snooze, please.", "Just one more minute."],
+    "TIRED": ["I'm tired.", "I'm so sleepy.", "I barely slept last night.", "I'm exhausted.", "I stayed up too late.", "I have no energy."],
+    "SICK": ["I'm sick.", "I feel sick today.", "I have a fever.", "My head hurts.", "I don't feel well.", "I think I have a cold."],
+    "GREET": ["Hi.", "Good morning, Rin.", "Hello.", "Morning!", "Hey, Rin.", "Hi there, good morning."],
+    "THANKS": ["Thank you.", "Thanks, Rin.", "Thanks a lot.", "Thank you so much.", "I appreciate it.", "Thanks for waking me."],
+    "UNKNOWN": ["What time is it?", "Where are my glasses?", "Is it raining outside?", "Play some music.", "What day is today?", "I had a weird dream."]
+  }
+}
