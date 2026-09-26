@@ -1,0 +1,15 @@
+{
+  "_note": "S4 audition lines. The same 10 lines for every voice. 'emotion' is Rin's app emotion; synth.py maps it to each vendor's style. 'screen': true marks the 3 lines used in round 1 (shortlist).",
+  "lines": [
+    {"id": "L01", "emotion": "friendly",  "screen": true,  "text": "Good morning! It's Rin. The sun's already up, and so am I. Your turn!"},
+    {"id": "L02", "emotion": "excited",   "screen": false, "text": "Rise and shine! It's a brand-new day, so let's go get it!"},
+    {"id": "L03", "emotion": "pouty",     "screen": true,  "text": "Hey... I can hear you ignoring me. Up you get, sleepyhead."},
+    {"id": "L04", "emotion": "amused",    "screen": false, "text": "Okay, five more minutes. But I'm counting, you know."},
+    {"id": "L05", "emotion": "cheerful",  "screen": false, "text": "Here's your mission: find something green and show it to me."},
+    {"id": "L06", "emotion": "proud",     "screen": false, "text": "You did it! See? You're way stronger than your blanket."},
+    {"id": "L07", "emotion": "gentle",    "screen": true,  "text": "Rough night, huh? Take a slow breath with me. In... and out."},
+    {"id": "L08", "emotion": "concerned", "screen": false, "text": "You don't sound well. Drink some water, and rest if you need to, okay?"},
+    {"id": "L09", "emotion": "curious",   "screen": false, "text": "Hmm, I didn't quite catch that. Could you say it one more time?"},
+    {"id": "L10", "emotion": "warm",      "screen": false, "text": "Have a great day. I'll be right here tomorrow morning."}
+  ]
+}

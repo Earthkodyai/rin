@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rin Voice Audition</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e4e3dc; --accent:#c2410c; --pick:#fff4ec; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --fg:#ecebe6; --muted:#9a9993; --card:#201f1d; --line:#34332f; --accent:#fb923c; --pick:#2c2119; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, "Segoe UI", "Leelawadee UI", sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:28px 0 8px; }
+  p.hint { color:var(--muted); margin:0 0 12px; }
+  .tabs button, .bar button { font:inherit; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; cursor:pointer; }
+  .tabs button[aria-pressed=true] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .tabs, .bar { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0; }
+  .card.picked { background:var(--pick); border-color:var(--accent); }
+  .head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tag { font-weight:700; font-size:18px; } .real { color:var(--muted); font-size:13px; }
+  .row { display:grid; grid-template-columns: 1fr auto; gap:6px 12px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+  .row:first-of-type { border-top:0; }
+  .txt { font-size:14px; } .emo { color:var(--muted); font-size:12px; }
+  audio { height:32px; max-width:100%; }
+  .stars button { border:0; background:none; font-size:20px; cursor:pointer; color:var(--line); padding:0 1px; }
+  .stars button.on { color:var(--accent); }
+  textarea { width:100%; min-height:38px; font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:6px; }
+  table { border-collapse:collapse; width:100%; } td, th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  @media (max-width:600px) { .row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>คัดเสียงริน (S4)</h1>
+  <p class="hint">เสียงถูกซ่อนชื่อไว้ (A, B, C…) เพื่อไม่ให้ชื่อผู้ให้บริการมีผลต่อการฟัง รอบ 1 ฟัง 3 ประโยคของทุกเสียงแล้วติ๊ก "เข้ารอบ" 2–3 เสียง รอบ 2 ฟังครบ 10 ประโยคแล้วให้ดาว คะแนนเก็บในเบราว์เซอร์นี้</p>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+  <div class="bar">
+    <button id="reveal">เปิดชื่อเสียง</button>
+    <button id="copy">คัดลอกผลเป็น JSON</button>
+    <button id="reset">ล้างคะแนน</button>
+  </div>
+</main>
+<script>
+// ?only=key1,key2 shows a subset with its own ratings (a new blind round)
+const ONLY = new URLSearchParams(location.search).get("only");
+const KEY = "rin-s4-v1" + (ONLY ? ":" + ONLY : "");
+let st = { round: 1, letters: {}, short: {}, stars: {}, notes: {}, reveal: false };
+try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+let M;
+
+function letters(voices) {
+  const missing = voices.map(v => v.key).filter(k => !st.letters[k]);
+  if (!missing.length) return;
+  const used = new Set(Object.values(st.letters));
+  const free = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(c => !used.has(c));
+  for (let i = missing.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [missing[i], missing[j]] = [missing[j], missing[i]]; }
+  missing.forEach((k, i) => st.letters[k] = free[i]);
+  save();
+}
+const byLetter = vs => [...vs].sort((a, b) => st.letters[a.key].localeCompare(st.letters[b.key]));
+const el = (t, a = {}, ...kids) => { const e = document.createElement(t); Object.assign(e, a); e.append(...kids); return e; };
+
+function stars(id) {
+  const box = el("span", { className: "stars" });
+  for (let n = 1; n <= 5; n++) {
+    const b = el("button", { textContent: "★", title: n, className: (st.stars[id] || 0) >= n ? "on" : "" });
+    b.onclick = () => { st.stars[id] = st.stars[id] === n ? 0 : n; save(); render(); };
+    box.append(b);
+  }
+  return box;
+}
+
+function voiceCard(v, lines) {
+  const picked = !!st.short[v.key];
+  const cb = el("input", { type: "checkbox", checked: picked });
+  cb.onchange = () => { st.short[v.key] = cb.checked; save(); render(); };
+  const head = el("div", { className: "head" },
+    el("span", {}, el("span", { className: "tag", textContent: "เสียง " + st.letters[v.key] }),
+      st.reveal ? el("span", { className: "real", textContent: "  " + v.key }) : ""),
+    el("label", {}, cb, " เข้ารอบ"));
+  const card = el("div", { className: "card" + (picked ? " picked" : "") }, head);
+  for (const l of lines) {
+    const src = v.files[l.id];
+    card.append(el("div", { className: "row" },
+      el("div", {}, el("div", { className: "txt", textContent: l.text }), el("div", { className: "emo", textContent: l.id + " · " + l.emotion })),
+      el("div", {}, src ? el("audio", { controls: true, preload: "none", src }) : el("span", { className: "emo", textContent: "ไม่มีไฟล์" }),
+        st.round === 2 ? stars(v.key + "/" + l.id) : "")));
+  }
+  const note = el("textarea", { placeholder: "โน้ตสั้นๆ เช่น ฟังดูเด็กไป / แข็งไป / ชอบตอนงอน", value: st.notes[v.key] || "" });
+  note.oninput = () => { st.notes[v.key] = note.value; save(); };
+  card.append(note);
+  return card;
+}
+
+function summary(vs) {
+  const t = el("table", {}, el("tr", {}, el("th", { textContent: "เสียง" }), el("th", { textContent: "ดาวเฉลี่ย" }), el("th", { textContent: "ให้ดาวแล้ว" })));
+  for (const v of vs) {
+    const got = M.lines.map(l => st.stars[v.key + "/" + l.id] || 0).filter(Boolean);
+    const avg = got.length ? (got.reduce((a, b) => a + b, 0) / got.length).toFixed(2) : "–";
+    t.append(el("tr", {}, el("td", { textContent: st.letters[v.key] + (st.reveal ? " (" + v.key + ")" : "") }), el("td", { textContent: avg }), el("td", { textContent: got.length + "/" + M.lines.length })));
+  }
+  return el("div", { className: "card" }, t);
+}
+
+function render() {
+  const tabs = document.getElementById("tabs"); tabs.innerHTML = "";
+  [[1, "รอบ 1: คัดเข้ารอบ"], [2, "รอบ 2: ฟังครบ 10 ประโยค"]].forEach(([r, label]) => {
+    const b = el("button", { textContent: label }); b.setAttribute("aria-pressed", st.round === r);
+    b.onclick = () => { st.round = r; save(); render(); }; tabs.append(b);
+  });
+  const view = document.getElementById("view"); view.innerHTML = "";
+  const all = byLetter(M.voices);
+  if (st.round === 1) {
+    const lines = M.lines.filter(l => l.screen);
+    all.forEach(v => view.append(voiceCard(v, lines)));
+  } else {
+    const vs = all.filter(v => st.short[v.key]);
+    if (!vs.length) { view.append(el("p", { className: "hint", textContent: "ยังไม่มีเสียงเข้ารอบ กลับไปติ๊กในรอบ 1 ก่อน" })); return; }
+    view.append(summary(vs));
+    vs.forEach(v => view.append(voiceCard(v, M.lines)));
+  }
+  document.getElementById("reveal").textContent = st.reveal ? "ซ่อนชื่อเสียง" : "เปิดชื่อเสียง";
+}
+
+document.getElementById("reveal").onclick = () => { st.reveal = !st.reveal; save(); render(); };
+document.getElementById("reset").onclick = () => { if (confirm("ล้างคะแนนทั้งหมด?")) { st = { round: 1, letters: st.letters, short: {}, stars: {}, notes: {}, reveal: false }; save(); render(); } };
+document.getElementById("copy").onclick = async () => {
+  const out = JSON.stringify({ letters: st.letters, shortlist: Object.keys(st.short).filter(k => st.short[k]), stars: st.stars, notes: st.notes }, null, 1);
+  try { await navigator.clipboard.writeText(out); alert("คัดลอกแล้ว วางในแชทได้เลย"); } catch (e) { prompt("คัดลอกข้อความนี้", out); }
+};
+
+fetch("out/manifest.json").then(r => r.json()).then(m => {
+  if (ONLY) m.voices = m.voices.filter(v => ONLY.split(",").includes(v.key));
+  M = m; letters(m.voices); render(); })
+  .catch(() => { document.getElementById("view").textContent = "ยังไม่มี out/manifest.json (รัน python synth.py manifest)"; });
+</script>
+</body>
+</html>

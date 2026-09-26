@@ -1,0 +1,256 @@
+{
+ "_note": "S4 candidates. Adult-sounding female voices only (no child voices such as en-US-AnaNeural). 'kind': neural = Azure standard neural (full SSML, viseme events); hd = Azure DragonHD (subset SSML, no viseme, bracket style tags); omni = Azure DragonHD Omni (express-as styles, word boundaries, no viseme); eleven = ElevenLabs Voice Design. kokoro = Kokoro-82M (Apache-2.0) run locally via kokoro-onnx int8; no styles, emotion only via speed. chatterbox = Resemble AI Chatterbox (MIT, outputs carry an inaudible Perth watermark), CPU; reference clip must be synthetic and permissively licensed (never a real person, never ElevenLabs free-plan output).",
+ "azure": [
+  {
+   "key": "az-aria",
+   "kind": "neural",
+   "name": "en-US-AriaNeural"
+  },
+  {
+   "key": "az-jane",
+   "kind": "neural",
+   "name": "en-US-JaneNeural"
+  },
+  {
+   "key": "az-sara",
+   "kind": "neural",
+   "name": "en-US-SaraNeural"
+  },
+  {
+   "key": "hd-ava",
+   "kind": "hd",
+   "name": "en-US-Ava:DragonHDLatestNeural"
+  },
+  {
+   "key": "hd-emma2",
+   "kind": "hd",
+   "name": "en-US-Emma2:DragonHDLatestNeural"
+  },
+  {
+   "key": "hd-phoebe",
+   "kind": "hd",
+   "name": "en-US-Phoebe:DragonHDLatestNeural"
+  },
+  {
+   "key": "hd-serena",
+   "kind": "hd",
+   "name": "en-US-Serena:DragonHDLatestNeural"
+  },
+  {
+   "key": "om-jane",
+   "kind": "omni",
+   "name": "en-US-Jane:DragonHDOmniLatestNeural"
+  }
+ ],
+ "eleven": {
+  "model_design": "eleven_ttv_v3",
+  "model_tts": "eleven_v3",
+  "previews_per_prompt": 3,
+  "prompts": [
+   {
+    "key": "el-bright",
+    "description": "A young adult woman in her mid-twenties with a bright, warm, friendly American accent. Energetic but not shrill, playful and teasing like a close friend who is a morning person. Clear diction, medium pitch, natural and conversational, studio-quality recording."
+   },
+   {
+    "key": "el-soft",
+    "description": "A calm adult woman in her late twenties with a soft, gentle, slightly husky American voice. Kind and encouraging, like a supportive friend speaking quietly early in the morning. Medium-low pitch, relaxed pace, clear diction, studio-quality recording."
+   }
+  ]
+ },
+ "styles": {
+  "_note": "emotion -> style per kind. Neural styles differ per voice; synth.py falls back to 'friendly' then no style if a voice lacks one.",
+  "neural": {
+   "friendly": "friendly",
+   "excited": "excited",
+   "pouty": "unfriendly",
+   "amused": "cheerful",
+   "cheerful": "cheerful",
+   "proud": "excited",
+   "gentle": "whispering",
+   "concerned": "empathetic",
+   "curious": "friendly",
+   "warm": "hopeful"
+  },
+  "hd": {
+   "friendly": "happy",
+   "excited": "excited",
+   "pouty": "annoyed",
+   "amused": "amused",
+   "cheerful": "happy",
+   "proud": "impressed",
+   "gentle": "reassuring",
+   "concerned": "concerned",
+   "curious": "curious",
+   "warm": "appreciative"
+  },
+  "eleven": {
+   "friendly": "cheerfully",
+   "excited": "excited",
+   "pouty": "pouting",
+   "amused": "playfully",
+   "cheerful": "cheerfully",
+   "proud": "proudly",
+   "gentle": "softly",
+   "concerned": "concerned",
+   "curious": "curious",
+   "warm": "warmly"
+  }
+ },
+ "neural_supported": {
+  "en-US-AriaNeural": [
+   "angry",
+   "chat",
+   "cheerful",
+   "customerservice",
+   "empathetic",
+   "excited",
+   "friendly",
+   "hopeful",
+   "narration-professional",
+   "newscast-casual",
+   "newscast-formal",
+   "sad",
+   "shouting",
+   "terrified",
+   "unfriendly",
+   "whispering"
+  ],
+  "en-US-JaneNeural": [
+   "angry",
+   "cheerful",
+   "excited",
+   "friendly",
+   "hopeful",
+   "sad",
+   "shouting",
+   "terrified",
+   "unfriendly",
+   "whispering"
+  ],
+  "en-US-SaraNeural": [
+   "angry",
+   "cheerful",
+   "excited",
+   "friendly",
+   "hopeful",
+   "sad",
+   "shouting",
+   "terrified",
+   "unfriendly",
+   "whispering"
+  ]
+ },
+ "kokoro": {
+  "model": "models/kokoro-v1.0.int8.onnx",
+  "voices_file": "models/voices-v1.0.bin",
+  "voices": [
+   {
+    "key": "kk-heart",
+    "mix": {
+     "af_heart": 1.0
+    }
+   },
+   {
+    "key": "kk-bella",
+    "mix": {
+     "af_bella": 1.0
+    }
+   },
+   {
+    "key": "kk-nicole",
+    "mix": {
+     "af_nicole": 1.0
+    }
+   },
+   {
+    "key": "kk-mix",
+    "mix": {
+     "af_heart": 0.5,
+     "af_bella": 0.5
+    }
+   }
+  ],
+  "speed": {
+   "friendly": 1.0,
+   "excited": 1.08,
+   "pouty": 0.95,
+   "amused": 1.0,
+   "cheerful": 1.03,
+   "proud": 1.05,
+   "gentle": 0.88,
+   "concerned": 0.92,
+   "curious": 0.97,
+   "warm": 0.95
+  }
+ },
+ "chatterbox": {
+  "reference": {
+   "file": "out/ref-kk-mix.wav",
+   "from_voice": "kk-mix",
+   "lines": [
+    "L01",
+    "L05",
+    "L10"
+   ]
+  },
+  "voices": [
+   {
+    "key": "cb-default",
+    "model": "tts",
+    "ref": false
+   },
+   {
+    "key": "cb-kkmix",
+    "model": "tts",
+    "ref": true
+   },
+   {
+    "key": "cbt-kkmix",
+    "model": "turbo",
+    "ref": true
+   }
+  ],
+  "expr": {
+   "friendly": [
+    0.5,
+    0.5
+   ],
+   "excited": [
+    0.8,
+    0.3
+   ],
+   "pouty": [
+    0.65,
+    0.4
+   ],
+   "amused": [
+    0.6,
+    0.45
+   ],
+   "cheerful": [
+    0.6,
+    0.45
+   ],
+   "proud": [
+    0.75,
+    0.35
+   ],
+   "gentle": [
+    0.35,
+    0.5
+   ],
+   "concerned": [
+    0.45,
+    0.5
+   ],
+   "curious": [
+    0.5,
+    0.5
+   ],
+   "warm": [
+    0.45,
+    0.5
+   ]
+  }
+ }
+}

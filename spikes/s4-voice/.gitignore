@@ -1,0 +1,6 @@
+out/
+.venv/
+.venv-cb/
+models/
+__pycache__/
+!.env.example
