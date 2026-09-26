@@ -103,6 +103,7 @@ class MainActivity : Activity() {
         button("Live test: Android on-device (mic)") { job = scope.launch { liveTest() } }
         text("Suggested replies (set 2): ${loadManifest("sugg").size} / ${Suggest.ALL.size}", 15f, true)
         button("Record suggested replies") { showSugg(Suggest.ALL.indexOfFirst { it.id !in loadManifest("sugg") }.coerceAtLeast(0)) }
+        button("Re-record the 6 off-list items") { showSugg(Suggest.ALL.indexOfFirst { it.target < 0 }, offOnly = true) }
         button("Live test: suggested replies (mic, 8 screens)") { showLiveSugg(0, 0) }
         button("Check / download Android en-US offline model") { job = scope.launch { checkSupport(download = true) } }
         log = text("", 12f).apply { typeface = android.graphics.Typeface.MONOSPACE }
@@ -308,14 +309,23 @@ class MainActivity : Activity() {
             .setTextColor(if (i == target) Color.rgb(0x1a, 0x73, 0xe8) else Color.GRAY)
     }
 
-    private fun showSugg(index: Int) {
+    private fun showSugg(index: Int, offOnly: Boolean = false) {
+        fun next(from: Int, step: Int): Int {
+            var i = from + step
+            while (offOnly && i in Suggest.ALL.indices && Suggest.ALL[i].target >= 0) i += step
+            return i
+        }
         val p = Suggest.ALL[index]
         val have = loadManifest("sugg")
         screen()
         text("${index + 1} / ${Suggest.ALL.size}   ·   ${Prompts.COND[p.cond]}", 14f)
         text("Rin: “${p.question}”", 24f, true)
         chipLines(p.chips, p.target)
-        text(if (p.target >= 0) "Say the highlighted reply, as written." else "Say something that is NOT on the screen.", 16f, true)
+        if (p.target >= 0) text("Say the highlighted reply, as written.", 16f, true)
+        else {
+            text("✋ DON'T say any reply above. Say this instead:", 16f, true).setTextColor(Color.rgb(0xd9, 0x30, 0x25))
+            text("“${Suggest.offListLine(p)}”", 22f, true).setTextColor(Color.rgb(0xd9, 0x30, 0x25))
+        }
         val status = text(if (p.id in have) "Recorded. Redo or go next." else "Tap to speak. It stops by itself.", 14f)
         if (p.cond != Suggest.ALL.getOrNull(index - 1)?.cond) status.text = "New position: ${Prompts.COND[p.cond]}.\n" + status.text
         lateinit var rec: Button
@@ -329,6 +339,7 @@ class MainActivity : Activity() {
                 withContext(Dispatchers.IO) { Audio.writeWav(file, pcm) }
                 val m = loadManifest("sugg")
                 m[p.id] = JSONObject().put("id", p.id).put("intent", if (p.target >= 0) "CHIP" else "OFFLIST")
+                    .put("offListLine", if (p.target >= 0) "" else Suggest.offListLine(p))
                     .put("chips", org.json.JSONArray(p.chips)).put("target", p.target).put("cond", p.cond)
                     .put("question", p.question).put("file", file.name).put("durMs", pcm.size * 1000 / RATE)
                     .put("peakDb", "%.1f".format(Audio.peakDb(pcm)).toDouble()).put("ts", System.currentTimeMillis())
@@ -336,7 +347,8 @@ class MainActivity : Activity() {
                 val heard = Audio.speechBounds(pcm) != null
                 status.text = if (heard) "Saved ${pcm.size * 1000 / RATE} ms." else "⚠ No speech detected. Please redo."
                 rec.text = "🎤  Redo"; rec.setBackgroundColor(Color.LTGRAY)
-                if (heard && index + 1 < Suggest.ALL.size) { kotlinx.coroutines.delay(700); showSugg(index + 1) }
+                val n = next(index, 1)
+                if (heard && n < Suggest.ALL.size) { kotlinx.coroutines.delay(700); showSugg(n, offOnly) }
             }
         }
         rec.minHeight = dp(96)
@@ -344,9 +356,9 @@ class MainActivity : Activity() {
         root.addView(row)
         fun nav(s: String, to: Int) = Button(this).apply {
             text = s; isAllCaps = false; isEnabled = to in Suggest.ALL.indices
-            setOnClickListener { recording?.cancel(); showSugg(to) }
+            setOnClickListener { recording?.cancel(); showSugg(to, offOnly) }
         }.also { row.addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
-        nav("◀ Back", index - 1); nav("Next ▶", index + 1)
+        nav("◀ Back", next(index, -1)); nav("Next ▶", next(index, 1))
         button("Home") { recording?.cancel(); showHome() }
     }
 
@@ -360,7 +372,15 @@ class MainActivity : Activity() {
         text("Rin: “${p.question}”", 24f, true)
         chipLines(p.chips, p.target)
         val status = text("Tap, then say the highlighted reply.", 16f)
-        button("🎤  Tap to speak") {
+        if (network() != "OFFLINE") {
+            text("⚠ The phone is online. Turn on Airplane mode and Wi-Fi off, then come back.", 18f, true)
+                .setTextColor(Color.rgb(0xd9, 0x30, 0x25))
+            button("Home") { showHome() }
+            return
+        }
+        lateinit var talk: Button
+        talk = button("🎤  Tap to speak") {
+            talk.isEnabled = false // one session at a time; a second tap gave ERROR_RECOGNIZER_BUSY
             status.text = "Listening…"
             scope.launch {
                 val e = AndroidEngine(this@MainActivity, "android-od-live", onDevice = true)
@@ -374,7 +394,8 @@ class MainActivity : Activity() {
                 kotlinx.coroutines.delay(1500)
                 showLiveSugg(i + 1, score + if (ok) 1 else 0)
             }
-        }.minHeight = dp(96)
+        }
+        talk.minHeight = dp(96)
         button("Home") { showHome() }
     }
 

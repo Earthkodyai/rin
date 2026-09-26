@@ -37,7 +37,7 @@ case "$1" in
     bash "$0" pull ;;
   pull)
     mkdir -p "$DIR/recordings" "$DIR/results"
-    "$ADB" pull $DEV/sets/me "$(cygpath -w "$DIR/recordings")" >/dev/null 2>&1
+    for s in me sugg; do "$ADB" pull $DEV/sets/$s "$(cygpath -w "$DIR/recordings")" >/dev/null 2>&1; done
     "$ADB" pull $DEV/results "$(cygpath -w "$DIR")" >/dev/null && ls "$DIR/results" | tail -3 ;;
   push-me)
     "$ADB" shell mkdir -p $DEV/sets

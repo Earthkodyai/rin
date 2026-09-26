@@ -1,0 +1,36 @@
+{"phase":"header","set":"smoke","n":32,"network":"ONLINE","device":"Xiaomi 2406APNFAG","sdk":35,"onDeviceAvailable":true,"engines":"android-od"}
+{"phase":"support","androidOnDevice":"installed=[th-TH] pending=[] supported=30 online=0"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-david-1","intent":"AFFIRM","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1440,"latencyMs":-1423,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-david-2","intent":"AFFIRM","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1460,"latencyMs":-1458,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-david-1","intent":"DENY","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1420,"latencyMs":-1417,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-david-2","intent":"DENY","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":500,"latencyMs":-494,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-david-1","intent":"SNOOZE","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":2100,"latencyMs":-2096,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-david-2","intent":"SNOOZE","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1600,"latencyMs":-1594,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"tired-david-1","intent":"TIRED","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1300,"latencyMs":-1294,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"tired-david-2","intent":"TIRED","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1220,"latencyMs":-1214,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"sick-david-1","intent":"SICK","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":900,"latencyMs":-896,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"sick-david-2","intent":"SICK","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1040,"latencyMs":-1032,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"greet-david-1","intent":"GREET","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1460,"latencyMs":-1457,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"greet-david-2","intent":"GREET","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":620,"latencyMs":-614,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"thanks-david-1","intent":"THANKS","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1160,"latencyMs":-1155,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"thanks-david-2","intent":"THANKS","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1360,"latencyMs":-1354,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"unknown-david-1","intent":"UNKNOWN","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":true,"speechEndMs":1180,"latencyMs":-1176,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"unknown-david-2","intent":"UNKNOWN","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":true,"speechEndMs":1460,"latencyMs":-1455,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-zira-1","intent":"AFFIRM","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1420,"latencyMs":-1412,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-zira-2","intent":"AFFIRM","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1460,"latencyMs":-1458,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-zira-1","intent":"DENY","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1420,"latencyMs":-1414,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-zira-2","intent":"DENY","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":520,"latencyMs":-515,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-zira-1","intent":"SNOOZE","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":2120,"latencyMs":-2115,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-zira-2","intent":"SNOOZE","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1560,"latencyMs":-1557,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"tired-zira-1","intent":"TIRED","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1320,"latencyMs":-1317,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"tired-zira-2","intent":"TIRED","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1260,"latencyMs":-1255,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"sick-zira-1","intent":"SICK","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":920,"latencyMs":-914,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"sick-zira-2","intent":"SICK","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":980,"latencyMs":-977,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"greet-zira-1","intent":"GREET","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1520,"latencyMs":-1512,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"greet-zira-2","intent":"GREET","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":680,"latencyMs":-676,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"thanks-zira-1","intent":"THANKS","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1240,"latencyMs":-1236,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"thanks-zira-2","intent":"THANKS","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1400,"latencyMs":-1391,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"unknown-zira-1","intent":"UNKNOWN","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":true,"speechEndMs":1200,"latencyMs":-1198,"err":"ERR_11"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"unknown-zira-2","intent":"UNKNOWN","cond":"tts-zira","text":"","alts":[],"pred":"UNKNOWN","ok":true,"speechEndMs":1420,"latencyMs":-1415,"err":"ERR_11"}
+{"phase":"engine-done","engine":"android-od","ok":4,"n":32}
+{"phase":"done","file":"smoke-20260926-164215.jsonl"}

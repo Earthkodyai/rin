@@ -18,6 +18,17 @@ object Suggest {
         "Did you sleep well?" to listOf("Yes, I did", "Not really", "I had a bad dream"),
     )
 
+    /**
+     * What to say on the 6 off-list items. Added 2026-09-26 after the first take, where the tester read
+     * "say something not on the screen" as "say one of these". Off-list items only; nothing else changed.
+     */
+    val OFF_LIST = mapOf(
+        "s1" to "What time is it?", "s2" to "Where is my phone?", "s3" to "Is it raining outside?",
+        "s4" to "Turn off the light.", "s5" to "What's for breakfast?", "s6" to "I had a weird dream.",
+    )
+
+    fun offListLine(item: SuggItem) = OFF_LIST[item.id.substringBefore('-')] ?: "What time is it?"
+
     /** 8 screens x targets [0,1,2,0,1,2]; on screens 1-6 the last slot becomes "off-list" (-1): 42 + 6. */
     val ALL: List<SuggItem> = run {
         val conds = List(24) { "normal" } + List(16) { "sleepy" } + List(8) { "far" }

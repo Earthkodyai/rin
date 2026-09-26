@@ -1,0 +1,8 @@
+{"phase":"header","set":"smoke","n":32,"network":"ONLINE","device":"Xiaomi 2406APNFAG","sdk":35,"onDeviceAvailable":true,"engines":"android-od"}
+{"phase":"support","engine":"android-od","support":"installed=[en-US, th-TH] pending=[] supported=29 online=0"}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-david-1","intent":"AFFIRM","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1440,"latencyMs":2533,"err":""}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"affirm-david-2","intent":"AFFIRM","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1460,"latencyMs":2525,"err":""}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-david-1","intent":"DENY","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1420,"latencyMs":2529,"err":""}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"deny-david-2","intent":"DENY","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":500,"latencyMs":2529,"err":""}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-david-1","intent":"SNOOZE","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":2100,"latencyMs":2538,"err":""}
+{"phase":"utt","set":"smoke","engine":"android-od","id":"snooze-david-2","intent":"SNOOZE","cond":"tts-david","text":"","alts":[],"pred":"UNKNOWN","ok":false,"speechEndMs":1600,"latencyMs":2537,"err":""}
