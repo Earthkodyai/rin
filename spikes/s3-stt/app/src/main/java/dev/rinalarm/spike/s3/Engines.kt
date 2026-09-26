@@ -265,3 +265,13 @@ class VoskEngine(model: Model, override val name: String, grammar: List<String>?
         }
     }
 }
+
+/** Vosk limited to the words of the replies on the current screen; the grammar changes per utterance. */
+class VoskChipsEngine(private val model: Model, override val name: String) : Engine {
+    var grammar: List<String> = listOf("[unk]")
+
+    override suspend fun recognize(pcm: ShortArray, speechEnd: Int): Rec {
+        val e = VoskEngine(model, name, grammar)
+        try { return e.recognize(pcm, speechEnd) } finally { e.close() }
+    }
+}

@@ -33,3 +33,21 @@ class PhoneticTest {
         assertEquals(Intent.SNOOZE, IntentMatcher.classify("I want to sleep", IntentMatcher.Options(coverage = true)))
     }
 }
+
+class ChipMatcherTest {
+    private val screen = listOf("I'm up!", "Five more minutes", "I feel sick")
+    @Test fun picksSaidChip() {
+        assertEquals(0, ChipMatcher.match("I'm up", screen))
+        assertEquals(1, ChipMatcher.match("five more minute", screen))
+        assertEquals(2, ChipMatcher.match("I feel seek", screen))
+    }
+    @Test fun rejectsOffList() {
+        assertEquals(null, ChipMatcher.match("what time is it", screen))
+        assertEquals(null, ChipMatcher.match("", screen))
+    }
+    @Test fun fortyEightItemsSixOffList() {
+        assertEquals(48, Suggest.ALL.size)
+        assertEquals(6, Suggest.ALL.count { it.target == -1 })
+        assertEquals(48, Suggest.ALL.map { it.id }.distinct().size)
+    }
+}

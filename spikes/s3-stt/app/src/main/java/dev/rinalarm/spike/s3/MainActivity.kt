@@ -51,7 +51,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Create the folders ourselves: dirs that adb creates are shell-owned and invisible to the app.
-        listOf("me", "smoke").forEach { setDir(it).mkdirs() }
+        listOf("me", "smoke", "sugg").forEach { setDir(it).mkdirs() }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
         }
@@ -101,6 +101,9 @@ class MainActivity : Activity() {
         button("Replay my answers into all engines") { job = scope.launch { replay("me", engineNames) } }
         button("Replay smoke set (TTS voices)") { job = scope.launch { replay("smoke", engineNames) } }
         button("Live test: Android on-device (mic)") { job = scope.launch { liveTest() } }
+        text("Suggested replies (set 2): ${loadManifest("sugg").size} / ${Suggest.ALL.size}", 15f, true)
+        button("Record suggested replies") { showSugg(Suggest.ALL.indexOfFirst { it.id !in loadManifest("sugg") }.coerceAtLeast(0)) }
+        button("Live test: suggested replies (mic, 8 screens)") { showLiveSugg(0, 0) }
         button("Check / download Android en-US offline model") { job = scope.launch { checkSupport(download = true) } }
         log = text("", 12f).apply { typeface = android.graphics.Typeface.MONOSPACE }
         say("network=${network()} sdk=${Build.VERSION.SDK_INT} onDeviceAvailable=${onDeviceAvailable()}")
@@ -249,14 +252,15 @@ class MainActivity : Activity() {
                     "android-od" -> AndroidEngine(this, name, onDevice = true)
                     "android-od-bias" -> AndroidEngine(this, name, onDevice = true, biasing = IntentMatcher.cuePhrases())
                     "android-default" -> AndroidEngine(this, name, onDevice = false)
-                    "vosk-free", "vosk-grammar" -> {
+                    "vosk-free", "vosk-grammar", "vosk-chips" -> {
                         if (model == null) {
                             val (dir, unpackMs) = withContext(Dispatchers.IO) { VoskEngine.unpack(this@MainActivity) }
                             val (m, loadMs) = withContext(Dispatchers.IO) { VoskEngine.load(dir) }
                             model = m
                             emit(JSONObject().put("phase", "vosk-model").put("unpackMs", unpackMs).put("loadMs", loadMs))
                         }
-                        VoskEngine(model!!, name, if (name == "vosk-grammar") IntentMatcher.voskVocabulary() else null)
+                        if (name == "vosk-chips") VoskChipsEngine(model!!, name)
+                        else VoskEngine(model!!, name, if (name == "vosk-grammar") IntentMatcher.voskVocabulary() else null)
                     }
                     else -> { say("unknown engine $name"); continue }
                 }
@@ -274,15 +278,19 @@ class MainActivity : Activity() {
                 val (_, speechEnd) = Audio.speechBounds(pcm) ?: (0 to pcm.size)
                 // Pad so every engine sees >= 2.5 s after speech ends, room for its own endpointer.
                 val padded = pcm.copyOf(maxOf(pcm.size, speechEnd + RATE * 5 / 2))
+                val chips = it.optJSONArray("chips")?.let { a -> List(a.length()) { i -> a.getString(i) } }
+                if (engine is VoskChipsEngine) engine.grammar = ChipMatcher.grammar(chips ?: emptyList())
                 val r = engine.recognize(padded, speechEnd)
-                val pred = IntentMatcher.classify(r.text)
-                val expected = it.getString("intent")
-                if (pred.name == expected) ok++
+                // Suggested-reply items score "which chip (or none)"; open answers score the intent.
+                val (pred, expected) = if (chips != null) {
+                    "chip${ChipMatcher.match(r.text, chips) ?: -1}" to "chip${it.getInt("target")}"
+                } else IntentMatcher.classify(r.text).name to it.getString("intent")
+                if (pred == expected) ok++
                 emit(JSONObject().put("phase", "utt").put("set", set).put("engine", fullName).put("id", it.getString("id"))
                     .put("intent", expected).put("cond", it.optString("cond")).put("text", r.text)
-                    .put("alts", org.json.JSONArray(r.alts)).put("pred", pred.name).put("ok", pred.name == expected)
+                    .put("alts", org.json.JSONArray(r.alts)).put("pred", pred).put("ok", pred == expected)
                     .put("speechEndMs", speechEnd * 1000L / RATE).put("latencyMs", r.latencyMs).put("err", r.err ?: "").put("via", r.via))
-                say("[$fullName ${k + 1}/${items.size}] ${if (pred.name == expected) "✓" else "✗"} ${it.getString("id")}: \"${r.text}\" → $pred (${r.latencyMs} ms)")
+                say("[$fullName ${k + 1}/${items.size}] ${if (pred == expected) "✓" else "✗"} ${it.getString("id")}: \"${r.text}\" → $pred (${r.latencyMs} ms)")
             }
             emit(JSONObject().put("phase", "engine-done").put("engine", fullName).put("ok", ok).put("n", items.size))
             say("== $fullName: $ok/${items.size} = ${"%.1f".format(100.0 * ok / items.size)}%")
@@ -291,6 +299,83 @@ class MainActivity : Activity() {
         }
         model?.close()
         emit(JSONObject().put("phase", "done").put("file", outFile.name))
+    }
+
+    // ---------- Suggested replies ----------
+
+    private fun chipLines(chips: List<String>, target: Int) = chips.forEachIndexed { i, c ->
+        text((if (i == target) "▶  " else "     ") + c, 20f, i == target)
+            .setTextColor(if (i == target) Color.rgb(0x1a, 0x73, 0xe8) else Color.GRAY)
+    }
+
+    private fun showSugg(index: Int) {
+        val p = Suggest.ALL[index]
+        val have = loadManifest("sugg")
+        screen()
+        text("${index + 1} / ${Suggest.ALL.size}   ·   ${Prompts.COND[p.cond]}", 14f)
+        text("Rin: “${p.question}”", 24f, true)
+        chipLines(p.chips, p.target)
+        text(if (p.target >= 0) "Say the highlighted reply, as written." else "Say something that is NOT on the screen.", 16f, true)
+        val status = text(if (p.id in have) "Recorded. Redo or go next." else "Tap to speak. It stops by itself.", 14f)
+        if (p.cond != Suggest.ALL.getOrNull(index - 1)?.cond) status.text = "New position: ${Prompts.COND[p.cond]}.\n" + status.text
+        lateinit var rec: Button
+        rec = button("🎤  Tap to speak") {
+            if (recording?.isActive == true) { stopRequested = true; return@button }
+            stopRequested = false
+            rec.text = "■  Listening… (tap to stop)"; rec.setBackgroundColor(Color.rgb(0xd9, 0x30, 0x25))
+            recording = scope.launch {
+                val pcm = withContext(Dispatchers.IO) { recordUtterance() }
+                val file = File(setDir("sugg"), "${p.id}.wav")
+                withContext(Dispatchers.IO) { Audio.writeWav(file, pcm) }
+                val m = loadManifest("sugg")
+                m[p.id] = JSONObject().put("id", p.id).put("intent", if (p.target >= 0) "CHIP" else "OFFLIST")
+                    .put("chips", org.json.JSONArray(p.chips)).put("target", p.target).put("cond", p.cond)
+                    .put("question", p.question).put("file", file.name).put("durMs", pcm.size * 1000 / RATE)
+                    .put("peakDb", "%.1f".format(Audio.peakDb(pcm)).toDouble()).put("ts", System.currentTimeMillis())
+                saveManifest("sugg", m)
+                val heard = Audio.speechBounds(pcm) != null
+                status.text = if (heard) "Saved ${pcm.size * 1000 / RATE} ms." else "⚠ No speech detected. Please redo."
+                rec.text = "🎤  Redo"; rec.setBackgroundColor(Color.LTGRAY)
+                if (heard && index + 1 < Suggest.ALL.size) { kotlinx.coroutines.delay(700); showSugg(index + 1) }
+            }
+        }
+        rec.minHeight = dp(96)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        root.addView(row)
+        fun nav(s: String, to: Int) = Button(this).apply {
+            text = s; isAllCaps = false; isEnabled = to in Suggest.ALL.indices
+            setOnClickListener { recording?.cancel(); showSugg(to) }
+        }.also { row.addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
+        nav("◀ Back", index - 1); nav("Next ▶", index + 1)
+        button("Home") { recording?.cancel(); showHome() }
+    }
+
+    /** The real app path: Google's on-device recognizer on the live mic, one screen each (8 screens). */
+    private fun showLiveSugg(i: Int, score: Int) {
+        val screens = Suggest.ALL.filter { it.target >= 0 }.distinctBy { it.question }
+        if (i >= screens.size) { showHome(); say("live suggested replies: $score/${screens.size}"); return }
+        val p = screens[i]
+        screen()
+        text("Live ${i + 1} / ${screens.size}   ·   ${network()}", 14f)
+        text("Rin: “${p.question}”", 24f, true)
+        chipLines(p.chips, p.target)
+        val status = text("Tap, then say the highlighted reply.", 16f)
+        button("🎤  Tap to speak") {
+            status.text = "Listening…"
+            scope.launch {
+                val e = AndroidEngine(this@MainActivity, "android-od-live", onDevice = true)
+                val r = e.live(); e.close()
+                val c = ChipMatcher.match(r.text, p.chips)
+                val ok = c == p.target
+                Log.i(TAG, JSONObject().put("phase", "live-sugg").put("network", network()).put("id", p.id)
+                    .put("target", p.target).put("text", r.text).put("pred", c ?: -1).put("ok", ok)
+                    .put("endOfSpeechToResultMs", r.latencyMs).put("err", r.err ?: "").put("via", r.via).toString())
+                status.text = "Heard \"${r.text}\" → ${if (ok) "✓" else "✗"}   (${r.latencyMs} ms after you stopped)"
+                kotlinx.coroutines.delay(1500)
+                showLiveSugg(i + 1, score + if (ok) 1 else 0)
+            }
+        }.minHeight = dp(96)
+        button("Home") { showHome() }
     }
 
     private suspend fun liveTest() {

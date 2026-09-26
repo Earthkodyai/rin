@@ -93,7 +93,7 @@ object IntentMatcher {
     }
 
     /** Exact for short words; one edit allowed for words of 5+ letters (STT spelling slips). */
-    private fun wordMatches(cue: String, token: String, phonetic: Boolean = false): Boolean =
+    internal fun wordMatches(cue: String, token: String, phonetic: Boolean = false): Boolean =
         cue == token || (cue.length >= 5 && token.length >= 5 && editDistance(cue, token) <= 1) ||
             (phonetic && cue.length >= 4 && token.length >= 3 && token !in SOUND_STOP && soundKey(cue) == soundKey(token))
 
