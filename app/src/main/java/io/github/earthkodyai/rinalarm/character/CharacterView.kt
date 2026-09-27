@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,9 +49,11 @@ import java.io.ByteArrayInputStream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-/** Debug hook: every CharacterView crashes its renderer on request, to prove the fallback (DebugCharacterReceiver). */
+/** Debug hooks for DebugCharacterReceiver: crash the renderer (to prove the fallback) or force a mood (to time it). */
 object CharacterDebug {
   val crashRenderer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+  /** Overrides the screen's mood until the screen's own mood next changes. */
+  val mood = MutableSharedFlow<Pair<Mood, Float>>(extraBufferCapacity = 1)
 }
 
 private enum class Phase {
@@ -63,10 +67,11 @@ private enum class Phase {
  * Rin, rendered by the web/character page in a WebView. It is never on the ring path (hard rule): whatever goes
  * wrong here, the still image takes over and the rest of the app carries on. The page's canvas stays transparent
  * until Rin's first frame, so the still sits on top and fades out once she is drawn. The page stops rendering while
- * the screen is paused.
+ * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
+ * happy for a moment there, and the phone gives a light tick here.
  */
 @Composable
-fun CharacterView(modifier: Modifier = Modifier) {
+fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 1f) {
   val context = LocalContext.current
   val model = remember {
     CharacterAssets.model(context)?.takeIf { WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) }
@@ -74,12 +79,15 @@ fun CharacterView(modifier: Modifier = Modifier) {
   var phase by remember { mutableStateOf(if (model == null) Phase.FALLBACK else Phase.LOADING) }
   val host = remember { CharacterHost() }
   val description = stringResource(R.string.character_description)
+  var debugMood by remember { mutableStateOf<Pair<Mood, Float>?>(null) }
+  val shown = debugMood ?: (mood to intensity)
+  SideEffect { host.setMood(shown) }
 
   Box(modifier.semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
     if (model != null && phase != Phase.FALLBACK) {
       AndroidView(
         factory = { ctx ->
-          host.create(ctx, model, onReady = { phase = Phase.READY }, onFailed = { phase = Phase.FALLBACK })
+          host.create(ctx, model, shown, onReady = { phase = Phase.READY }, onFailed = { phase = Phase.FALLBACK })
         },
         onRelease = { host.release() },
         modifier = Modifier.fillMaxSize(),
@@ -106,6 +114,8 @@ fun CharacterView(modifier: Modifier = Modifier) {
     phase = Phase.FALLBACK
   }
   LaunchedEffect(host) { CharacterDebug.crashRenderer.collect { host.crashRenderer() } }
+  LaunchedEffect(host) { CharacterDebug.mood.collect { debugMood = it } }
+  LaunchedEffect(mood) { debugMood = null }
 }
 
 /**
@@ -117,9 +127,19 @@ private class CharacterHost {
   private var webView: WebView? = null
   private var reply: JavaScriptReplyProxy? = null
   private var resumed = false
+  private var ready = false
+  /** The mood the screen wants, and the one the page has (from the URL, then from the last command sent). */
+  private var wanted: Pair<Mood, Float>? = null
+  private var onPage: Pair<Mood, Float>? = null
 
   @SuppressLint("SetJavaScriptEnabled") // our own page from APK assets; nothing else can load (see the client)
-  fun create(context: Context, model: String, onReady: () -> Unit, onFailed: () -> Unit): View {
+  fun create(
+    context: Context,
+    model: String,
+    mood: Pair<Mood, Float>,
+    onReady: () -> Unit,
+    onFailed: () -> Unit,
+  ): View {
     val t0 = System.currentTimeMillis() // before Chromium starts, so the load time includes WebView start-up
     WebView.setWebContentsDebuggingEnabled(context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
     val loader =
@@ -144,11 +164,19 @@ private class CharacterHost {
     WebViewCompat.addWebMessageListener(web, BRIDGE, setOf(CharacterAssets.ORIGIN)) { _, message, _, isMainFrame, proxy ->
       if (!isMainFrame) return@addWebMessageListener
       reply = proxy
-      if (!resumed) proxy.postMessage(CharacterCommand.PAUSE.json)
+      if (!resumed) proxy.postMessage(CharacterCommand.Pause.json)
       when (val parsed = CharacterMessage.parse(message.data ?: return@addWebMessageListener)) {
         is CharacterMessage.Ready -> {
           Log.i(TAG, "ready $parsed")
+          ready = true
           onReady()
+          sendMood()
+        }
+        is CharacterMessage.EmotionShown ->
+          Log.i(TAG, "emotion ${parsed.mood} toPage=${parsed.ms.toPage} total=${parsed.ms.total}")
+        is CharacterMessage.Tap -> {
+          Log.i(TAG, "tap ${parsed.part}")
+          webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         }
         is CharacterMessage.Error -> {
           Log.w(TAG, "page error: ${parsed.message}")
@@ -164,7 +192,11 @@ private class CharacterHost {
         .appendQueryParameter("fps", FPS_CAP.toString())
         .appendQueryParameter("pr", PIXEL_RATIO_CAP.toString())
         .appendQueryParameter("t0", t0.toString())
+        .appendQueryParameter("mood", mood.first.wire)
+        .appendQueryParameter("intensity", mood.second.toString())
         .build()
+    wanted = mood
+    onPage = mood
     web.loadUrl(url.toString())
     webView = web
     // Hosting the WebView directly in AndroidView froze a WebGL page after its first frames on the 14T (WebView 153,
@@ -176,12 +208,30 @@ private class CharacterHost {
   fun resume() {
     resumed = true
     webView?.onResume()
-    reply?.postMessage(CharacterCommand.RESUME.json)
+    reply?.postMessage(CharacterCommand.Resume.json)
+    sendMood()
+  }
+
+  fun setMood(mood: Pair<Mood, Float>) {
+    wanted = mood
+    sendMood()
+  }
+
+  /**
+   * Sends the wanted mood once the page can show it straight away: after its first frame and while on screen. A change
+   * made while paused waits for resume, so its timing never includes time off screen.
+   */
+  private fun sendMood() {
+    val mood = wanted ?: return
+    val proxy = reply ?: return
+    if (!ready || !resumed || mood == onPage) return
+    proxy.postMessage(CharacterCommand.Emotion(mood.first, mood.second, System.currentTimeMillis()).json)
+    onPage = mood
   }
 
   fun pause() {
     resumed = false
-    reply?.postMessage(CharacterCommand.PAUSE.json)
+    reply?.postMessage(CharacterCommand.Pause.json)
     webView?.onPause()
   }
 
@@ -191,6 +241,7 @@ private class CharacterHost {
 
   fun release() {
     reply = null
+    ready = false
     webView?.destroy()
     webView = null
   }

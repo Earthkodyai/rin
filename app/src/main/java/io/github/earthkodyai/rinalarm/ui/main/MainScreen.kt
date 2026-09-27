@@ -38,6 +38,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.character.CharacterView
+import io.github.earthkodyai.rinalarm.character.rememberDefaultMood
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
@@ -69,7 +70,7 @@ fun MainScreen(
     onToggle = viewModel::setEnabled,
     setupIssue = setupIssue,
     onDiagnostics = onDiagnostics,
-    character = { CharacterView(Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) },
+    character = { CharacterView(rememberDefaultMood(), Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) },
   )
 }
 

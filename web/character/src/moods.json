@@ -1,0 +1,9 @@
+{
+  "sleepy":   { "expressions": { "relaxed": 0.4 },                  "lid": 0.5, "pitch":  0.10, "yaw":  0.00, "roll":  0.05, "gaze":  0.00 },
+  "cheerful": { "expressions": { "smile": 0.9 },                    "lid": 0.0, "pitch": -0.03, "yaw":  0.00, "roll": -0.04, "gaze":  0.00 },
+  "proud":    { "expressions": { "smile": 0.7 },                    "lid": 0.0, "pitch": -0.10, "yaw":  0.00, "roll":  0.00, "gaze":  0.00 },
+  "worried":  { "expressions": { "sad": 0.55, "surprised": 0.1 },   "lid": 0.0, "pitch":  0.04, "yaw":  0.00, "roll":  0.07, "gaze":  0.00 },
+  "pouty":    { "expressions": { "angry": 0.35 },                   "lid": 0.0, "pitch": -0.03, "yaw":  0.18, "roll":  0.00, "gaze":  0.30 },
+  "sulky":    { "expressions": { "angry": 0.45, "sad": 0.3 },       "lid": 0.1, "pitch":  0.08, "yaw": -0.12, "roll":  0.00, "gaze": -0.25 },
+  "relieved": { "expressions": { "relaxed": 0.5, "smile": 0.3 },    "lid": 0.0, "pitch":  0.02, "yaw":  0.00, "roll":  0.00, "gaze":  0.00 }
+}

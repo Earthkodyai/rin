@@ -99,6 +99,13 @@ val characterWeb =
     )
   }
 
+// MoodContractTest reads the page's mood table, so a change there must rerun the unit tests.
+tasks.withType<Test>().configureEach {
+  inputs.file(rootProject.layout.projectDirectory.file("web/character/src/moods.json"))
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+    .withPropertyName("pageMoods")
+}
+
 androidComponents {
   onVariants { variant ->
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)

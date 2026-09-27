@@ -1,5 +1,8 @@
 package io.github.earthkodyai.rinalarm.character
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -34,6 +37,28 @@ class CharacterMessageTest {
   @Test
   fun error_isParsed() {
     assertEquals(CharacterMessage.Error("fetch model/dev.vrm: 404"), CharacterMessage.parse("""{"type":"error","message":"fetch model/dev.vrm: 404"}"""))
+  }
+
+  @Test
+  fun emotionShown_andTap_areParsed() {
+    assertEquals(
+      CharacterMessage.EmotionShown("pouty", CharacterMessage.EmotionTimings(toPage = 4, total = 231)),
+      CharacterMessage.parse("""{"v":1,"type":"emotion","mood":"pouty","ms":{"toPage":4,"total":231}}"""),
+    )
+    assertEquals(CharacterMessage.Tap("head"), CharacterMessage.parse("""{"v":1,"type":"tap","part":"head"}"""))
+    assertNull(CharacterMessage.parse("""{"type":"emotion","mood":"pouty"}""")) // no timings
+  }
+
+  @Test
+  fun commands_matchWhatThePageReads() {
+    assertEquals("""{"type":"pause"}""", CharacterCommand.Pause.json)
+    assertEquals("""{"type":"resume"}""", CharacterCommand.Resume.json)
+    val emotion = Json.parseToJsonElement(CharacterCommand.Emotion(Mood.SULKY, 1.5f, 1_700_000_000_123).json).jsonObject
+
+    assertEquals("emotion", emotion["type"]!!.jsonPrimitive.content)
+    assertEquals("sulky", emotion["mood"]!!.jsonPrimitive.content)
+    assertEquals("1.0", emotion["intensity"]!!.jsonPrimitive.content) // clamped
+    assertEquals("1700000000123", emotion["at"]!!.jsonPrimitive.content)
   }
 
   @Test
