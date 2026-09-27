@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.Flow
 interface AlarmDao {
   @Query("SELECT * FROM alarms ORDER BY hour, minute, id") fun observeAll(): Flow<List<AlarmEntity>>
 
-  /** For the rescheduling receivers (1.2): read once, no Flow. */
   @Query("SELECT * FROM alarms WHERE enabled = 1") suspend fun getEnabled(): List<AlarmEntity>
+
+  /** For the alarm engine: read once, no Flow. Includes switched-off alarms, whose snoozes may still be pending. */
+  @Query("SELECT * FROM alarms") suspend fun getAll(): List<AlarmEntity>
 
   @Query("SELECT * FROM alarms WHERE id = :id") suspend fun getById(id: Long): AlarmEntity?
 

@@ -8,4 +8,17 @@
     <string name="repeat_every_day">Every day</string>
     <string name="repeat_weekdays">Weekdays</string>
     <string name="repeat_weekend">Weekends</string>
+    <string name="channel_ringing">Ringing alarm</string>
+    <string name="channel_missed">Missed alarms</string>
+    <string name="ring_default_label">Alarm</string>
+    <string name="ring_late">late</string>
+    <string name="ring_late_explained">Ringing late: your phone was off or asleep.</string>
+    <string name="ring_snooze">Snooze</string>
+    <plurals name="ring_snooze_left">
+        <item quantity="one">Snooze %1$d min (%2$d left)</item>
+        <item quantity="other">Snooze %1$d min (%2$d left)</item>
+    </plurals>
+    <string name="ring_dismiss">Dismiss</string>
+    <string name="missed_title">Missed alarm at %1$s</string>
+    <string name="missed_text">Your phone was off or asleep when it was due.</string>
 </resources>

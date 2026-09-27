@@ -1,8 +1,10 @@
 package io.github.earthkodyai.rinalarm.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import java.time.LocalTime
 
@@ -15,6 +17,11 @@ data class AlarmEntity(
   val repeatDays: Int,
   val label: String,
   val enabled: Boolean,
+  // Schema 2. The SQL defaults must match RingOptions' (AlarmEntityTest checks).
+  @ColumnInfo(defaultValue = "30") val rampSeconds: Int = RingOptions.DEFAULT_RAMP_SECONDS,
+  @ColumnInfo(defaultValue = "1") val vibrate: Boolean = true,
+  @ColumnInfo(defaultValue = "5") val snoozeMinutes: Int = RingOptions.DEFAULT_SNOOZE_MINUTES,
+  @ColumnInfo(defaultValue = "3") val maxSnoozes: Int = RingOptions.DEFAULT_MAX_SNOOZES,
 )
 
 fun AlarmEntity.toAlarm(): Alarm =
@@ -24,6 +31,7 @@ fun AlarmEntity.toAlarm(): Alarm =
     repeatDays = RepeatDays.fromMask(repeatDays),
     label = label,
     enabled = enabled,
+    ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes),
   )
 
 fun Alarm.toEntity(): AlarmEntity =
@@ -34,4 +42,8 @@ fun Alarm.toEntity(): AlarmEntity =
     repeatDays = repeatDays.mask,
     label = label,
     enabled = enabled,
+    rampSeconds = ring.rampSeconds,
+    vibrate = ring.vibrate,
+    snoozeMinutes = ring.snoozeMinutes,
+    maxSnoozes = ring.maxSnoozes,
   )
