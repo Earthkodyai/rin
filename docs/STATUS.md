@@ -1,6 +1,6 @@
-# STATUS — 2026-09-27 19:40 (Phase 0 spikes complete)
+# STATUS — 2026-09-27 19:30 (Phase 1 planned; next: task 1.1)
 
-Phase: 0 — all 5 spikes decided (S1 GO, S2 GO Plan A, S3 GO suggested replies, S4 GO Rin soft, **S5 NO-GO → QR main mission, own-object photo optional**); decisions table + 05c/06/14/phase-3 updated. Only 0.4 (limited-distribution + GitHub 2FA accounts) is left, on the user. Next session: ask the user whether to start Phase 1 before 0.4 is done; read docs/plan/phase-1.md.
+Phase: **1 started 2026-09-27** (Phase 0 spikes all decided; 0.4 accounts still on the user, which blocks only pushing/CI runs). Decided: package `io.github.earthkodyai.rinalarm`, minSdk 29 (D13, O8). Phase 1 tasks, one per session: **1.1 NEXT** app skeleton in `app/` (Compose, Hilt, Room/DataStore in device-protected storage, targetSdk 36) + GitHub Actions CI file + pure-Kotlin next-trigger calculator (repeat days, timezone/DST, midnight) with unit tests · 1.2 alarm engine (setAlarmClock, receivers incl. LOCKED_BOOT/TIME_SET/TZ/exact-perm, RingService FGS systemExempted, RingActivity, USAGE_ALARM ramp, vibrate, snooze, 15-min auto-stop) + ring log · 1.3 alarm editor UI · 1.4 onboarding permissions + Diagnostics (+ test alarm in 1 min) · 1.5 instrumented receiver tests + start the 14-night ring-log run. Reuse lessons from spikes/s1-alarm (S1 carry-overs below).
 
 ## Done
 - Plan v1.0 in docs/plan/ (index README.md). Tools installed (Android Studio 2026.1.4.7, Android CLI 1.0 with --no-metrics, SDK 36, platform-tools 37.0.1). JDK = Android Studio JBR: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"`.
@@ -27,4 +27,4 @@ android: Microsoft\WinGet\Packages\Google.AndroidCLI_Microsoft.Winget.Source_8we
 gitleaks: Microsoft\WinGet\Packages\Gitleaks.Gitleaks_Microsoft.Winget.Source_8wekyb3d8bbwe\gitleaks.exe
 adb: Android\Sdk\platform-tools\adb.exe
 ## Open decisions
-O1 ElevenLabs Rin soft (done) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O7 AI budget unlock · O8 minSdk (Vosk works on any API level) · O9 crash reporting
+O1 ElevenLabs Rin soft (done) · O2 Claude model (Phase 7 eval) · O3 Rin's design · O4 app name · O7 AI budget unlock · O9 crash reporting
