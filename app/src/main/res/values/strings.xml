@@ -101,6 +101,21 @@
     <string name="test_pending">Rings at %1$s. Lock the phone and wait.</string>
     <string name="test_cancel">Cancel test</string>
     <string name="test_failed">Couldn\'t set the test alarm. Try again.</string>
+    <string name="run_title">Reliability run</string>
+    <!-- Quantity is the target (%2$d). -->
+    <plurals name="run_count">
+        <item quantity="one">%1$d of %2$d day in a row</item>
+        <item quantity="other">%1$d of %2$d days in a row</item>
+    </plurals>
+    <string name="run_rules">Keep one alarm repeating every day. A missed, late (over 1 min) or silent ring, or a day with no alarm, starts the count again. Test alarms are left out.</string>
+    <string name="run_passed">Passed: every alarm rang on time for 14 days in a row.</string>
+    <string name="run_reset">Started again after %1$s: %2$s</string>
+    <string name="run_reason_missed">an alarm was missed</string>
+    <string name="run_reason_late">an alarm rang more than 1 min late</string>
+    <string name="run_reason_no_sound">an alarm rang without sound</string>
+    <string name="run_reason_failed">an alarm failed to ring</string>
+    <string name="run_reason_no_time">an alarm rang without its stored time</string>
+    <string name="run_reason_no_alarm">no alarm that day</string>
     <string name="recent_title">Recent rings</string>
     <string name="recent_empty">No rings yet.</string>
     <string name="recent_timing">Fired +%1$s s · sound +%2$s s</string>

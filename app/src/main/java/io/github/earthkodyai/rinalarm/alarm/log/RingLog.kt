@@ -36,6 +36,11 @@ enum class RingEventType {
   /** Another alarm fired while one was ringing; the current ring covers both. */
   OVERLAP,
   VOLUME_RAISED,
+  /** Audio focus came through after being refused at ring start (Android 15+: once the ring page shows). */
+  FOCUS_GRANTED,
+  /** Tone paused (vibration goes on); detail reason=call or reason=focus. */
+  TONE_PAUSED,
+  TONE_RESUMED,
   SNOOZED,
   SNOOZE_DENIED,
   DISMISSED,

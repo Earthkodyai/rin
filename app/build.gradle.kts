@@ -16,7 +16,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Swaps in HiltTestApplication so receiver tests can replace storage and the ring outputs (androidTest/HiltTestRunner.kt).
+        testInstrumentationRunner = "io.github.earthkodyai.rinalarm.HiltTestRunner"
     }
 
     buildTypes {
@@ -99,6 +100,8 @@ dependencies {
   // DI
   implementation(libs.hilt.android)
   ksp(libs.hilt.compiler)
+  androidTestImplementation(libs.hilt.android.testing)
+  kspAndroidTest(libs.hilt.compiler)
   implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
   // Storage (device-protected, see data/StorageModule.kt)

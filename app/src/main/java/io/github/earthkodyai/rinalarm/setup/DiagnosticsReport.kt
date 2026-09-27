@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.setup
 
+import io.github.earthkodyai.rinalarm.alarm.log.ReliabilityRun
 import io.github.earthkodyai.rinalarm.alarm.log.RingSummary
 import java.time.Instant
 import java.time.ZoneId
@@ -17,6 +18,7 @@ object DiagnosticsReport {
     checks: List<CheckResult>,
     snapshot: String,
     rings: List<RingSummary>,
+    run: ReliabilityRun,
     now: Instant,
     zone: ZoneId,
   ): String = buildString {
@@ -27,6 +29,10 @@ object DiagnosticsReport {
     for (check in checks) appendLine("- ${check.id}: ${check.severity}")
     appendLine("Alarm volume ${status.alarmVolume}/${status.alarmVolumeMax}, battery saver ${onOff(status.powerSaveOn)}")
     appendLine("Now: $snapshot")
+    appendLine()
+    append("Reliability run: ${run.nights}/${ReliabilityRun.TARGET} days")
+    run.breaker?.let { append(", reset on ${it.day} by ${it.reason}" + (it.alarmId?.let { id -> " (alarm=$id)" } ?: "")) }
+    appendLine()
     appendLine()
     appendLine("Recent rings (newest first):")
     if (rings.isEmpty()) appendLine("- none")

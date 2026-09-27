@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.alarm.log
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.data.db.RingEventDao
 import io.github.earthkodyai.rinalarm.data.db.RingEventEntity
+import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
@@ -60,19 +61,36 @@ data class RingSummary(
   val isTest: Boolean,
 )
 
-/** The newest rings for Diagnostics. */
+/** The ring log as Diagnostics shows it. */
 interface RingHistoryRepository {
+  /** The newest rings. */
   val recentRings: Flow<List<RingSummary>>
+
+  val reliabilityRun: Flow<ReliabilityRun>
 }
 
-class RoomRingHistory @Inject constructor(private val dao: RingEventDao) : RingHistoryRepository {
+class RoomRingHistory @Inject constructor(private val dao: RingEventDao, private val time: TimeSource) :
+  RingHistoryRepository {
   override val recentRings: Flow<List<RingSummary>> =
     dao.observeRingEvents(EVENT_WINDOW).map { rows -> RingHistory.summarize(rows.map { it.toRingEvent() }, RECENT_RINGS) }
+
+  override val reliabilityRun: Flow<ReliabilityRun> =
+    dao.observeRingEvents(RUN_WINDOW).map { rows ->
+      val zone = time.zone()
+      val rings = RingHistory.summarize(rows.map { it.toRingEvent() }, Int.MAX_VALUE)
+      ReliabilityRun.from(rings, time.now().atZone(zone).toLocalDate(), zone)
+    }
 
   private companion object {
     /** Enough rows for the last rings with their endings; a ring whose FIRED row fell outside is simply not shown. */
     const val EVENT_WINDOW = 200
     const val RECENT_RINGS = 7
+
+    /**
+     * Rows for the reliability run: a day with every snooze used and a test ring is about 15 rows, so this covers
+     * the 14 days many times over. A run longer than the window only counts the days inside it.
+     */
+    const val RUN_WINDOW = 2000
   }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,6 +34,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -42,6 +44,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.alarm.log.ReliabilityRun
 import io.github.earthkodyai.rinalarm.alarm.log.RingOutcome
 import io.github.earthkodyai.rinalarm.alarm.log.RingSummary
 import io.github.earthkodyai.rinalarm.setup.CheckId
@@ -55,8 +58,11 @@ import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import io.github.earthkodyai.rinalarm.ui.setup.CheckRow
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -144,6 +150,9 @@ internal fun DiagnosticsScreen(
         SectionTitle(stringResource(R.string.test_title))
         TestAlarmPanel(state.testRingAt, state.testFailed, onStartTest, onCancelTest, Modifier.padding(horizontal = 16.dp))
         HorizontalDivider(Modifier.padding(top = 16.dp))
+        SectionTitle(stringResource(R.string.run_title))
+        ReliabilityRunPanel(state.reliabilityRun, Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(Modifier.padding(top = 16.dp))
         SectionTitle(stringResource(R.string.recent_title))
         if (state.recentRings.isEmpty()) {
           Text(stringResource(R.string.recent_empty), Modifier.padding(horizontal = 16.dp))
@@ -186,6 +195,52 @@ internal fun TestAlarmPanel(
     if (failed) Text(stringResource(R.string.test_failed), color = MaterialTheme.colorScheme.error)
   }
 }
+
+/** The Phase 1 exit check, with its rules spelled out so a reset never looks arbitrary. */
+@Composable
+private fun ReliabilityRunPanel(run: ReliabilityRun, modifier: Modifier = Modifier) {
+  Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(
+      pluralStringResource(
+        R.plurals.run_count,
+        ReliabilityRun.TARGET,
+        run.nights.coerceAtMost(ReliabilityRun.TARGET),
+        ReliabilityRun.TARGET,
+      ),
+      style = MaterialTheme.typography.bodyLarge,
+    )
+    LinearProgressIndicator(
+      progress = { run.nights.coerceAtMost(ReliabilityRun.TARGET) / ReliabilityRun.TARGET.toFloat() },
+      modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+      stringResource(if (run.passed) R.string.run_passed else R.string.run_rules),
+      style = MaterialTheme.typography.bodyMedium,
+    )
+    run.breaker?.let { breaker ->
+      Text(
+        stringResource(R.string.run_reset, dayText(breaker.day), reasonText(breaker.reason)),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  }
+}
+
+private fun dayText(day: LocalDate): String = day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+
+@Composable
+private fun reasonText(reason: ReliabilityRun.Reason): String =
+  stringResource(
+    when (reason) {
+      ReliabilityRun.Reason.MISSED -> R.string.run_reason_missed
+      ReliabilityRun.Reason.LATE -> R.string.run_reason_late
+      ReliabilityRun.Reason.NO_SOUND -> R.string.run_reason_no_sound
+      ReliabilityRun.Reason.FAILED -> R.string.run_reason_failed
+      ReliabilityRun.Reason.NO_TIME -> R.string.run_reason_no_time
+      ReliabilityRun.Reason.NO_ALARM -> R.string.run_reason_no_alarm
+    }
+  )
 
 @Composable
 private fun RingRow(ring: RingSummary) {
@@ -260,7 +315,14 @@ private fun DiagnosticsPreview() {
     )
   RinAlarmTheme {
     DiagnosticsScreen(
-      DiagnosticsUiState(status, SetupChecks.evaluate(status), null, false, rings),
+      DiagnosticsUiState(
+        status,
+        SetupChecks.evaluate(status),
+        null,
+        false,
+        rings,
+        ReliabilityRun(3, ReliabilityRun.Breaker(LocalDate.of(2026, 9, 24), ReliabilityRun.Reason.LATE, 1)),
+      ),
       {},
       {},
       {},

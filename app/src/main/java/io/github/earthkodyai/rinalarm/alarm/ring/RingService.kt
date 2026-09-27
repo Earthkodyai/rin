@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -35,6 +36,11 @@ import kotlinx.coroutines.launch
  *
  * Audio focus: a call (transient loss) pauses the tone and keeps vibrating; the tone resumes when the call ends. A
  * permanent loss (the user starts music) is ignored, so no other app can silence an alarm.
+ *
+ * Android 15+ refuses focus to an app targeting SDK 36 unless it is on screen, and a foreground service is not enough
+ * (1.5: `dumpsys audio` "Focus request DENIED ... procState:4" on every ring). So the tone starts without focus, the
+ * request is retried every tick (it succeeds once the ring page is showing), and calls are also detected from the
+ * audio mode, which needs no permission and works whether or not focus was ever granted.
  */
 @AndroidEntryPoint
 class RingService : Service() {
@@ -52,6 +58,11 @@ class RingService : Service() {
   private class Session(val request: RingRequest, val tone: TonePlayer?, val vibrator: AlarmVibrator) {
     val startedAt = SystemClock.elapsedRealtime()
     var focus: AudioFocusRequest? = null
+    /** The last focus request was refused; [watchTick] asks again. */
+    var focusRefused = false
+    /** Focus is on hold (delayed grant) or lost to a transient owner. */
+    var pausedForFocus = false
+    var pausedForCall = false
     /** (user's volume, volume we raised it to), or null when we left it alone. */
     var raisedVolume: Pair<Int, Int>? = null
     var wakeLock: PowerManager.WakeLock? = null
@@ -92,10 +103,14 @@ class RingService : Service() {
       }
     val volume = raiseVolumeIfLow(s)
     val focus = requestFocus(s)
+    s.focusRefused = focus == AudioManager.AUDIOFOCUS_REQUEST_FAILED
+    s.pausedForFocus = focus == AudioManager.AUDIOFOCUS_REQUEST_DELAYED
+    s.pausedForCall = inCall()
     tone?.setGain(RingPolicy.rampGain(0, request.options.rampSeconds))
-    if (focus != AudioManager.AUDIOFOCUS_REQUEST_DELAYED) tone?.play()
+    updateTone(s)
     if (request.options.vibrate) runCatching { s.vibrator.start() }
     handler.post(rampTick)
+    handler.postDelayed(watchTick, WATCH_TICK_MS)
     handler.postDelayed({ stopRinging(RingEventType.AUTO_STOPPED, "after=${RingPolicy.AUTO_STOP}") }, RingPolicy.AUTO_STOP.toMillis())
 
     val focusName =
@@ -108,9 +123,57 @@ class RingService : Service() {
       if (tone != null) RingEventType.RING_START else RingEventType.RING_FAIL,
       request.alarmId,
       request.scheduledAt,
-      "tone=${tone != null} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}",
+      "tone=${tone != null} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}" +
+        if (s.pausedForCall) " call=true" else "",
     )
   }
+
+  /** Retries refused focus and pauses the tone for calls. Runs until the ring stops. */
+  private val watchTick =
+    object : Runnable {
+      override fun run() {
+        val s = session ?: return
+        if (s.focusRefused) retryFocus(s)
+        val call = inCall()
+        if (call != s.pausedForCall) {
+          s.pausedForCall = call
+          updateTone(s)
+          record(if (call) RingEventType.TONE_PAUSED else RingEventType.TONE_RESUMED, s, "reason=call")
+        }
+        handler.postDelayed(this, WATCH_TICK_MS)
+      }
+    }
+
+  private fun retryFocus(s: Session) {
+    val request = s.focus ?: return
+    val result = getSystemService(AudioManager::class.java).requestAudioFocus(request)
+    if (result == AudioManager.AUDIOFOCUS_REQUEST_FAILED) return
+    s.focusRefused = false
+    val delayed = result == AudioManager.AUDIOFOCUS_REQUEST_DELAYED
+    if (delayed) {
+      s.pausedForFocus = true
+      updateTone(s)
+    }
+    record(RingEventType.FOCUS_GRANTED, s, "delayed=$delayed afterMs=${s.elapsedMillis()}")
+  }
+
+  /** The tone plays unless a call or a transient focus owner has it paused; vibration is never paused. */
+  private fun updateTone(s: Session) {
+    if (s.pausedForFocus || s.pausedForCall) s.tone?.pause() else s.tone?.play()
+  }
+
+  /** Ringing for an incoming call, or in a phone or VoIP call. The two newer modes are plain ints on older SDKs. */
+  @SuppressLint("InlinedApi")
+  private fun inCall(): Boolean =
+    getSystemService(AudioManager::class.java).mode in
+      setOf(
+        AudioManager.MODE_RINGTONE,
+        AudioManager.MODE_IN_CALL,
+        AudioManager.MODE_IN_COMMUNICATION,
+        AudioManager.MODE_CALL_SCREENING,
+        AudioManager.MODE_CALL_REDIRECT,
+        AudioManager.MODE_COMMUNICATION_REDIRECT,
+      )
 
   private val rampTick =
     object : Runnable {
@@ -206,8 +269,17 @@ class RingService : Service() {
         .setOnAudioFocusChangeListener(
           { change ->
             when (change) {
-              AudioManager.AUDIOFOCUS_GAIN -> s.tone?.play()
-              AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> s.tone?.pause()
+              AudioManager.AUDIOFOCUS_GAIN ->
+                if (s.pausedForFocus) {
+                  s.pausedForFocus = false
+                  updateTone(s)
+                  record(RingEventType.TONE_RESUMED, s, "reason=focus")
+                }
+              AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                s.pausedForFocus = true
+                updateTone(s)
+                record(RingEventType.TONE_PAUSED, s, "reason=focus")
+              }
             // LOSS (another app took over for good) and CAN_DUCK are ignored: keep ringing at full volume.
             }
           },
@@ -222,12 +294,16 @@ class RingService : Service() {
     appScope.launch(logOrder) { ringLog.record(type, alarmId, scheduledAt, detail) }
   }
 
+  private fun record(type: RingEventType, s: Session, detail: String) =
+    record(type, s.request.alarmId, s.request.scheduledAt, detail)
+
   companion object {
     private const val ACTION_RING = "io.github.earthkodyai.rinalarm.action.RING"
     private const val ACTION_SNOOZE = "io.github.earthkodyai.rinalarm.action.SNOOZE"
     private const val ACTION_DISMISS = "io.github.earthkodyai.rinalarm.action.DISMISS"
     private const val EXTRA_SOURCE = "source"
     private const val RAMP_TICK_MS = 200L
+    private const val WATCH_TICK_MS = 500L
     private const val WAKE_LOCK_MARGIN_MS = 60_000L
 
     fun ringIntent(context: Context, request: RingRequest): Intent =

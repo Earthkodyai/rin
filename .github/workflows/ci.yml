@@ -31,7 +31,7 @@ jobs:
           validate-wrappers: true
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # Instrumented tests are compiled here and run on the real phone (HyperOS needs a tap per install).
+      # The instrumented tests run in the next job, and on the real phone by hand (HyperOS needs a tap per install).
       - name: Lint, unit tests, debug APK, test APK
         run: ./gradlew lintDebug testDebugUnitTest assembleDebug assembleDebugAndroidTest --stacktrace
 
@@ -43,6 +43,51 @@ jobs:
           path: |
             app/build/reports/
             app/build/test-results/
+          retention-days: 7
+
+  instrumented:
+    name: Instrumented tests (emulator)
+    # Compose UI tests cannot run on the test phone (HyperOS denies the test activity), so they only run here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build APKs (outside the emulator's time budget)
+        run: ./gradlew assembleDebug assembleDebugAndroidTest --stacktrace
+
+      # API 35 matches the test phone (Android 15).
+      - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: ./gradlew connectedDebugAndroidTest --stacktrace
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: instrumented-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
           retention-days: 7
 
   secrets:

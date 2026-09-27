@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.alarm.engine.DeviceStateProbe
+import io.github.earthkodyai.rinalarm.alarm.log.ReliabilityRun
 import io.github.earthkodyai.rinalarm.alarm.log.RingHistoryRepository
 import io.github.earthkodyai.rinalarm.alarm.log.RingSummary
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
@@ -38,7 +39,12 @@ constructor(
   private val testFailed = MutableStateFlow(false)
 
   val uiState: StateFlow<DiagnosticsUiState> =
-    combine(status, alarms.testAlarm, ringHistory.recentRings, testFailed) { status, test, rings, failed ->
+    combine(status, alarms.testAlarm, ringHistory.recentRings, ringHistory.reliabilityRun, testFailed) {
+        status,
+        test,
+        rings,
+        run,
+        failed ->
         val zone = time.zone()
         DiagnosticsUiState(
           status = status,
@@ -46,6 +52,7 @@ constructor(
           testRingAt = test?.nextTrigger(time.now(), zone)?.atZone(zone),
           testFailed = failed,
           recentRings = rings,
+          reliabilityRun = run,
         )
       }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DiagnosticsUiState.initial(status.value))
@@ -73,6 +80,7 @@ constructor(
       state.checks,
       deviceState.snapshot(),
       state.recentRings,
+      state.reliabilityRun,
       time.now(),
       time.zone(),
     )
@@ -86,8 +94,10 @@ data class DiagnosticsUiState(
   val testRingAt: ZonedDateTime?,
   val testFailed: Boolean,
   val recentRings: List<RingSummary>,
+  val reliabilityRun: ReliabilityRun,
 ) {
   companion object {
-    fun initial(status: DeviceStatus) = DiagnosticsUiState(status, SetupChecks.evaluate(status), null, false, emptyList())
+    fun initial(status: DeviceStatus) =
+      DiagnosticsUiState(status, SetupChecks.evaluate(status), null, false, emptyList(), ReliabilityRun(0, null))
   }
 }

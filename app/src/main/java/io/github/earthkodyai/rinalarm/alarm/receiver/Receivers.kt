@@ -44,7 +44,8 @@ class RescheduleReceiver : BroadcastReceiver() {
     goAsync(context) { reconcile(action.substringAfterLast('.')) }
   }
 
-  private companion object {
+  internal companion object {
+    /** Every action handled; ReceiverManifestTest checks the manifest registers each one. */
     val ACTIONS =
       setOf(
         Intent.ACTION_LOCKED_BOOT_COMPLETED,
@@ -68,12 +69,14 @@ internal interface ReceiverEntryPoint {
 /** Runs [block] off the main thread while keeping the broadcast alive (Android allows about 10 s). */
 private fun BroadcastReceiver.goAsync(context: Context, block: suspend AlarmEngine.() -> Unit) {
   val entryPoint = EntryPointAccessors.fromApplication(context.applicationContext, ReceiverEntryPoint::class.java)
-  val pending = goAsync()
+  // Null when onReceive is called directly rather than by a broadcast (receiver tests do this for the protected
+  // system actions they cannot send).
+  val pending: BroadcastReceiver.PendingResult? = goAsync()
   entryPoint.scope().launch {
     try {
       entryPoint.engine().block()
     } finally {
-      pending.finish()
+      pending?.finish()
     }
   }
 }
