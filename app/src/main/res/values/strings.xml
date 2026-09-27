@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">RinAlarm</string>
+    <string name="alarms_empty">No alarms yet.</string>
+    <string name="alarms_load_error">Couldn\'t load your alarms.</string>
+    <string name="alarm_off">Off</string>
+    <string name="alarm_next_ring">Next ring: %1$s %2$s</string>
+    <string name="repeat_once">Once</string>
+    <string name="repeat_every_day">Every day</string>
+    <string name="repeat_weekdays">Weekdays</string>
+    <string name="repeat_weekend">Weekends</string>
+</resources>

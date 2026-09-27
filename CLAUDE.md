@@ -14,7 +14,7 @@ Android alarm app with one original 3D anime companion, "Rin" (friendly morning 
 - Ask the user before: elevated installs (UAC never prompts on this PC), persisting a Git identity, changing Claude settings or plugins, adding dependencies that need new permissions, anything that costs money.
 
 ## Stack
-Kotlin + Jetpack Compose, Hilt, Room/DataStore, Media3, CameraX, ML Kit. Character: WebView + three.js + @pixiv/three-vrm, local assets via WebViewAssetLoader. Backend (Phase 7): Cloudflare Workers + TypeScript + Anthropic SDK. targetSdk 36; minSdk decided in Phase 0.
+Kotlin + Jetpack Compose, Hilt, Room/DataStore, Media3, CameraX, ML Kit. Character: WebView + three.js + @pixiv/three-vrm, local assets via WebViewAssetLoader. Backend (Phase 7): Cloudflare Workers + TypeScript + Anthropic SDK. targetSdk 36, minSdk 29. Build: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew lintDebug testDebugUnitTest assembleDebug -q` (same as CI).
 
 ## Token hygiene
 - One task per session. Finish by updating `docs/STATUS.md` (<= 30 lines), then /clear. Wrap up before context reaches ~200k.
