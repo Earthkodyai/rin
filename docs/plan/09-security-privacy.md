@@ -10,7 +10,7 @@
 | เสียง | รั่วไหล | ใช้ STT ในเครื่อง ไม่อัดเก็บ เปิดไมค์เฉพาะช่วงสนทนาพร้อมไอคอนแสดงสถานะ และใน v1.1 ส่งออกเฉพาะข้อความ |
 | ข้อความสนทนา (v1.1) | ความเป็นส่วนตัว | ส่งเท่าที่จำเป็น ไม่เก็บบทสนทนาบนเซิร์ฟเวอร์ (log แค่จำนวน latency และ error) และขอความยินยอมก่อนเปิดคุยสด เพราะเป็นการส่งข้อมูลไปต่างประเทศตาม PDPA |
 | Prompt injection / jailbreak | บุคลิกหลุด หรือเกิดเนื้อหาไม่เหมาะสม | กติกาใน system prompt + schema ที่จำกัดรูปแบบ + จำกัดความยาว + ตัวกรองขาออก + รับมือ refusal + ปุ่ม report + ชุด red-team eval |
-| WebView | XSS หรือใช้ JS bridge ในทางที่ผิด | โหลดเฉพาะ asset ในแอปผ่าน `WebViewAssetLoader` ปิด file access ไม่โหลด URL ภายนอก ตั้ง CSP จำกัด origin ของ message listener และปิด debugging ใน release |
+| WebView | XSS หรือใช้ JS bridge ในทางที่ผิด | โหลดเฉพาะ asset ในแอปผ่าน `WebViewAssetLoader` ปิด file access ไม่โหลด URL ภายนอก ตั้ง CSP (`script-src 'self' 'unsafe-eval'` ตั้งแต่ 2.3 เพราะ KTX2 transcoder ใช้ `new Function` ใน blob worker; ยอมรับได้เพราะไม่มีสคริปต์หรือข้อมูลจากนอก APK เข้าหน้าเว็บได้ และ bridge รับแค่ JSON ที่ตรวจ type) จำกัด origin ของ message listener และปิด debugging ใน release |
 | Dependencies และ skills | supply chain | ล็อกเวอร์ชัน ใช้ Dependabot ใช้ Android skills ทางการเป็นหลัก และ **อ่าน skill ของชุมชนทุกครั้งก่อนติดตั้ง** (skill คือชุดคำสั่งที่ Claude จะทำตาม) |
 | Signing key | หายหรือถูกขโมย | เก็บนอก repo ใน password manager พร้อมสำรองแบบเข้ารหัส และใช้ Play App Signing ในเฟส 8 |
 | Repo สาธารณะ | secrets รั่ว | gitleaks pre-commit + GitHub secret scanning และ push protection ไม่ commit `.env` และตรวจ history ก่อนเปิดเป็นสาธารณะ |

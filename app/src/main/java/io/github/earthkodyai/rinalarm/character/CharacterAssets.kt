@@ -9,8 +9,8 @@ object CharacterAssets {
   private const val MODEL_DIR = "character/model"
 
   /**
-   * Model files in order of preference: Rin's own model (task 2.3), then the debug-only VRoid sample
-   * (app/src/debug/assets, git-ignored). A build with neither shows the still image.
+   * Model files in order of preference: Rin's own model (built from `rin.model` in local.properties, task 2.3), then
+   * the debug-only VRoid sample (app/src/debug/assets, git-ignored). A build with neither shows the still image.
    */
   private val PREFERRED = listOf("rin.vrm", "dev.vrm")
 

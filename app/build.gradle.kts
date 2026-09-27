@@ -1,3 +1,4 @@
+import java.util.Properties
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
@@ -99,6 +100,66 @@ val characterWeb =
     )
   }
 
+/**
+ * Runs Rin's own model through tools/character/optimize-vrm.mjs (KTX2 textures, small thumbnail, the checks Rin needs)
+ * into generated assets at character/model/rin.vrm. The model never enters the public repo: `rin.model` in
+ * local.properties points at the VRoid export on this PC. Builds without it (CI, clones) ship no Rin model and show
+ * the still image; debug builds on this PC may still carry the VRoid sample (app/src/debug/assets, git-ignored).
+ */
+abstract class RinModelBuild @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+  @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val model: RegularFileProperty
+
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val tool: ConfigurableFileCollection
+
+  @get:Input abstract val mode: Property<String>
+
+  @get:Internal abstract val toolDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:OutputFile abstract val report: RegularFileProperty
+
+  @TaskAction
+  fun build() {
+    val npm = if (System.getProperty("os.name").startsWith("Windows")) listOf("cmd", "/c", "npm") else listOf("npm")
+    val dir = toolDir.get().asFile
+    val installed = File(dir, "node_modules/.package-lock.json")
+    if (!installed.exists() || installed.lastModified() < File(dir, "package-lock.json").lastModified()) {
+      exec.exec {
+        workingDir(dir)
+        commandLine(npm + listOf("ci", "--no-audit", "--no-fund"))
+      }
+    }
+    val out = File(outputDir.get().asFile, "character/model/rin.vrm")
+    exec.exec {
+      workingDir(dir)
+      commandLine(
+        "node", "optimize-vrm.mjs", model.get().asFile.absolutePath, out.absolutePath,
+        "--mode", mode.get(), "--report", report.get().asFile.absolutePath,
+      )
+    }
+  }
+}
+
+val localProperties =
+  Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
+  }
+val rinModel =
+  localProperties.getProperty("rin.model")?.let { path ->
+    val file = File(path)
+    require(file.isFile) { "rin.model in local.properties points at $path, which is not a file" }
+    tasks.register<RinModelBuild>("optimizeRinModel") {
+      val tools = rootProject.layout.projectDirectory.dir("tools/character")
+      model.set(file)
+      mode.set(localProperties.getProperty("rin.model.mode", "etc1s"))
+      toolDir.set(tools)
+      tool.from(tools.asFileTree.matching { include("*.mjs", "package-lock.json") })
+      outputDir.set(layout.buildDirectory.dir("generated/rinModel"))
+      report.set(layout.buildDirectory.file("reports/rin-model.json"))
+    }
+  }
+
 // MoodContractTest reads the page's mood table, so a change there must rerun the unit tests.
 tasks.withType<Test>().configureEach {
   inputs.file(rootProject.layout.projectDirectory.file("web/character/src/moods.json"))
@@ -109,6 +170,7 @@ tasks.withType<Test>().configureEach {
 androidComponents {
   onVariants { variant ->
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)
+    rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
   }
 }
 

@@ -12,7 +12,7 @@ updates:
     open-pull-requests-limit: 5
 
   - package-ecosystem: npm
-    directory: /web/character
+    directories: [/web/character, /tools/character]
     schedule:
       interval: weekly
     groups:

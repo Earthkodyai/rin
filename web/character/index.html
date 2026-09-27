@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <!-- Offline only: everything comes from the APK through WebViewAssetLoader. -->
+  <!-- Offline only: everything comes from the APK through WebViewAssetLoader. three's KTX2Loader runs the Basis
+       transcoder in blob workers that inherit this policy, and its Emscripten glue builds functions with new Function:
+       hence worker-src blob: and 'unsafe-eval'. No remote script can load (script-src 'self', no network), so eval
+       only ever sees bundled code. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; connect-src 'self' blob: data:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'" />
+        content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src blob:; connect-src 'self' blob: data:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'" />
   <title>Rin</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }

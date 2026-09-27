@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { PROTOCOL, onNativeMessage, send, type ModelInfo } from './bridge';
 import { Behaviour } from './behaviour';
@@ -153,6 +154,10 @@ async function main() {
   const tParse = performance.now();
 
   const loader = new GLTFLoader();
+  // Rin's model carries KTX2 textures (tools/character/optimize-vrm.mjs), which the GPU keeps block-compressed.
+  // Vite bundles three's Basis transcoder from KTX2Loader's own URL; it runs in a worker only when a model needs it.
+  const ktx2 = new KTX2Loader().detectSupport(renderer);
+  loader.setKTX2Loader(ktx2);
   loader.register((parser) => new VRMLoaderPlugin(parser));
   const gltf = await loader.parseAsync(buffer, '');
   const vrm = gltf.userData.vrm as VRM;
@@ -176,6 +181,7 @@ async function main() {
   const tCompile = performance.now();
   // Compile shaders and upload textures before the first frame, so Rin appears whole rather than in pieces.
   await renderer.compileAsync(scene, camera);
+  ktx2.dispose(); // textures are on the GPU now; the transcoder worker is not needed again
 
   const life = new Behaviour(vrm, camera, mood, intensity, headHalf, Math.max(headHalf + 0.03, 0.1));
   behaviour = life;
