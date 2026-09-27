@@ -10,7 +10,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.github.earthkodyai.rinalarm.alarm.log.RingHistoryRepository
+import io.github.earthkodyai.rinalarm.alarm.log.RoomRingHistory
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.data.SettingsRepository
 import io.github.earthkodyai.rinalarm.data.RoomAlarmRepository
 import io.github.earthkodyai.rinalarm.data.StorageFiles
 import io.github.earthkodyai.rinalarm.data.db.AlarmDao
@@ -37,4 +41,8 @@ object StorageModule {
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
   @Binds abstract fun alarmRepository(impl: RoomAlarmRepository): AlarmRepository
+
+  @Binds abstract fun appSettings(impl: SettingsRepository): AppSettings
+
+  @Binds abstract fun ringHistory(impl: RoomRingHistory): RingHistoryRepository
 }

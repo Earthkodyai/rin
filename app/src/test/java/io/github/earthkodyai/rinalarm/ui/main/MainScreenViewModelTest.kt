@@ -4,6 +4,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.testing.FakeAlarms
+import io.github.earthkodyai.rinalarm.testing.FakeDeviceStatus
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import java.time.LocalDateTime
@@ -29,7 +30,7 @@ class MainScreenViewModelTest {
   @Test
   fun uiState_startsLoading() {
     val alarms = FakeAlarms()
-    val viewModel = MainScreenViewModel(alarms, alarms, time)
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus())
     assertEquals(MainScreenUiState.Loading, viewModel.uiState.value)
   }
 
@@ -38,7 +39,7 @@ class MainScreenViewModelTest {
     val daily = Alarm(id = 1, time = LocalTime.of(7, 0), repeatDays = RepeatDays.EVERY_DAY)
     val off = Alarm(id = 2, time = LocalTime.of(9, 0), enabled = false)
     val alarms = FakeAlarms(listOf(daily, off))
-    val viewModel = MainScreenViewModel(alarms, alarms, time)
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus())
 
     val state = viewModel.uiState.first { it is MainScreenUiState.Success } as MainScreenUiState.Success
 
@@ -54,7 +55,7 @@ class MainScreenViewModelTest {
       object : AlarmRepository by alarms {
         override val alarms: Flow<List<Alarm>> = flow { error("disk full") }
       }
-    val viewModel = MainScreenViewModel(failing, alarms, time)
+    val viewModel = MainScreenViewModel(failing, alarms, time, FakeDeviceStatus())
 
     assertTrue(viewModel.uiState.first { it !is MainScreenUiState.Loading } is MainScreenUiState.Error)
   }
@@ -62,7 +63,7 @@ class MainScreenViewModelTest {
   @Test
   fun setEnabled_goesThroughTheWriter_andTheListFollows() = runTest {
     val alarms = FakeAlarms(listOf(Alarm(id = 1, time = LocalTime.of(7, 0))))
-    val viewModel = MainScreenViewModel(alarms, alarms, time)
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus())
     viewModel.uiState.first { it is MainScreenUiState.Success }
 
     viewModel.setEnabled(1, false)
@@ -73,5 +74,35 @@ class MainScreenViewModelTest {
       .single()
     assertFalse(row.alarm.enabled)
     assertNull(row.nextRing)
+  }
+
+  @Test
+  fun uiState_hidesTheTestAlarm() = runTest {
+    val alarms = FakeAlarms(listOf(Alarm(id = 1, time = LocalTime.of(7, 0))))
+    alarms.scheduleTest("Test alarm")
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus())
+
+    val state = viewModel.uiState.first { it is MainScreenUiState.Success } as MainScreenUiState.Success
+
+    assertEquals(listOf(1L), state.alarms.map { it.alarm.id })
+  }
+
+  @Test
+  fun setupIssue_followsTheCriticalChecks_onEachRefresh() {
+    val device = FakeDeviceStatus()
+    val alarms = FakeAlarms()
+    val viewModel = MainScreenViewModel(alarms, alarms, time, device)
+
+    viewModel.refreshSetup()
+    assertFalse(viewModel.setupIssue.value)
+
+    device.status = device.status.copy(notificationsAllowed = false)
+    viewModel.refreshSetup()
+    assertTrue(viewModel.setupIssue.value)
+
+    // A warning (full-screen off) alone is not worth a permanent banner.
+    device.status = FakeDeviceStatus.ALL_GOOD.copy(fullScreenAllowed = false)
+    viewModel.refreshSetup()
+    assertFalse(viewModel.setupIssue.value)
   }
 }

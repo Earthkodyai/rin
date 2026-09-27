@@ -4,7 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +17,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -28,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
@@ -42,9 +48,26 @@ import java.time.ZonedDateTime
 import java.time.format.TextStyle
 
 @Composable
-fun MainScreen(onAdd: () -> Unit, onEdit: (Long) -> Unit, viewModel: MainScreenViewModel = hiltViewModel()) {
+fun MainScreen(
+  onAdd: () -> Unit,
+  onEdit: (Long) -> Unit,
+  onDiagnostics: () -> Unit,
+  viewModel: MainScreenViewModel = hiltViewModel(),
+) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
-  MainScreen(state = state, onAdd = onAdd, onEdit = onEdit, onToggle = viewModel::setEnabled)
+  val setupIssue by viewModel.setupIssue.collectAsStateWithLifecycle()
+  LifecycleResumeEffect(viewModel) {
+    viewModel.refreshSetup()
+    onPauseOrDispose {}
+  }
+  MainScreen(
+    state = state,
+    onAdd = onAdd,
+    onEdit = onEdit,
+    onToggle = viewModel::setEnabled,
+    setupIssue = setupIssue,
+    onDiagnostics = onDiagnostics,
+  )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,9 +77,16 @@ internal fun MainScreen(
   onAdd: () -> Unit,
   onEdit: (Long) -> Unit,
   onToggle: (Long, Boolean) -> Unit,
+  setupIssue: Boolean = false,
+  onDiagnostics: () -> Unit = {},
 ) {
   Scaffold(
-    topBar = { TopAppBar(title = { Text(stringResource(R.string.alarms_title)) }) },
+    topBar = {
+      TopAppBar(
+        title = { Text(stringResource(R.string.alarms_title)) },
+        actions = { TextButton(onClick = onDiagnostics) { Text(stringResource(R.string.diagnostics_title)) } },
+      )
+    },
     floatingActionButton = {
       ExtendedFloatingActionButton(
         onClick = onAdd,
@@ -65,23 +95,51 @@ internal fun MainScreen(
       )
     },
   ) { padding ->
-    val modifier = Modifier.fillMaxSize().padding(padding)
-    when (state) {
-      MainScreenUiState.Loading -> Box(modifier) // Blank: Room answers within a frame or two.
-      is MainScreenUiState.Error -> Text(stringResource(R.string.alarms_load_error), modifier.padding(16.dp))
-      is MainScreenUiState.Success ->
-        if (state.alarms.isEmpty()) {
-          Text(stringResource(R.string.alarms_empty), modifier.padding(16.dp))
-        } else {
-          // Bottom padding keeps the last row's switch clear of the floating button.
-          LazyColumn(modifier, contentPadding = PaddingValues(bottom = 88.dp)) {
-            items(state.alarms, key = { it.alarm.id }) { row ->
-              AlarmRowItem(row, onEdit = { onEdit(row.alarm.id) }, onToggle = { onToggle(row.alarm.id, it) })
-              HorizontalDivider()
-            }
+    Column(Modifier.fillMaxSize().padding(padding)) {
+      if (setupIssue) SetupBanner(onDiagnostics)
+      AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth())
+    }
+  }
+}
+
+/** Stays until the problem is fixed: the one warning, before a morning goes wrong, that an alarm could fail. */
+@Composable
+private fun SetupBanner(onClick: () -> Unit) {
+  Surface(
+    onClick = onClick,
+    color = MaterialTheme.colorScheme.errorContainer,
+    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+      Icon(painterResource(R.drawable.ic_error), contentDescription = null)
+      Text(stringResource(R.string.setup_banner), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyMedium)
+    }
+  }
+}
+
+@Composable
+private fun AlarmList(
+  state: MainScreenUiState,
+  onEdit: (Long) -> Unit,
+  onToggle: (Long, Boolean) -> Unit,
+  modifier: Modifier,
+) {
+  when (state) {
+    MainScreenUiState.Loading -> Box(modifier) // Blank: Room answers within a frame or two.
+    is MainScreenUiState.Error -> Text(stringResource(R.string.alarms_load_error), modifier.padding(16.dp))
+    is MainScreenUiState.Success ->
+      if (state.alarms.isEmpty()) {
+        Text(stringResource(R.string.alarms_empty), modifier.padding(16.dp))
+      } else {
+        // Bottom padding keeps the last row's switch clear of the floating button.
+        LazyColumn(modifier, contentPadding = PaddingValues(bottom = 88.dp)) {
+          items(state.alarms, key = { it.alarm.id }) { row ->
+            AlarmRowItem(row, onEdit = { onEdit(row.alarm.id) }, onToggle = { onToggle(row.alarm.id, it) })
+            HorizontalDivider()
           }
         }
-    }
+      }
   }
 }
 

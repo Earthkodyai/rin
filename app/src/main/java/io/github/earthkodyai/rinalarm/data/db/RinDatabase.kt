@@ -12,12 +12,13 @@ import java.io.File
  * Schema history:
  * 1. alarms (task 1.1)
  * 2. ring options on alarms, pending_rings, ring_events (task 1.2)
+ * 3. alarms.isTest for the Diagnostics test alarm (task 1.4)
  */
 @Database(
   entities = [AlarmEntity::class, PendingRingEntity::class, RingEventEntity::class],
-  version = 2,
+  version = 3,
   exportSchema = true,
-  autoMigrations = [AutoMigration(from = 1, to = 2)],
+  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class RinDatabase : RoomDatabase() {
   abstract fun alarmDao(): AlarmDao

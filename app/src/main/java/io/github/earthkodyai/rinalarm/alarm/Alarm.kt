@@ -6,7 +6,12 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 
-/** One alarm as the rest of the app sees it. */
+/**
+ * One alarm as the rest of the app sees it.
+ *
+ * @property isTest the Diagnostics "test alarm": rings through the real path, but is hidden from the alarm list,
+ *   deleted once it has rung, and left out of the reliability numbers.
+ */
 data class Alarm(
   val id: Long = 0,
   val time: LocalTime,
@@ -14,6 +19,7 @@ data class Alarm(
   val label: String = "",
   val enabled: Boolean = true,
   val ring: RingOptions = RingOptions(),
+  val isTest: Boolean = false,
 ) {
   /** When this alarm rings next, or null while it is switched off. */
   fun nextTrigger(now: Instant, zone: ZoneId): Instant? =

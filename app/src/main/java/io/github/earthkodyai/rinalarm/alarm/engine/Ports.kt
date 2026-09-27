@@ -18,6 +18,14 @@ interface AlarmWriter {
   suspend fun setEnabled(alarmId: Long, enabled: Boolean)
 
   suspend fun delete(alarmId: Long)
+
+  /**
+   * Replaces any earlier test alarm with a one-shot test alarm labelled [label], ringing at the first whole minute
+   * at least a minute away (alarms are minute-precise). Returns when it will ring.
+   */
+  suspend fun scheduleTest(label: String): Instant
+
+  suspend fun cancelTest()
 }
 
 /** AlarmManager. */

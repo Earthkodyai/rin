@@ -20,6 +20,8 @@ import io.github.earthkodyai.rinalarm.alarm.ring.ServiceRinger
 import io.github.earthkodyai.rinalarm.data.db.PendingRingDao
 import io.github.earthkodyai.rinalarm.data.db.RinDatabase
 import io.github.earthkodyai.rinalarm.data.db.RingEventDao
+import io.github.earthkodyai.rinalarm.setup.AndroidDeviceStatus
+import io.github.earthkodyai.rinalarm.setup.DeviceStatusSource
 import javax.inject.Qualifier
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -53,4 +55,6 @@ abstract class AlarmBindsModule {
   @Binds abstract fun deviceState(impl: AndroidDeviceState): DeviceStateProbe
 
   @Binds abstract fun ringLog(impl: RoomRingLog): RingLog
+
+  @Binds abstract fun deviceStatus(impl: AndroidDeviceStatus): DeviceStatusSource
 }

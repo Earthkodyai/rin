@@ -3,7 +3,9 @@ package io.github.earthkodyai.rinalarm.alarm.engine
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * A ring registered with AlarmManager: the regular next ring of an alarm, or a snooze.
@@ -25,6 +27,16 @@ object RingPlanner {
    * auto-stop: a ring found later than that would already have stopped by itself.
    */
   val LATE_WINDOW: Duration = Duration.ofMinutes(15)
+
+  /** The test alarm rings at least this long after the tap: time to lock the phone and put it down. */
+  val TEST_LEAD: Duration = Duration.ofMinutes(1)
+
+  /** The wall-clock time of the test alarm: the first whole minute at least [TEST_LEAD] after [now]. */
+  fun testRingTime(now: Instant, zone: ZoneId): LocalTime {
+    val earliest = now.plus(TEST_LEAD).atZone(zone).toLocalTime()
+    val minute = earliest.truncatedTo(ChronoUnit.MINUTES)
+    return if (minute == earliest) minute else minute.plusMinutes(1)
+  }
 
   sealed interface Step {
     /** Store [ring] and register it with AlarmManager, replacing any earlier registration for the same slot. */

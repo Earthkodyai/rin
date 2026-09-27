@@ -9,13 +9,20 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Small app-wide flags, kept in a Preferences DataStore in device-protected storage. */
-@Singleton
-class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
-  /** Set once the permission onboarding (task 1.4) has been completed. */
-  val onboardingCompleted: Flow<Boolean> = store.data.map { it[ONBOARDING_COMPLETED] ?: false }
+/** Small app-wide flags. */
+interface AppSettings {
+  /** Set once the permission onboarding (task 1.4) has been finished or skipped through. */
+  val onboardingCompleted: Flow<Boolean>
 
-  suspend fun setOnboardingCompleted(completed: Boolean) {
+  suspend fun setOnboardingCompleted(completed: Boolean)
+}
+
+/** [AppSettings] in a Preferences DataStore in device-protected storage. */
+@Singleton
+class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) : AppSettings {
+  override val onboardingCompleted: Flow<Boolean> = store.data.map { it[ONBOARDING_COMPLETED] ?: false }
+
+  override suspend fun setOnboardingCompleted(completed: Boolean) {
     store.edit { it[ONBOARDING_COMPLETED] = completed }
   }
 

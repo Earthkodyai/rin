@@ -36,6 +36,20 @@ class MigrationTest {
     db.query("SELECT COUNT(*) FROM ring_events").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
   }
 
+  @Test
+  fun v2to3_keepsAlarms_asRealOnes() {
+    helper.createDatabase(DB, 2).use {
+      it.execSQL("INSERT INTO alarms (id, hour, minute, repeatDays, label, enabled) VALUES (1, 6, 30, 0, 'Gym', 1)")
+    }
+    val db = helper.runMigrationsAndValidate(DB, 3, true)
+
+    db.query("SELECT label, isTest FROM alarms WHERE id = 1").use {
+      it.moveToFirst()
+      assertEquals("Gym", it.getString(0))
+      assertEquals(0, it.getInt(1))
+    }
+  }
+
   private companion object {
     const val DB = "migration-test.db"
   }

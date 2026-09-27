@@ -12,14 +12,19 @@ import kotlinx.coroutines.flow.map
  * keeps AlarmManager in step with the table.
  */
 interface AlarmRepository {
-  /** All alarms, sorted by time of day. */
+  /** The user's alarms, sorted by time of day. The test alarm is not among them. */
   val alarms: Flow<List<Alarm>>
+
+  /** The Diagnostics test alarm while it waits to ring, else null. */
+  val testAlarm: Flow<Alarm?>
 
   suspend fun get(id: Long): Alarm?
 }
 
 class RoomAlarmRepository @Inject constructor(private val dao: AlarmDao) : AlarmRepository {
   override val alarms: Flow<List<Alarm>> = dao.observeAll().map { rows -> rows.map { it.toAlarm() } }
+
+  override val testAlarm: Flow<Alarm?> = dao.observeTest().map { it?.toAlarm() }
 
   override suspend fun get(id: Long): Alarm? = dao.getById(id)?.toAlarm()
 }

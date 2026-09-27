@@ -20,6 +20,7 @@ class AlarmEntityTest {
         label = "Gym",
         enabled = false,
         ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1),
+        isTest = true,
       )
     assertEquals(alarm, alarm.toEntity().toAlarm())
   }
@@ -37,7 +38,7 @@ class AlarmEntityTest {
     // Rows migrated from schema 1 get the SQL defaults; they must be the same alarm a new one would be.
     val defaults = RingOptions()
     // Read what Room actually uses: the exported schema (unit tests run with the module as working directory).
-    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/2.json").readText()
+    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/3.json").readText()
     val sql =
       Regex(""""fieldPath": "(\w+)",[^}]*?"defaultValue": "([^"]*)"""")
         .findAll(schema)
@@ -46,5 +47,6 @@ class AlarmEntityTest {
     assertEquals(if (defaults.vibrate) "1" else "0", sql["vibrate"])
     assertEquals(defaults.snoozeMinutes.toString(), sql["snoozeMinutes"])
     assertEquals(defaults.maxSnoozes.toString(), sql["maxSnoozes"])
+    assertEquals("0", sql["isTest"])
   }
 }

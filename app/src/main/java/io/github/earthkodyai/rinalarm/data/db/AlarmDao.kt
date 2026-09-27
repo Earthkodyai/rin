@@ -7,7 +7,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AlarmDao {
-  @Query("SELECT * FROM alarms ORDER BY hour, minute, id") fun observeAll(): Flow<List<AlarmEntity>>
+  /** The user's alarms, without the Diagnostics test alarm. */
+  @Query("SELECT * FROM alarms WHERE isTest = 0 ORDER BY hour, minute, id") fun observeAll(): Flow<List<AlarmEntity>>
+
+  /** The test alarm while it is waiting to ring (it is deleted once it has rung). */
+  @Query("SELECT * FROM alarms WHERE isTest = 1 AND enabled = 1 ORDER BY id DESC LIMIT 1")
+  fun observeTest(): Flow<AlarmEntity?>
 
   @Query("SELECT * FROM alarms WHERE enabled = 1") suspend fun getEnabled(): List<AlarmEntity>
 

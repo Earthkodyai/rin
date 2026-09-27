@@ -26,9 +26,16 @@ data class RingEventEntity(
 interface RingEventDao {
   @Insert suspend fun insert(event: RingEventEntity)
 
-  /** Newest first, for Diagnostics (1.4). */
+  /** Newest first. */
   @Query("SELECT * FROM ring_events ORDER BY id DESC LIMIT :limit")
   fun observeRecent(limit: Int): Flow<List<RingEventEntity>>
+
+  /** Newest first, only the events RingHistory reads (so reconciles and arms cannot push rings out of the window). */
+  @Query(
+    "SELECT * FROM ring_events WHERE type IN ('FIRED', 'MISSED', 'RING_START', 'RING_FAIL', 'FGS_FAIL', 'OVERLAP', " +
+      "'SNOOZED', 'DISMISSED', 'AUTO_STOPPED') ORDER BY id DESC LIMIT :limit"
+  )
+  fun observeRingEvents(limit: Int): Flow<List<RingEventEntity>>
 
   /** Oldest first, for export (1.5). */
   @Query("SELECT * FROM ring_events ORDER BY id") suspend fun getAll(): List<RingEventEntity>

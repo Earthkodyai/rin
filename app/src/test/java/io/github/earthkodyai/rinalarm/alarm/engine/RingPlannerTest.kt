@@ -176,4 +176,14 @@ class RingPlannerTest {
   }
 
   private fun at(local: String): Instant = LocalDateTime.parse(local).atZone(bangkok).toInstant()
+
+  @Test
+  fun testRingTime_isTheFirstWholeMinuteAtLeastAMinuteAway() {
+    val zone = ZoneId.of("Asia/Bangkok")
+    fun ring(local: String) = RingPlanner.testRingTime(LocalDateTime.parse(local).atZone(zone).toInstant(), zone)
+    assertEquals(LocalTime.of(6, 1), ring("2026-09-28T06:00:00"))
+    assertEquals(LocalTime.of(6, 2), ring("2026-09-28T06:00:00.001"))
+    assertEquals(LocalTime.of(6, 2), ring("2026-09-28T06:00:59"))
+    assertEquals(LocalTime.of(0, 1), ring("2026-09-28T23:59:30"))
+  }
 }

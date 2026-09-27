@@ -1,35 +1,79 @@
 package io.github.earthkodyai.rinalarm
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.ui.diagnostics.DiagnosticsScreen
 import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorScreen
 import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorViewModel
 import io.github.earthkodyai.rinalarm.ui.main.MainScreen
+import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingScreen
+import javax.inject.Inject
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+
+/** Whether the first screen is onboarding; null for the frame or two before DataStore answers. */
+@HiltViewModel
+class StartViewModel @Inject constructor(settings: AppSettings) : ViewModel() {
+  val onboardingCompleted: StateFlow<Boolean?> =
+    settings.onboardingCompleted.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+}
 
 @Composable
-fun MainNavigation() {
-  val backStack = rememberNavBackStack(Main)
+fun MainNavigation(start: StartViewModel = hiltViewModel()) {
+  val completed by start.onboardingCompleted.collectAsStateWithLifecycle()
+  // Blank until known, so the list never flashes before onboarding. The back stack then remembers where it is, so
+  // finishing onboarding (which flips the flag) does not rebuild it.
+  completed?.let { AppNavigation(if (it) Main else Onboarding) }
+}
+
+@Composable
+private fun AppNavigation(first: NavKey) {
+  val backStack = rememberNavBackStack(first)
 
   NavDisplay(
     backStack = backStack,
     onBack = { backStack.removeLastOrNull() },
-    // The ViewModel decorator gives each editor entry its own ViewModel, cleared when the entry is popped.
+    // The ViewModel decorator gives each entry its own ViewModel, cleared when the entry is popped.
     entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
     entryProvider =
       entryProvider {
+        entry<Onboarding> {
+          OnboardingScreen(
+            onDone = {
+              // Replace, so Back from the alarm list leaves the app instead of reopening onboarding.
+              if (backStack.lastOrNull() == Onboarding) {
+                backStack.add(Main)
+                backStack.remove(Onboarding)
+              }
+            }
+          )
+        }
         entry<Main> {
           MainScreen(
             onAdd = { backStack.add(AlarmEditor(AlarmEditorViewModel.NEW_ALARM_ID)) },
             onEdit = { backStack.add(AlarmEditor(it)) },
+            onDiagnostics = { if (backStack.lastOrNull() == Main) backStack.add(Diagnostics) },
           )
         }
         entry<AlarmEditor> { key ->
           // Guarded: a finished editor can ask to close again while its exit animation runs.
           AlarmEditorScreen(key.alarmId, onClose = { if (backStack.lastOrNull() == key) backStack.removeLastOrNull() })
+        }
+        entry<Diagnostics> {
+          DiagnosticsScreen(onBack = { if (backStack.lastOrNull() == Diagnostics) backStack.removeLastOrNull() })
         }
       },
   )

@@ -303,6 +303,71 @@ class AlarmEngineTest {
     assertEquals(armedBefore, log.types(ARMED).size)
   }
 
+  // --- test alarm ---
+
+  @Test
+  fun scheduleTest_armsAHiddenOneShot_atTheFirstWholeMinuteAMinuteAway() = runTest {
+    clock.now = at("2026-09-28T06:00:30")
+
+    val ringsAt = engine.scheduleTest("Test alarm")
+
+    assertEquals(at("2026-09-28T06:02"), ringsAt)
+    val row = alarmDao.getAll().single()
+    assertTrue(row.isTest)
+    assertEquals(0, row.maxSnoozes)
+    assertEquals(PendingRing(row.id, ringsAt), systemAlarms.armed[row.id to false])
+  }
+
+  @Test
+  fun scheduleTest_again_replacesTheEarlierTest() = runTest {
+    val first = engine.scheduleTest("Test alarm")
+    clock.now = at("2026-09-28T06:00:40")
+    engine.scheduleTest("Test alarm")
+
+    val row = alarmDao.getAll().single()
+    assertEquals(1, systemAlarms.armed.size)
+    assertEquals(first.plusSeconds(60), systemAlarms.armed[row.id to false]?.triggerAt)
+  }
+
+  @Test
+  fun testAlarm_ringsThroughTheRealPath_isTaggedInTheLog_andDeletedAfterwards() = runTest {
+    val userAlarm = engine.save(daily)
+    val ringsAt = engine.scheduleTest("Test alarm")
+    val testId = alarmDao.getAll().single { it.isTest }.id
+
+    clock.now = ringsAt
+    deliver(testId, snooze = false)
+
+    assertEquals(listOf(testId), rings.map { it.alarmId })
+    assertEquals(0, rings.single().snoozesLeft)
+    assertTrue(log.events.single { it.type == FIRED }.detail.endsWith(AlarmEngine.TEST_MARK))
+    assertEquals(listOf(userAlarm), alarmDao.getAll().map { it.id })
+    assertTrue(pendingDao.rings().none { it.alarmId == testId })
+  }
+
+  @Test
+  fun testAlarm_foundMissed_isDeletedWithoutAMissedNotification() = runTest {
+    val ringsAt = engine.scheduleTest("Test alarm")
+
+    clock.now = ringsAt.plusSeconds(3600)
+    engine.reconcile("app_open")
+
+    assertTrue(alarmDao.getAll().isEmpty())
+    assertTrue(missed.isEmpty())
+    assertTrue(log.events.single { it.type == MISSED }.detail.endsWith(AlarmEngine.TEST_MARK))
+  }
+
+  @Test
+  fun cancelTest_removesOnlyTheTest() = runTest {
+    val userAlarm = engine.save(daily)
+    engine.scheduleTest("Test alarm")
+
+    engine.cancelTest()
+
+    assertEquals(listOf(userAlarm), alarmDao.getAll().map { it.id })
+    assertEquals(setOf(userAlarm to false), systemAlarms.armed.keys)
+  }
+
   @Test
   fun inexactFallback_isLogged() = runTest {
     systemAlarms.exact = false
@@ -338,7 +403,10 @@ private class FakeAlarmDao : AlarmDao {
   private val rows = MutableStateFlow<Map<Long, AlarmEntity>>(emptyMap())
   private var nextId = 1L
 
-  override fun observeAll(): Flow<List<AlarmEntity>> = rows.map { it.values.sortedBy { e -> e.hour * 60 + e.minute } }
+  override fun observeAll(): Flow<List<AlarmEntity>> =
+    rows.map { it.values.filterNot { e -> e.isTest }.sortedBy { e -> e.hour * 60 + e.minute } }
+
+  override fun observeTest(): Flow<AlarmEntity?> = rows.map { it.values.lastOrNull { e -> e.isTest && e.enabled } }
 
   override suspend fun getEnabled(): List<AlarmEntity> = rows.value.values.filter { it.enabled }
 

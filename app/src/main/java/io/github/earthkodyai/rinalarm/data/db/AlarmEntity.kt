@@ -22,6 +22,8 @@ data class AlarmEntity(
   @ColumnInfo(defaultValue = "1") val vibrate: Boolean = true,
   @ColumnInfo(defaultValue = "5") val snoozeMinutes: Int = RingOptions.DEFAULT_SNOOZE_MINUTES,
   @ColumnInfo(defaultValue = "3") val maxSnoozes: Int = RingOptions.DEFAULT_MAX_SNOOZES,
+  // Schema 3.
+  @ColumnInfo(defaultValue = "0") val isTest: Boolean = false,
 )
 
 fun AlarmEntity.toAlarm(): Alarm =
@@ -32,6 +34,7 @@ fun AlarmEntity.toAlarm(): Alarm =
     label = label,
     enabled = enabled,
     ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes),
+    isTest = isTest,
   )
 
 fun Alarm.toEntity(): AlarmEntity =
@@ -46,4 +49,5 @@ fun Alarm.toEntity(): AlarmEntity =
     vibrate = ring.vibrate,
     snoozeMinutes = ring.snoozeMinutes,
     maxSnoozes = ring.maxSnoozes,
+    isTest = isTest,
   )

@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.alarm.engine
 
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.alarm.ring.RingPolicy
@@ -100,7 +101,10 @@ constructor(
         RingEventType.FIRED,
         alarmId,
         scheduledAt,
-        deviceState.snapshot() + (if (ring == null) " no_pending" else "") + " snoozeCount=$snoozeCount",
+        deviceState.snapshot() +
+          (if (ring == null) " no_pending" else "") +
+          " snoozeCount=$snoozeCount" +
+          (if (alarm.isTest) " $TEST_MARK" else ""),
       )
       // Arm the next day before ringing, so a crash while ringing cannot cost tomorrow's alarm.
       if (!snooze) moveOn(alarm, now, zone)
@@ -139,12 +143,31 @@ constructor(
       if (alarm.enabled != enabled) saveLocked(alarm.copy(enabled = enabled))
     }
 
-  override suspend fun delete(alarmId: Long) =
+  override suspend fun delete(alarmId: Long) = mutex.withLock { deleteLocked(alarmId) }
+
+  override suspend fun scheduleTest(label: String): Instant =
     mutex.withLock {
-      disarm(alarmId, snooze = true)
-      disarm(alarmId, snooze = false)
-      alarmDao.delete(alarmId)
+      deleteTestsLocked()
+      val now = time.now()
+      val zone = time.zone()
+      // No snoozes: the test ends on its first Dismiss, and a snooze would outlive the deleted row.
+      val test =
+        Alarm(time = RingPlanner.testRingTime(now, zone), label = label, ring = RingOptions(maxSnoozes = 0), isTest = true)
+      val id = saveLocked(test)
+      checkNotNull(test.copy(id = id).nextTrigger(now, zone))
     }
+
+  override suspend fun cancelTest() = mutex.withLock { deleteTestsLocked() }
+
+  private suspend fun deleteLocked(alarmId: Long) {
+    disarm(alarmId, snooze = true)
+    disarm(alarmId, snooze = false)
+    alarmDao.delete(alarmId)
+  }
+
+  private suspend fun deleteTestsLocked() {
+    for (row in alarmDao.getAll()) if (row.isTest) deleteLocked(row.id)
+  }
 
   /** Saves [alarm] and re-arms it from scratch; an edit also cancels a pending snooze. Returns the alarm's id. */
   private suspend fun saveLocked(alarm: Alarm): Long {
@@ -178,22 +201,31 @@ constructor(
 
   private suspend fun missed(alarm: Alarm, ring: PendingRing, now: Instant, zone: ZoneId) {
     disarm(alarm.id, ring.isSnooze)
-    log.record(RingEventType.MISSED, alarm.id, ring.triggerAt, "snoozeCount=${ring.snoozeCount}")
-    missedNotifier.notifyMissed(alarm, ring.triggerAt)
+    log.record(
+      RingEventType.MISSED,
+      alarm.id,
+      ring.triggerAt,
+      "snoozeCount=${ring.snoozeCount}" + if (alarm.isTest) " $TEST_MARK" else "",
+    )
+    if (!alarm.isTest) missedNotifier.notifyMissed(alarm, ring.triggerAt)
     if (!ring.isSnooze) moveOn(alarm, now, zone)
   }
 
-  /** After a regular ring fired or was missed: arm the next day, or switch a one-shot alarm off. */
+  /** After a regular ring fired or was missed: arm the next day, switch a one-shot alarm off, or drop a test. */
   private suspend fun moveOn(alarm: Alarm, now: Instant, zone: ZoneId) {
+    if (alarm.isTest) return alarmDao.delete(alarm.id)
     val next = RingPlanner.afterRegularRing(alarm, now, zone)
     if (next != null) arm(next, previous = null) else alarmDao.upsert(alarm.copy(enabled = false).toEntity())
   }
 
-  private companion object {
+  companion object {
+    /** Tags FIRED and MISSED rows of the test alarm, which the reliability numbers leave out. */
+    const val TEST_MARK = "test=true"
+
     /** setAlarmClock is exact; anything earlier than this is a stale registration, not a real ring. */
-    val EARLY_TOLERANCE: Duration = Duration.ofMinutes(1)
+    private val EARLY_TOLERANCE: Duration = Duration.ofMinutes(1)
 
     /** Rings later than this are marked late on screen. S1 measured at most 850 ms for on-time rings. */
-    val LATE_THRESHOLD: Duration = Duration.ofMinutes(1)
+    private val LATE_THRESHOLD: Duration = Duration.ofMinutes(1)
   }
 }
