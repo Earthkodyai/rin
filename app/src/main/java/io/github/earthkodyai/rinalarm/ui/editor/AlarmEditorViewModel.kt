@@ -1,0 +1,196 @@
+package io.github.earthkodyai.rinalarm.ui.editor
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
+import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.time.TimeSource
+import java.time.DayOfWeek
+import java.time.Duration
+import java.time.LocalTime
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/**
+ * Edits one alarm, or a new one when [alarmId] is [NEW_ALARM_ID]. Changes stay in a draft until [save]; every write
+ * goes through [AlarmWriter], so AlarmManager is re-armed in the same step.
+ *
+ * Saving always switches the alarm on: someone who just set a time expects it to ring.
+ */
+@HiltViewModel(assistedFactory = AlarmEditorViewModel.Factory::class)
+class AlarmEditorViewModel
+@AssistedInject
+constructor(
+  @Assisted private val alarmId: Long,
+  private val repository: AlarmRepository,
+  private val writer: AlarmWriter,
+  private val time: TimeSource,
+) : ViewModel() {
+  private val session = MutableStateFlow<Session>(Session.Loading)
+
+  val uiState: StateFlow<AlarmEditorUiState> =
+    combine(session, time.minuteTicks) { session, _ -> session.toUiState() }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmEditorUiState.Loading)
+
+  init {
+    if (alarmId == NEW_ALARM_ID) {
+      session.value = Session.Open(NEW_ALARM, NEW_ALARM)
+    } else {
+      viewModelScope.launch {
+        val alarm = repository.get(alarmId)
+        session.value = if (alarm == null) Session.NotFound else Session.Open(alarm, alarm)
+      }
+    }
+  }
+
+  fun setTime(value: LocalTime) = edit { it.copy(time = value.withSecond(0).withNano(0)) }
+
+  fun toggleDay(day: DayOfWeek) = edit { it.copy(repeatDays = it.repeatDays.toggle(day)) }
+
+  fun setLabel(value: String) = edit { it.copy(label = value.replace('\n', ' ').take(RingChoices.LABEL_MAX)) }
+
+  fun setRampSeconds(value: Int) = editRing { it.copy(rampSeconds = value) }
+
+  fun setVibrate(value: Boolean) = editRing { it.copy(vibrate = value) }
+
+  fun setSnoozeMinutes(value: Int) = editRing { it.copy(snoozeMinutes = value) }
+
+  fun setMaxSnoozes(value: Int) = editRing { it.copy(maxSnoozes = value) }
+
+  fun save() {
+    val open = session.value as? Session.Open ?: return
+    if (open.busy) return // a second tap while the first save is still running
+    session.value = open.copy(busy = true)
+    viewModelScope.launch {
+      val alarm = open.draft.copy(label = open.draft.label.trim(), enabled = true)
+      session.value =
+        try {
+          writer.save(alarm)
+          Session.Saved(ringsIn(alarm))
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          open.copy(failed = true)
+        }
+    }
+  }
+
+  fun delete() {
+    val open = session.value as? Session.Open ?: return
+    if (open.busy || open.original.id == NEW_ALARM_ID) return
+    session.value = open.copy(busy = true)
+    viewModelScope.launch {
+      session.value =
+        try {
+          writer.delete(open.original.id)
+          Session.Deleted
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          open.copy(failed = true)
+        }
+    }
+  }
+
+  private fun edit(change: (Alarm) -> Alarm) =
+    session.update { if (it is Session.Open && !it.busy) it.copy(draft = change(it.draft), failed = false) else it }
+
+  private fun editRing(change: (RingOptions) -> RingOptions) = edit { it.copy(ring = change(it.ring)) }
+
+  private fun ringsIn(alarm: Alarm): Duration? =
+    alarm.copy(enabled = true).nextTrigger(time.now(), time.zone())?.let { Duration.between(time.now(), it) }
+
+  private fun Session.toUiState(): AlarmEditorUiState =
+    when (this) {
+      Session.Loading -> AlarmEditorUiState.Loading
+      Session.NotFound -> AlarmEditorUiState.NotFound
+      is Session.Open ->
+        AlarmEditorUiState.Editing(
+          draft = draft,
+          isNew = original.id == NEW_ALARM_ID,
+          hasChanges = draft != original,
+          ringsIn = ringsIn(draft),
+          busy = busy,
+          failed = failed,
+        )
+      is Session.Saved -> AlarmEditorUiState.Saved(ringsIn)
+      Session.Deleted -> AlarmEditorUiState.Deleted
+    }
+
+  private sealed interface Session {
+    data object Loading : Session
+
+    data object NotFound : Session
+
+    data class Open(val original: Alarm, val draft: Alarm, val busy: Boolean = false, val failed: Boolean = false) :
+      Session
+
+    data class Saved(val ringsIn: Duration?) : Session
+
+    data object Deleted : Session
+  }
+
+  @AssistedFactory
+  interface Factory {
+    fun create(alarmId: Long): AlarmEditorViewModel
+  }
+
+  companion object {
+    const val NEW_ALARM_ID = 0L
+
+    /** What "Add alarm" starts from. */
+    val NEW_ALARM = Alarm(id = NEW_ALARM_ID, time = LocalTime.of(7, 0))
+  }
+}
+
+sealed interface AlarmEditorUiState {
+  data object Loading : AlarmEditorUiState
+
+  /** The alarm was deleted before the editor could open it. */
+  data object NotFound : AlarmEditorUiState
+
+  /**
+   * @property hasChanges the draft differs from what is stored; leaving then asks before discarding.
+   * @property ringsIn how long until the draft would ring once saved (saving switches it on).
+   * @property busy a save or delete is running; edits are ignored until it finishes.
+   * @property failed the last save or delete threw (e.g. disk full); the draft is kept so the user can retry.
+   */
+  data class Editing(
+    val draft: Alarm,
+    val isNew: Boolean,
+    val hasChanges: Boolean,
+    val ringsIn: Duration?,
+    val busy: Boolean,
+    val failed: Boolean = false,
+  ) : AlarmEditorUiState
+
+  data class Saved(val ringsIn: Duration?) : AlarmEditorUiState
+
+  data object Deleted : AlarmEditorUiState
+}
+
+/** The fixed, tap-only choices the editor offers (chosen by the user in task 1.3). */
+object RingChoices {
+  val RAMP_SECONDS = listOf(0, 15, 30, 60)
+  val SNOOZE_MINUTES = listOf(1, 5, 10, 15)
+  val MAX_SNOOZES = listOf(0, 1, 2, 3, 5)
+  const val LABEL_MAX = 40
+
+  /**
+   * [standard] plus [current] when the alarm already holds a value outside it (set by the debug hook or a future
+   * version), so opening the editor never silently changes it.
+   */
+  fun withCurrent(standard: List<Int>, current: Int): List<Int> = (standard + current).distinct().sorted()
+}

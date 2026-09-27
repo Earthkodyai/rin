@@ -3,19 +3,18 @@ package io.github.earthkodyai.rinalarm.ui.main
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.testing.FakeAlarms
+import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
-import io.github.earthkodyai.rinalarm.time.TimeSource
-import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -25,11 +24,12 @@ class MainScreenViewModelTest {
   @get:Rule val mainDispatcherRule = MainDispatcherRule()
 
   private val zone = ZoneId.of("Asia/Bangkok")
-  private val now = LocalDateTime.parse("2026-09-28T06:00").atZone(zone).toInstant()
+  private val time = FixedTimeSource(LocalDateTime.parse("2026-09-28T06:00").atZone(zone).toInstant(), zone)
 
   @Test
   fun uiState_startsLoading() {
-    val viewModel = MainScreenViewModel(FakeAlarmRepository(), FixedTimeSource(now, zone))
+    val alarms = FakeAlarms()
+    val viewModel = MainScreenViewModel(alarms, alarms, time)
     assertEquals(MainScreenUiState.Loading, viewModel.uiState.value)
   }
 
@@ -37,7 +37,8 @@ class MainScreenViewModelTest {
   fun uiState_listsAlarmsWithTheirNextRing() = runTest {
     val daily = Alarm(id = 1, time = LocalTime.of(7, 0), repeatDays = RepeatDays.EVERY_DAY)
     val off = Alarm(id = 2, time = LocalTime.of(9, 0), enabled = false)
-    val viewModel = MainScreenViewModel(FakeAlarmRepository(listOf(daily, off)), FixedTimeSource(now, zone))
+    val alarms = FakeAlarms(listOf(daily, off))
+    val viewModel = MainScreenViewModel(alarms, alarms, time)
 
     val state = viewModel.uiState.first { it is MainScreenUiState.Success } as MainScreenUiState.Success
 
@@ -48,34 +49,29 @@ class MainScreenViewModelTest {
 
   @Test
   fun uiState_whenTheRepositoryFails_isError() = runTest {
+    val alarms = FakeAlarms()
     val failing =
-      object : AlarmRepository by FakeAlarmRepository() {
+      object : AlarmRepository by alarms {
         override val alarms: Flow<List<Alarm>> = flow { error("disk full") }
       }
-    val viewModel = MainScreenViewModel(failing, FixedTimeSource(now, zone))
+    val viewModel = MainScreenViewModel(failing, alarms, time)
 
     assertTrue(viewModel.uiState.first { it !is MainScreenUiState.Loading } is MainScreenUiState.Error)
   }
-}
 
-private class FakeAlarmRepository(initial: List<Alarm> = emptyList()) : AlarmRepository {
-  private val state = MutableStateFlow(initial)
-  override val alarms: Flow<List<Alarm>> = state
+  @Test
+  fun setEnabled_goesThroughTheWriter_andTheListFollows() = runTest {
+    val alarms = FakeAlarms(listOf(Alarm(id = 1, time = LocalTime.of(7, 0))))
+    val viewModel = MainScreenViewModel(alarms, alarms, time)
+    viewModel.uiState.first { it is MainScreenUiState.Success }
 
-  override suspend fun save(alarm: Alarm): Long {
-    state.value = state.value.filterNot { it.id == alarm.id } + alarm
-    return alarm.id
+    viewModel.setEnabled(1, false)
+
+    val row = (viewModel.uiState.first { state -> state is MainScreenUiState.Success && !state.alarms[0].alarm.enabled }
+        as MainScreenUiState.Success)
+      .alarms
+      .single()
+    assertFalse(row.alarm.enabled)
+    assertNull(row.nextRing)
   }
-
-  override suspend fun delete(id: Long) {
-    state.value = state.value.filterNot { it.id == id }
-  }
-}
-
-private class FixedTimeSource(private val now: Instant, private val zone: ZoneId) : TimeSource {
-  override fun now(): Instant = now
-
-  override fun zone(): ZoneId = zone
-
-  override val minuteTicks: Flow<Unit> = flowOf(Unit)
 }

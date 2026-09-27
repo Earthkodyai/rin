@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.data.db.RinDatabase
+import io.github.earthkodyai.rinalarm.data.db.toEntity
 import java.time.LocalTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ class DeviceProtectedStorageTest {
   fun database_writesItsFileWhereStorageFilesSays() = runTest {
     val database = RinDatabase.open(context, databaseFile)
     try {
-      RoomAlarmRepository(database.alarmDao()).save(Alarm(time = LocalTime.of(6, 30)))
+      database.alarmDao().upsert(Alarm(time = LocalTime.of(6, 30)).toEntity())
       assertTrue(databaseFile.exists())
       assertTrue(databaseFile.canonicalPath.startsWith(deviceProtectedDir))
       assertEquals(1, database.alarmDao().getEnabled().size)

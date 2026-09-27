@@ -20,9 +20,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * The only writer of pending rings and of AlarmManager registrations. Receivers, the ring service and (from 1.3) the
- * editor call in here; the rules themselves live in [RingPlanner]. One mutex serialises everything, so a reconcile
- * and a fire arriving together cannot interleave.
+ * The only writer of pending rings and of AlarmManager registrations. Receivers, the ring service and the UI
+ * (through [AlarmWriter]) call in here; the rules themselves live in [RingPlanner]. One mutex serialises everything,
+ * so a reconcile and a fire arriving together cannot interleave.
  *
  * Nothing here touches the network, WebView or AI (hard rule: the ring path is native-only).
  */
@@ -38,7 +38,7 @@ constructor(
   private val deviceState: DeviceStateProbe,
   private val log: RingLog,
   private val time: TimeSource,
-) {
+) : AlarmWriter {
   private val mutex = Mutex()
 
   /** When each slot last rang in this process, to drop a second delivery of the same ring. */
@@ -130,23 +130,31 @@ constructor(
       next
     }
 
-  /** Saves [alarm] and re-arms it from scratch; an edit also cancels a pending snooze. Returns the alarm's id. */
-  suspend fun save(alarm: Alarm): Long =
+  override suspend fun save(alarm: Alarm): Long = mutex.withLock { saveLocked(alarm) }
+
+  override suspend fun setEnabled(alarmId: Long, enabled: Boolean) =
     mutex.withLock {
-      val rowId = alarmDao.upsert(alarm.toEntity())
-      val id = if (alarm.id == 0L) rowId else alarm.id
-      disarm(id, snooze = true)
-      disarm(id, snooze = false)
-      alarm.copy(id = id).nextTrigger(time.now(), time.zone())?.let { arm(PendingRing(id, it), previous = null) }
-      id
+      // Read inside the lock: the caller's copy may be stale (a one-shot can switch itself off meanwhile).
+      val alarm = alarmDao.getById(alarmId)?.toAlarm() ?: return@withLock
+      if (alarm.enabled != enabled) saveLocked(alarm.copy(enabled = enabled))
     }
 
-  suspend fun delete(alarmId: Long) =
+  override suspend fun delete(alarmId: Long) =
     mutex.withLock {
       disarm(alarmId, snooze = true)
       disarm(alarmId, snooze = false)
       alarmDao.delete(alarmId)
     }
+
+  /** Saves [alarm] and re-arms it from scratch; an edit also cancels a pending snooze. Returns the alarm's id. */
+  private suspend fun saveLocked(alarm: Alarm): Long {
+    val rowId = alarmDao.upsert(alarm.toEntity())
+    val id = if (alarm.id == 0L) rowId else alarm.id
+    disarm(id, snooze = true)
+    disarm(id, snooze = false)
+    alarm.copy(id = id).nextTrigger(time.now(), time.zone())?.let { arm(PendingRing(id, it), previous = null) }
+    return id
+  }
 
   private suspend fun arm(ring: PendingRing, previous: PendingRing?) {
     pendingDao.upsert(ring.toEntity())

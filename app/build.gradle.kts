@@ -65,6 +65,12 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
+  // Declared (not just inherited from AndroidX) so the app and kotlinx-coroutines-test share one version; a mismatch
+  // made every instrumented test fail with NoSuchMethodError (runBlockingK) on the first device run.
+  implementation(libs.kotlinx.coroutines.android)
+  // Same reason: room-testing's schema bundles need serialization >= 1.8.1, and the app would otherwise pull 1.7.3
+  // (AbstractMethodError in MigrationTest on device).
+  implementation(platform(libs.kotlinx.serialization.bom))
 
   // Arch Components
   implementation(libs.androidx.lifecycle.runtime.compose)

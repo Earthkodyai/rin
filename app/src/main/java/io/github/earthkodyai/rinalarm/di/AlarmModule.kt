@@ -5,6 +5,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
+import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.alarm.engine.AndroidSystemAlarms
 import io.github.earthkodyai.rinalarm.alarm.engine.DeviceStateProbe
 import io.github.earthkodyai.rinalarm.alarm.engine.MissedAlarmNotifier
@@ -40,6 +42,8 @@ object AlarmProvidesModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AlarmBindsModule {
+  @Binds abstract fun alarmWriter(impl: AlarmEngine): AlarmWriter
+
   @Binds abstract fun systemAlarms(impl: AndroidSystemAlarms): SystemAlarms
 
   @Binds abstract fun ringer(impl: ServiceRinger): Ringer

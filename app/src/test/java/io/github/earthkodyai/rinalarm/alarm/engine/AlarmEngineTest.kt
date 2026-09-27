@@ -87,6 +87,51 @@ class AlarmEngineTest {
     assertNull(alarmDao.getById(id))
   }
 
+  @Test
+  fun setEnabled_off_disarmsBothSlots_andOnArmsAgain() = runTest {
+    val id = engine.save(daily)
+    fireAt(id, "2026-09-28T07:00")
+    engine.snooze(id, snoozeCount = 0)
+
+    engine.setEnabled(id, false)
+    assertTrue(systemAlarms.armed.isEmpty())
+    assertTrue(pendingDao.rings().isEmpty())
+    assertFalse(alarmDao.getById(id)!!.enabled)
+
+    engine.setEnabled(id, true)
+    assertEquals(mapOf((id to false) to PendingRing(id, at("2026-09-29T07:00"))), systemAlarms.armed.toMap())
+  }
+
+  @Test
+  fun setEnabled_readsTheStoredAlarm_notAStaleCopy() = runTest {
+    val id = engine.save(daily)
+    engine.save(daily.copy(id = id, time = LocalTime.of(8, 0)))
+
+    engine.setEnabled(id, false)
+    engine.setEnabled(id, true)
+
+    assertEquals(LocalTime.of(8, 0), alarmDao.getById(id)!!.let { LocalTime.of(it.hour, it.minute) })
+    assertEquals(PendingRing(id, at("2026-09-28T08:00")), systemAlarms.armed[id to false])
+  }
+
+  @Test
+  fun setEnabled_toTheSameValue_leavesAPendingSnoozeAlone() = runTest {
+    val id = engine.save(daily)
+    fireAt(id, "2026-09-28T07:00")
+    val snooze = engine.snooze(id, snoozeCount = 0)
+
+    engine.setEnabled(id, true)
+
+    assertEquals(snooze, systemAlarms.armed[id to true])
+  }
+
+  @Test
+  fun setEnabled_forADeletedAlarm_doesNothing() = runTest {
+    engine.setEnabled(42, true)
+    assertTrue(systemAlarms.armed.isEmpty())
+    assertNull(alarmDao.getById(42))
+  }
+
   // --- firing ---
 
   @Test

@@ -6,6 +6,20 @@ import java.time.Instant
 
 // The Android side of the alarm engine, behind interfaces so AlarmEngineTest runs on the JVM with fakes.
 
+/**
+ * The only way the UI changes alarms. Implemented by [AlarmEngine], so every edit re-arms AlarmManager and the pending
+ * rings under the engine's lock; AlarmRepository is read-only on purpose.
+ */
+interface AlarmWriter {
+  /** Inserts when [Alarm.id] is 0, otherwise updates; re-arms from scratch and cancels a pending snooze. */
+  suspend fun save(alarm: Alarm): Long
+
+  /** Switches [alarmId] on or off. Does nothing if it was deleted meanwhile. */
+  suspend fun setEnabled(alarmId: Long, enabled: Boolean)
+
+  suspend fun delete(alarmId: Long)
+}
+
 /** AlarmManager. */
 interface SystemAlarms {
   /** Registers [ring], replacing any earlier registration of the same slot. Returns false when it had to go inexact. */

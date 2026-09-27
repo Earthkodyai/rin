@@ -29,10 +29,15 @@ class AlarmDaoTest {
 
   @After fun tearDown() = database.close()
 
+  private suspend fun save(alarm: Alarm): Long {
+    val rowId = database.alarmDao().upsert(alarm.toEntity())
+    return if (alarm.id == 0L) rowId else alarm.id
+  }
+
   @Test
-  fun save_insertsThenUpdates_andKeepsTheId() = runTest {
-    val id = repository.save(Alarm(time = LocalTime.of(7, 0)))
-    val updatedId = repository.save(Alarm(id = id, time = LocalTime.of(7, 30), repeatDays = RepeatDays.WEEKDAYS))
+  fun upsert_insertsThenUpdates_andKeepsTheId() = runTest {
+    val id = save(Alarm(time = LocalTime.of(7, 0)))
+    val updatedId = save(Alarm(id = id, time = LocalTime.of(7, 30), repeatDays = RepeatDays.WEEKDAYS))
 
     assertEquals(id, updatedId)
     assertEquals(
@@ -43,9 +48,9 @@ class AlarmDaoTest {
 
   @Test
   fun alarms_areSortedByTimeOfDay() = runTest {
-    repository.save(Alarm(time = LocalTime.of(9, 0)))
-    repository.save(Alarm(time = LocalTime.of(6, 15)))
-    repository.save(Alarm(time = LocalTime.of(6, 5)))
+    save(Alarm(time = LocalTime.of(9, 0)))
+    save(Alarm(time = LocalTime.of(6, 15)))
+    save(Alarm(time = LocalTime.of(6, 5)))
 
     assertEquals(
       listOf(LocalTime.of(6, 5), LocalTime.of(6, 15), LocalTime.of(9, 0)),
@@ -55,17 +60,23 @@ class AlarmDaoTest {
 
   @Test
   fun getEnabled_skipsAlarmsThatAreOff() = runTest {
-    val on = repository.save(Alarm(time = LocalTime.of(7, 0)))
-    repository.save(Alarm(time = LocalTime.of(8, 0), enabled = false))
+    val on = save(Alarm(time = LocalTime.of(7, 0)))
+    save(Alarm(time = LocalTime.of(8, 0), enabled = false))
 
     assertEquals(listOf(on), database.alarmDao().getEnabled().map { it.id })
   }
 
   @Test
-  fun delete_removesTheAlarm() = runTest {
-    val id = repository.save(Alarm(time = LocalTime.of(7, 0)))
-    repository.delete(id)
+  fun get_returnsTheAlarm() = runTest {
+    val id = save(Alarm(time = LocalTime.of(7, 0), label = "Work"))
+    assertEquals(Alarm(id = id, time = LocalTime.of(7, 0), label = "Work"), repository.get(id))
+  }
 
-    assertNull(database.alarmDao().getById(id))
+  @Test
+  fun delete_removesTheAlarm() = runTest {
+    val id = save(Alarm(time = LocalTime.of(7, 0)))
+    database.alarmDao().delete(id)
+
+    assertNull(repository.get(id))
   }
 }
