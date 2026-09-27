@@ -1,0 +1,69 @@
+# S5 dev: 116 trials (36 negative); 75 discarded in the whole log
+labeler latency p50/p95 72/85 ms; analysed fps median 13.5
+light=wake: 58 trials, lux median 0.0, frame luma median 29.0
+light=on: 58 trials, lux median 41.0, frame luma median 120.5
+
+## Negatives (from bed): labels that reach 0.5
+  Monochrome: 56% of trials (median max 0.74)
+  Room: 56% of trials (median max 0.59)
+  Sky: 50% of trials (median max 0.82)
+  Space: 50% of trials (median max 0.70)
+  Toy: 31% of trials (median max 0.28)
+  Metal: 28% of trials (median max 0.31)
+  Chair: 25% of trials (median max 0.33)
+  Shoe: 22% of trials (median max 0.41)
+  Musical instrument: 22% of trials (median max 0.24)
+  Desk: 19% of trials (median max 0.40)
+  Helmet: 19% of trials (median max 0.32)
+  Building: 19% of trials (median max 0.29)
+
+## chair (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 100%/0.88, Chair 90%/0.91, Desk 80%/0.68, Building 80%/0.58, Space 50%/0.70, Monochrome 50%/0.54, Windshield 50%/0.48, Armrest 50%/0.47
+  thr 0.5: k1 9/10  k2 9/10  k3 9/10
+  thr 0.7: k1 8/10  k2 8/10  k3 8/10
+  picked thr 0.9 k 1 ['Chair']: 6/10 = 60% (95% CI 31%-83%), wake 1/5, lights on 5/5, time to find p50/p95 57/4316 ms, negatives triggered: none
+
+## clock (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 80%/0.82, Clock 50%/0.47, Space 40%/0.72, Paper 40%/0.49, Wall 30%/0.88, Metal 30%/0.45, Building 30%/0.41, Wheel 30%/0.41
+  thr 0.5: k1 5/10  k2 5/10  k3 4/10
+  thr 0.7: k1 2/10  k2 0/10  k3 0/10
+  picked thr 0.5 k 1 ['Clock']: 5/10 = 50% (95% CI 24%-76%), wake 1/5, lights on 4/5, time to find p50/p95 67/7251 ms, negatives triggered: none
+
+## cup (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 90%/0.77, Tableware 70%/0.65, Hand 60%/0.94, Space 60%/0.70, Nail 50%/0.51, Sky 40%/0.61, Mobile phone 40%/0.36, Flesh 30%/0.40
+  thr 0.5: k1 0/10  k2 0/10  k3 0/10
+  thr 0.7: k1 0/10  k2 0/10  k3 0/10
+  picked thr 0.9 k 1 ['Cappuccino', 'Coffee', 'Cup', 'Saucer']: 0/10 = 0% (95% CI 0%-28%), wake 0/5, lights on 0/5, time to find p50/p95 None/None ms, negatives triggered: none
+
+## shoes (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Hand 100%/0.96, Nail 100%/0.74, Room 90%/0.68, Dog 80%/0.67, Chair 80%/0.62, Flesh 80%/0.55, Foot 70%/0.61, Cat 60%/0.59
+  thr 0.5: k1 5/10  k2 4/10  k3 4/10
+  thr 0.7: k1 0/10  k2 0/10  k3 0/10
+  picked thr 0.6 k 2 ['Shoe', 'Sneakers']: 2/10 = 20% (95% CI 6%-51%), wake 0/5, lights on 2/5, time to find p50/p95 4929/6705 ms, negatives triggered: none
+
+## sink (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 100%/0.89, Space 70%/0.70, Tile 50%/0.91, Sky 50%/0.79, Monochrome 50%/0.75, Tableware 50%/0.39, Countertop 40%/0.73, Sink 40%/0.73
+  thr 0.5: k1 4/10  k2 4/10  k3 3/10
+  thr 0.7: k1 3/10  k2 3/10  k3 3/10
+  picked thr 0.4 k 1 ['Sink']: 5/10 = 50% (95% CI 24%-76%), wake 0/5, lights on 5/5, time to find p50/p95 44/234 ms, negatives triggered: none
+
+## sofa (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 90%/0.78, Sitting 90%/0.70, Fun 80%/0.79, Space 80%/0.68, Flesh 80%/0.61, Jeans 60%/0.64, Textile 50%/0.76, Shoe 50%/0.54
+  thr 0.5: k1 1/10  k2 0/10  k3 0/10
+  thr 0.7: k1 0/10  k2 0/10  k3 0/10
+  picked thr 0.4 k 2 ['Couch', 'Loveseat']: 2/10 = 20% (95% CI 6%-51%), wake 1/5, lights on 1/5, time to find p50/p95 121/1529 ms, negatives triggered: none
+
+## stairs (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Stairs 100%/0.90, Handrail 100%/0.87, Room 100%/0.79, Metal 90%/0.66, Wall 80%/0.91, Building 80%/0.60, Shelf 60%/0.64, Pattern 60%/0.64
+  thr 0.5: k1 10/10  k2 10/10  k3 10/10
+  thr 0.7: k1 10/10  k2 10/10  k3 10/10
+  picked thr 0.8 k 1 ['Handrail', 'Stairs']: 10/10 = 100% (95% CI 72%-100%), wake 5/5, lights on 5/5, time to find p50/p95 32/58 ms, negatives triggered: none  PASS
+
+## tv (10 trials)
+  labels seen (share of trials >= 0.5 / median max): Room 80%/0.77, Sky 50%/0.83, Monochrome 50%/0.77, Space 50%/0.70, Desk 50%/0.58, Building 50%/0.57, Chair 50%/0.54, Tableware 40%/0.38
+  thr 0.5: k1 3/10  k2 3/10  k3 3/10
+  thr 0.7: k1 0/10  k2 0/10  k3 0/10
+  picked thr 0.5 k 1 ['Television']: 3/10 = 30% (95% CI 11%-60%), wake 0/5, lights on 3/5, time to find p50/p95 138/5425 ms, negatives triggered: none
+
+# 1 targets pass (>= 90%, no from-bed trigger): stairs -> not yet (need 5)
+picked specs -> picked-dev.json; copy to tools/frozen.json and commit BEFORE the held-out morning

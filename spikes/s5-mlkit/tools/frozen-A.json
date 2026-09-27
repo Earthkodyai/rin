@@ -1,0 +1,66 @@
+{
+ "targets": {
+  "chair": {
+   "labels": [
+    "Chair"
+   ],
+   "thr": 0.9,
+   "k": 1
+  },
+  "clock": {
+   "labels": [
+    "Clock"
+   ],
+   "thr": 0.5,
+   "k": 1
+  },
+  "cup": {
+   "labels": [
+    "Cup",
+    "Coffee",
+    "Cappuccino",
+    "Saucer"
+   ],
+   "thr": 0.9,
+   "k": 1
+  },
+  "shoes": {
+   "labels": [
+    "Shoe",
+    "Sneakers"
+   ],
+   "thr": 0.6,
+   "k": 2
+  },
+  "sink": {
+   "labels": [
+    "Sink"
+   ],
+   "thr": 0.4,
+   "k": 1
+  },
+  "sofa": {
+   "labels": [
+    "Couch",
+    "Loveseat"
+   ],
+   "thr": 0.4,
+   "k": 2
+  },
+  "stairs": {
+   "labels": [
+    "Stairs",
+    "Handrail"
+   ],
+   "thr": 0.8,
+   "k": 1
+  },
+  "tv": {
+   "labels": [
+    "Television"
+   ],
+   "thr": 0.5,
+   "k": 1
+  }
+ }
+}
