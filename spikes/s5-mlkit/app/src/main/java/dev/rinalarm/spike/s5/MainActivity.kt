@@ -140,14 +140,24 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         col.addView(button("Explore: live labels + brightness (nothing logged)") { showExplore() })
 
         col.addView(text("1 · Setup, once · lights ON", 16f, bold = true, top = 20))
-        val input = EditText(this).apply { hint = "Object name in English, e.g. fridge"; setSingleLine() }
-        col.addView(input)
-        col.addView(button("Add object") {
-            val name = input.text.toString().trim()
-            if (name.isNotEmpty()) {
-                prefs.edit().putStringSet("objects", prefs.getStringSet("objects", emptySet())!! + name).apply()
-                showHome()
+        col.addView(text("Tap the things you have (tap again to remove):", 14f))
+        val chosen = prefs.getStringSet("objects", emptySet())!!
+        (SUGGESTED + chosen.filter { it !in SUGGESTED }.sorted()).chunked(2).forEach { pair ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            pair.forEach { name ->
+                val on = name in chosen
+                row.addView(button(if (on) "✓ $name" else name) {
+                    val taught = store.done("teach", Targets.objectId(name))
+                    if (on && taught) toast("Already taught; kept") else { setObject(name, !on); showHome() }
+                }.apply { if (on) setTextColor(Color.rgb(0, 150, 80)) }, LinearLayout.LayoutParams(0, -2, 1f))
             }
+            col.addView(row)
+        }
+        val input = EditText(this).apply { hint = "Something else? English name"; setSingleLine() }
+        col.addView(input)
+        col.addView(button("Add this name") {
+            val name = input.text.toString().trim().lowercase()
+            if (name.isEmpty()) toast("Type a name first") else { setObject(name, true); showHome() }
         })
         objects().forEach { o ->
             val taught = store.done("teach", o.id)
@@ -173,6 +183,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         col.addView(text("Log: ${store.file.path}", 11f, color = Color.GRAY, top = 24))
         setContentView(ScrollView(this).apply { addView(col) })
     }
+
+    private fun setObject(name: String, add: Boolean) {
+        val set = prefs.getStringSet("objects", emptySet())!!
+        prefs.edit().putStringSet("objects", if (add) set + name else set - name).apply()
+    }
+
+    private fun toast(s: String) = android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show()
 
     private fun sceneButton(scene: Scene): View {
         val done = store.count(session, scene.id)
@@ -338,6 +355,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     // ---------- tiny view helpers ----------
+
+    companion object {
+        /** Fixed, mirror-free things usually away from the bed. The tester picks the ones they have. */
+        val SUGGESTED = listOf(
+            "fridge", "front door", "kettle", "rice cooker", "microwave", "kitchen sink", "stairs", "tv",
+            "shoe rack", "washing machine", "helmet", "fan", "sofa", "desk", "computer", "water dispenser",
+        )
+    }
 
     private class SquareGuide(ctx: Context) : View(ctx) {
         private val paint = Paint().apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = Color.YELLOW }
