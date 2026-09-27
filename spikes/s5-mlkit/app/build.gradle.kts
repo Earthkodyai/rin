@@ -19,6 +19,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    // Embedder models are downloaded into ../model by hand (git-ignored), see s5.sh models.
+    sourceSets["main"].assets.srcDirs("../model")
+    androidResources { noCompress += "tflite" }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -36,5 +39,8 @@ dependencies {
     implementation(libs.camera.view)
     // Bundled base model (~5.7 MB): works offline from first launch, no Play Services download.
     implementation(libs.mlkit.image.labeling)
+    implementation(libs.play.services.tasks)
+    // Part B: on-device image embeddings of the tester's own objects.
+    implementation(libs.mediapipe.tasks.vision)
     testImplementation(libs.junit)
 }

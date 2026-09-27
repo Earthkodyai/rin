@@ -3,6 +3,8 @@ androidGradlePlugin = "9.0.1"
 activity = "1.13.0"
 camerax = "1.6.2"
 mlkitLabeling = "17.0.9"
+mediapipe = "1.0.0"
+playServicesTasks = "18.2.0"
 junit = "4.13.2"
 
 [libraries]
@@ -11,6 +13,8 @@ camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cam
 camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 mlkit-image-labeling = { module = "com.google.mlkit:image-labeling", version.ref = "mlkitLabeling" }
+mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipe" }
+play-services-tasks = { module = "com.google.android.gms:play-services-tasks", version.ref = "playServicesTasks" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]

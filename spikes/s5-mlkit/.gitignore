@@ -18,3 +18,4 @@ local.properties
 results/*.jsonl
 results/picked-*.json
 tools/__pycache__/
+model/
