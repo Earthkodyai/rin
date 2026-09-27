@@ -4,4 +4,7 @@
     <issue id="NewerVersionAvailable" severity="ignore" />
     <issue id="GradleDependency" severity="ignore" />
     <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <!-- targetSdk 36 is a plan decision (06-tech-stack): raise it only after the alarm path is re-tested on the new
+         release's behaviour changes, not because a new SDK shipped. -->
+    <issue id="OldTargetApi" severity="ignore" />
 </lint>
