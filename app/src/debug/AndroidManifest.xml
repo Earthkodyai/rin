@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds only: an adb hook for smoke tests until the editor (1.3) and the test-alarm button (1.4) exist. -->
+<!-- Debug builds only: adb hooks for smoke tests (alarms, and crashing the character renderer). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <receiver
             android:name=".debug.DebugAlarmReceiver"
             android:directBootAware="true"
+            android:exported="true"
+            tools:ignore="ExportedReceiver"
+            xmlns:tools="http://schemas.android.com/tools" />
+        <receiver
+            android:name=".debug.DebugCharacterReceiver"
             android:exported="true"
             tools:ignore="ExportedReceiver"
             xmlns:tools="http://schemas.android.com/tools" />

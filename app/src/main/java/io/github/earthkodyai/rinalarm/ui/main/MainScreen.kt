@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.character.CharacterView
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
@@ -67,8 +69,12 @@ fun MainScreen(
     onToggle = viewModel::setEnabled,
     setupIssue = setupIssue,
     onDiagnostics = onDiagnostics,
+    character = { CharacterView(Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) },
   )
 }
+
+/** Rin's strip above the list: head and shoulders, leaving most of a phone screen to the alarms. */
+private val CHARACTER_HEIGHT = 220.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +85,8 @@ internal fun MainScreen(
   onToggle: (Long, Boolean) -> Unit,
   setupIssue: Boolean = false,
   onDiagnostics: () -> Unit = {},
+  // A slot, so previews and UI tests run without a WebView.
+  character: @Composable () -> Unit = {},
 ) {
   Scaffold(
     topBar = {
@@ -97,6 +105,7 @@ internal fun MainScreen(
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding)) {
       if (setupIssue) SetupBanner(onDiagnostics)
+      character()
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth())
     }
   }

@@ -101,6 +101,7 @@
     <string name="test_pending">Rings at %1$s. Lock the phone and wait.</string>
     <string name="test_cancel">Cancel test</string>
     <string name="test_failed">Couldn\'t set the test alarm. Try again.</string>
+    <string name="character_description">Rin</string>
     <string name="run_title">Reliability run</string>
     <!-- Quantity is the target (%2$d). -->
     <plurals name="run_count">

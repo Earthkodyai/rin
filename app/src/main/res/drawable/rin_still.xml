@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder still (head-and-shoulders silhouette), tinted by CharacterView. Task 2.5 replaces it with PNG
+     expressions rendered from Rin's model. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="180dp"
+    android:height="198dp"
+    android:viewportWidth="200"
+    android:viewportHeight="220">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M100,22a46,46 0,1 1,0 92a46,46 0,1 1,0 -92z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M84,112h32v18c30,4 56,18 64,50v40h-160v-40c8,-32 34,-46 64,-50z" />
+</vector>

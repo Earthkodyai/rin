@@ -11,6 +11,15 @@ updates:
         patterns: ["org.jetbrains.kotlin*", "com.android.*", "com.google.devtools.ksp*", "com.google.dagger*"]
     open-pull-requests-limit: 5
 
+  - package-ecosystem: npm
+    directory: /web/character
+    schedule:
+      interval: weekly
+    groups:
+      three:
+        patterns: ["three", "@types/three", "@pixiv/three-vrm*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Offline only: everything comes from the APK through WebViewAssetLoader. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; connect-src 'self' blob: data:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'" />
+  <title>Rin</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+    canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  </style>
+</head>
+<body>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

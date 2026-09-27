@@ -15,6 +15,7 @@
 | D11 | ที่เก็บงาน | `D:\RinAlarm` · ปฏิบัติกับ repo GitHub **เหมือนเป็นสาธารณะตั้งแต่ commit แรก** | งานพอร์ตควรเปิดให้ดูโค้ดได้ ถ้าอยากให้เป็น private บอกได้ แผนไม่ต้องเปลี่ยน |
 | D12 | เป้าหมายหลัก | พอร์ตสำหรับสมัครฝึกงานสาย Software Engineering | เทสต์ CI เอกสาร และตัวเลขที่วัดได้ นับเป็นงานส่งจริงเท่ากับฟีเจอร์ |
 | D13 | Package และ minSdk | `io.github.earthkodyai.rinalarm` (อิง GitHub username ของคุณ ไม่ต้องมีโดเมน ชื่อแอปที่เห็นเปลี่ยนได้ภายหลังตาม O4) · minSdk 29 / Android 10 | package เปลี่ยนไม่ได้หลังขึ้น Play และผูกกับ developer verification · WebView บน Android 8–9 ไม่ได้ patch แล้วตั้งแต่ Chrome 139 |
+| D14 | แผนเฟส 2 (2026-09-28) | แบ่งเป็น task 2.1–2.5 ทำระบบก่อนโมเดล: 2.1 `web/character/` + CharacterView (WebView, bridge, ภาพสำรองเมื่อ renderer ล้ม, จำกัด fps/pixel ratio) · 2.2 หายใจ กะพริบตา มองตาม อารมณ์ ≤ 300 ms แตะหัว · 2.3 โมเดลรินของคุณ (atlas/KTX2, ≤ 15 MB) + character sheet · 2.4 ท่าทาง VRMA + lip sync · 2.5 ภาพสำรอง PNG + วัดผลจบเฟส · รินอยู่บนหัวรายการปลุกในหน้าหลัก หน้าปลุกยัง native ล้วนจนถึงเฟส 3 | คุณออกแบบรินใน VRoid คู่ขนานตาม brief (`docs/character/vroid-brief.md`) ระหว่างนั้นใช้โมเดลตัวอย่าง VRoid ที่ git-ignore และอยู่ใน debug build บนมือถือคุณเท่านั้น |
 
 **ผล spike เฟส 0**
 

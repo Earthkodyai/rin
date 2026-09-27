@@ -23,6 +23,9 @@ google-services.json
 # Node / web character layer
 node_modules/
 dist/
+# VRM models stay out of the public repo: the dev model is VRoid's sample (its licence forbids redistribution) and
+# Rin's own model is decided in task 2.3. The debug build picks up app/src/debug/assets/character/model/dev.vrm.
+*.vrm
 
 # Claude Code personal settings
 .claude/settings.local.json
