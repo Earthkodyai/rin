@@ -7,7 +7,7 @@
 | เสียง | Media3 ExoPlayer | จัดการ audio focus และ audio stream ได้ครบ | Apache-2.0 |
 | ตัวละคร | three.js + `@pixiv/three-vrm` + `@pixiv/three-vrm-animation`, Vite + TypeScript, โหลดผ่าน `WebViewAssetLoader` | เบา และปลอดภัยกว่าการเปิด `file://` | MIT |
 | โมเดล | VRoid Studio 2.3.0 → VRM 1.0 | คุณเป็นเจ้าของโมเดลเอง | ฟรี (ตรวจเงื่อนไขของ VRoid อีกครั้งก่อนเผยแพร่) |
-| กล้อง/วิชัน | CameraX + ML Kit Image Labeling (ในเครื่อง) | ฟรี ออฟไลน์ และเป็นส่วนตัว | ฟรี |
+| กล้อง/วิชัน | CameraX + ML Kit Barcode Scanning (ภารกิจ QR) + MediaPipe Image Embedder (ภารกิจรูปของที่สอนเอง, ~15 MB arm64 → ใช้ feature module) | ฟรี ออฟไลน์ และเป็นส่วนตัว (ผล S5) | ฟรี |
 | แปลงเสียงเป็นข้อความ | Android `SpeechRecognizer` (ประมวลผลในเครื่องถ้าเครื่องรองรับ) | ฟรี และไม่ส่งเสียงออก | ฟรี |
 | สังเคราะห์เสียง (ตอน build) | Azure AI Speech หรือ ElevenLabs (คุณเลือกจากการฟังใน S4) | Azure มี viseme ในตัว | Azure มี free tier · ElevenLabs ต้องตรวจเงื่อนไขการใช้งาน |
 | เซนเซอร์ | Step counter, Activity Recognition Transition API, light/accelerometer | ตรวจการลุกและการกลับไปนอน | ฟรี |
