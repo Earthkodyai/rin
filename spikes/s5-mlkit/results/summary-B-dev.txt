@@ -1,0 +1,65 @@
+# S5 part B, b-dev: 116 trials (36 from bed)
+labeler p50 78 ms, both embedders p50/p95 37/49 ms, frames per trial median 67.0
+light gate (luma >= 70): opens in 110/110 lit trials, 0/6 dark trials
+small: taught 8 objects; bed max per object: o-fridge 0.280, o-front-door 0.596, o-kitchen-sink 0.353, o-microwave 0.294, o-sofa 0.374, o-stairs 0.256, o-tv 0.379, o-washing-machine 0.241
+large: taught 8 objects; bed max per object: o-fridge 0.187, o-front-door 0.712, o-kitchen-sink 0.212, o-microwave 0.251, o-sofa 0.256, o-stairs 0.305, o-tv 0.484, o-washing-machine 0.331
+
+## sweep small: objects passing with zero from-bed triggers (rows margin, cols k=[1, 2, 3])
+  0.00:   x    x    x 
+  0.01:   x    x    x 
+  0.02:   x    x    x 
+  0.03:   x    x    x 
+  0.04:   x    x    x 
+  0.05:   x    x    x 
+  0.06:   x    x    x 
+  0.07:   x    x    x 
+  0.08:   x    x    x 
+  0.09:   x    x    x 
+  0.10:   x    x    x 
+  0.11:   x    x    x 
+  0.12:   x    x    x 
+  0.13:   7    7    7 
+  0.14:   7    7    7 
+  0.15:   7    7    7 
+  0.16:   7    7    6 
+  0.17:   7    6    6 
+  0.18:   6    6    6 
+  0.19:   6    6    6 
+  0.20:   6    6    6 
+
+## sweep large: objects passing with zero from-bed triggers (rows margin, cols k=[1, 2, 3])
+  0.00:   x    x    x 
+  0.01:   x    x    x 
+  0.02:   x    x    x 
+  0.03:   x    7    7 
+  0.04:   x    7    7 
+  0.05:   7    7    7 
+  0.06:   7    7    7 
+  0.07:   7    7    7 
+  0.08:   7    7    7 
+  0.09:   7    6    6 
+  0.10:   6    6    6 
+  0.11:   6    6    6 
+  0.12:   6    6    6 
+  0.13:   6    6    6 
+  0.14:   6    6    6 
+  0.15:   6    5    5 
+  0.16:   5    5    5 
+  0.17:   5    5    5 
+  0.18:   5    5    5 
+  0.19:   5    5    5 
+  0.20:   5    5    5 
+
+## PICKED small: margin 0.17, k 1
+  o-fridge: 10/10 = 100% (95% CI 72%-100%), thr 0.450 (bed max 0.280), time to find p50/p95 61/108 ms, from-bed triggers: none  PASS
+  o-front-door: 6/10 = 60% (95% CI 31%-83%), thr 0.766 (bed max 0.596), time to find p50/p95 98/3201 ms, from-bed triggers: none
+  o-kitchen-sink: 10/10 = 100% (95% CI 72%-100%), thr 0.523 (bed max 0.353), time to find p50/p95 68/115 ms, from-bed triggers: none  PASS
+  o-microwave: 10/10 = 100% (95% CI 72%-100%), thr 0.464 (bed max 0.294), time to find p50/p95 55/1637 ms, from-bed triggers: none  PASS
+  o-sofa: 10/10 = 100% (95% CI 72%-100%), thr 0.544 (bed max 0.374), time to find p50/p95 57/142 ms, from-bed triggers: none  PASS
+  o-stairs: 10/10 = 100% (95% CI 72%-100%), thr 0.426 (bed max 0.256), time to find p50/p95 52/148 ms, from-bed triggers: none  PASS
+  o-tv: 9/10 = 90% (95% CI 60%-98%), thr 0.549 (bed max 0.379), time to find p50/p95 116/7208 ms, from-bed triggers: none  PASS
+  o-washing-machine: 10/10 = 100% (95% CI 72%-100%), thr 0.411 (bed max 0.241), time to find p50/p95 69/121 ms, from-bed triggers: none  PASS
+  cross-object matches: o-microwave->o-fridge x3, o-microwave->o-kitchen-sink x4, o-washing-machine->o-fridge x2, o-washing-machine->o-microwave x1
+  => 7 objects pass: o-fridge, o-kitchen-sink, o-microwave, o-sofa, o-stairs, o-tv, o-washing-machine -> GO (need 5)
+
+picked -> picked-b.json; copy to tools/frozen-b.json and commit BEFORE the held-out session
