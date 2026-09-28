@@ -70,4 +70,19 @@ class CharacterMessageTest {
     assertNull(CharacterMessage.parse("""{"type":"ready","ms":"wrong shape"}"""))
     assertNull(CharacterMessage.parse("""{"type":{"nested":true}}"""))
   }
+  @Test
+  fun gestureStarted_isParsed() {
+    val started = CharacterMessage.parse("""{"v":1,"type":"gesture","name":"wave","ok":true}""")
+    assertEquals(CharacterMessage.GestureStarted("wave", true), started)
+  }
+
+  @Test
+  fun gestureSpeakAndHush_matchWhatThePageReads() {
+    assertEquals("""{"type":"gesture","name":"yawn"}""", CharacterCommand.PlayGesture(Gesture.YAWN).json)
+    assertEquals("""{"type":"hush"}""", CharacterCommand.Hush.json)
+    val speak = Json.parseToJsonElement(CharacterCommand.Speak(MouthTrack(30, "a5-0"), at = 42L).json).jsonObject
+    assertEquals("speak", speak["type"]!!.jsonPrimitive.content)
+    assertEquals("42", speak["at"]!!.jsonPrimitive.content)
+    assertEquals("""{"v":1,"fps":30,"f":"a5-0"}""", speak["mouth"].toString())
+  }
 }

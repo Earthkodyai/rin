@@ -23,10 +23,17 @@ google-services.json
 # Node / web character layer
 node_modules/
 dist/
+# Gestures are built from web/character/src/gestures.json by scripts/make-gestures.mjs (npm run gestures).
+web/character/public/gestures/
 # VRM models stay out of the public repo: the dev model is VRoid's sample (its licence forbids redistribution), and
 # Rin's own model comes from `rin.model` in local.properties (task 2.3, app/build.gradle.kts optimizeRinModel).
 # The debug build also picks up app/src/debug/assets/character/model/dev.vrm.
 *.vrm
+# Debug voice clips: ElevenLabs free-plan output from spike S4 (not licensed for release). Rin's voice pack comes in
+# Phase 4; until then only the debug build carries these, with their mouth tracks (tools/voice/make-mouth.mjs).
+app/src/debug/assets/voice/
+# Lip-sync eval clips (Kokoro, rebuilt by tools/voice/eval/make_vowels.py).
+tools/voice/eval/clips/
 
 # Claude Code personal settings
 .claude/settings.local.json

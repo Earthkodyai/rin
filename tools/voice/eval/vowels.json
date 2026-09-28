@@ -1,0 +1,16 @@
+{
+  "_note": "Frozen 2026-09-28 before any clip was analysed. One-syllable English words, one mouth shape each (VRM visemes: aa=あ, ih=い, ou=う, ee=え, oh=お). dev words tune the classifier with the dev voice; test words and voices are held out and run once.",
+  "dev":  { "voices": ["af_heart"], "words": {
+    "aa": ["hot", "top", "mom", "calm"],
+    "ih": ["see", "me", "tea", "key"],
+    "ou": ["blue", "two", "moon", "food"],
+    "ee": ["bed", "red", "ten", "net"],
+    "oh": ["go", "no", "home", "bone"] } },
+  "test": { "voices": ["af_bella", "af_nicole", "af_sarah"], "words": {
+    "aa": ["lot", "not", "pot", "bob"],
+    "ih": ["bee", "we", "knee", "pea"],
+    "ou": ["shoe", "zoo", "who", "room"],
+    "ee": ["pen", "men", "head", "bell"],
+    "oh": ["so", "low", "road", "phone"] } },
+  "passBar": "held-out word accuracy >= 60% (chance 20%): a word counts when the most common shape over its loud voiced frames is its label"
+}

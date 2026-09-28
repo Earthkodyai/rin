@@ -1,8 +1,11 @@
 // The page's half of the bridge to Kotlin (character/CharacterMessage.kt), protocol version 1. The native side
 // registers `RinBridge` with WebViewCompat.addWebMessageListener, scoped to the app's asset origin, so only this page
 // can post. Messages are JSON strings; both sides ignore types they do not know, so either side can add types first.
-// Task 2.2 added `emotion` both ways and `tap` to the app; still version 1, since every addition is ignorable.
+// Task 2.2 added `emotion` both ways and `tap` to the app; task 2.4 added `gesture` both ways, `speak` and `hush`.
+// Still version 1, since every addition is ignorable.
 import { isMood, type Mood } from './emotion';
+import { isGesture, type Gesture } from './gesture';
+import { isMouthTrack, type MouthTrack } from './mouth';
 
 export const PROTOCOL = 1;
 
@@ -30,13 +33,19 @@ export type ToNative =
   /** A mood is fully shown. `toPage`: the app's send to the page receiving it; `total`: to the blend's last frame. */
   | { v: typeof PROTOCOL; type: 'emotion'; mood: Mood; ms: { toPage: number; total: number } }
   /** Only the head reacts to taps (the rest of her ignores them), so `part` is always 'head' for now. */
-  | { v: typeof PROTOCOL; type: 'tap'; part: 'head' };
+  | { v: typeof PROTOCOL; type: 'tap'; part: 'head' }
+  /** Whether a gesture started; false when its file failed to load (it has been reported as an error log). */
+  | { v: typeof PROTOCOL; type: 'gesture'; name: Gesture; ok: boolean };
 
 /** `at` is the app's wall clock (epoch ms) when it sent the message; the page's Date.now() shares that clock. */
 export type FromNative =
   | { type: 'pause' }
   | { type: 'resume' }
-  | { type: 'emotion'; mood: Mood; intensity: number; at: number };
+  | { type: 'emotion'; mood: Mood; intensity: number; at: number }
+  | { type: 'gesture'; name: Gesture }
+  /** Move the mouth along `mouth`; `at` is when the app's audio played its first sample (epoch ms). */
+  | { type: 'speak'; mouth: MouthTrack; at: number }
+  | { type: 'hush' };
 
 interface NativeBridge {
   postMessage(message: string): void;
@@ -71,7 +80,11 @@ export function onNativeMessage(handler: (message: FromNative) => void): void {
 export function parseNative(data: string): FromNative | null {
   const m = JSON.parse(data) as Record<string, unknown> | null;
   if (typeof m !== 'object' || m === null) return null;
-  if (m.type === 'pause' || m.type === 'resume') return { type: m.type };
+  if (m.type === 'pause' || m.type === 'resume' || m.type === 'hush') return { type: m.type };
+  if (m.type === 'gesture' && isGesture(m.name)) return { type: 'gesture', name: m.name };
+  if (m.type === 'speak' && isMouthTrack(m.mouth) && typeof m.at === 'number' && Number.isFinite(m.at)) {
+    return { type: 'speak', mouth: { fps: m.mouth.fps, f: m.mouth.f }, at: m.at };
+  }
   if (m.type === 'emotion' && isMood(m.mood)) {
     const intensity = typeof m.intensity === 'number' && Number.isFinite(m.intensity) ? m.intensity : 1;
     const at = typeof m.at === 'number' && Number.isFinite(m.at) ? m.at : Date.now();

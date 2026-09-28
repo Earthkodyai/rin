@@ -34,10 +34,15 @@ jobs:
           cache-dependency-path: |
             web/character/package-lock.json
             tools/character/package-lock.json
+            tools/voice/package-lock.json
 
       # The model pipeline (tools/character) runs only on a PC with Rin's model; its tests run everywhere.
       - name: Model pipeline tests
         run: npm ci --prefix tools/character --no-audit --no-fund && npm test --prefix tools/character
+
+      # Mouth tracks for voice lines (tools/voice); its eval clips are local, its unit tests synthetic.
+      - name: Voice tool tests
+        run: npm ci --prefix tools/voice --no-audit --no-fund && npm test --prefix tools/voice
 
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:

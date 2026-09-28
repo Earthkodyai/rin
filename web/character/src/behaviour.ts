@@ -1,9 +1,12 @@
 // Everything that keeps Rin alive between gestures (task 2.2): breathing, blinking, looking at the user with small
 // eye movements and the odd glance away, following a finger on the strip, blending moods, and the head-tap
 // reaction. The numbers behind moods and the tap live in emotion.ts; this file turns them into bones and expressions.
+// Task 2.4 layers gestures (gesture.ts) over the idle pose and the mouth (mouth.ts) over the face.
 import * as THREE from 'three';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { Blend, EXPRESSIONS, TapReaction, moodChannels, type Mood } from './emotion';
+import type { GesturePlayer } from './gesture';
+import { MouthPlayer, VISEMES } from './mouth';
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 /** Frame-rate independent exponential approach: the fraction of the gap to close this frame. */
@@ -11,6 +14,9 @@ const approach = (rate: number, dt: number) => 1 - Math.exp(-rate * dt);
 
 export class Behaviour {
   readonly tap = new TapReaction();
+  readonly mouth = new MouthPlayer();
+  /** Set once the gesture files have loaded (after the first frame, so they never delay her appearing). */
+  gestures: GesturePlayer | null = null;
   private readonly blend: Blend;
   private t = 0;
 
@@ -76,8 +82,10 @@ export class Behaviour {
     const done = this.blend.step(dt);
     this.tap.step(dt);
     const c = this.tap.apply(this.blend.values);
+    this.gestures?.update(dt);
     this.look(dt, c.gaze);
     this.body(c.pitch + this.tap.nod, c.yaw, c.roll);
+    this.gestures?.applyBones(this.vrm);
     this.face(dt, c);
     return done;
   }
@@ -124,6 +132,10 @@ export class Behaviour {
     rot('leftLowerArm', 0, 0, -0.15);
     rot('rightLowerArm', 0, 0, 0.15);
     rot('chest', 0.03 * breath, 0, 0);
+    // Gestures add rotation to these (gesture.ts ADDITIVE), so they must start every frame from rest.
+    rot('upperChest', 0, 0, 0);
+    rot('leftShoulder', 0, 0, 0);
+    rot('rightShoulder', 0, 0, 0);
     rot('spine', 0, 0.04 * Math.sin(t * 0.7), 0.02 * Math.sin(t * 0.5));
     rot('neck', 0.4 * this.lookPitch, 0.4 * this.lookYaw, 0);
     rot(
@@ -137,8 +149,19 @@ export class Behaviour {
   private face(dt: number, c: Readonly<Record<string, number>>): void {
     const em = this.vrm.expressionManager;
     if (!em) return;
-    for (const e of EXPRESSIONS) em.setValue(e, c[e]);
-    if (!this.hasSmile) em.setValue('happy', Math.min(c.happy + 0.35 * c.smile, 1));
+    const gesture = this.gestures?.face() ?? { weights: {}, takeover: 0 };
+    const g = (name: string) => gesture.weights[name] ?? 0;
+    // Speaking opens the mouth over the mood's own mouth shape, so a smile softens while she talks.
+    const mouth = this.mouth.at(Date.now());
+    let open = 0;
+    for (const v of VISEMES) {
+      const value = Math.max(g(v), mouth?.[v] ?? 0);
+      em.setValue(v, value);
+      open += value;
+    }
+    const mood = (1 - 0.8 * gesture.takeover) * (1 - 0.5 * Math.min(open, 1));
+    for (const e of EXPRESSIONS) em.setValue(e, Math.max(c[e] * mood, g(e)));
+    if (!this.hasSmile) em.setValue('happy', Math.min(Math.max(c.happy * mood, g('happy')) + 0.35 * c.smile * mood, 1));
     const t = this.t;
     let pulse = 0;
     if (this.blinkT < 0 && t > this.nextBlink) this.blinkT = 0;
@@ -151,6 +174,6 @@ export class Behaviour {
         pulse = 0;
       }
     }
-    em.setValue('blink', Math.max(c.lid, pulse)); // a sleepy resting lid, and blinks on top of it
+    em.setValue('blink', Math.max(c.lid, pulse, g('blink'))); // a sleepy resting lid, and blinks on top of it
   }
 }

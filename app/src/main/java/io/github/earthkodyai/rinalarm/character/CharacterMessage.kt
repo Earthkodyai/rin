@@ -32,6 +32,9 @@ sealed interface CharacterMessage {
   /** The user tapped her head (the only part that reacts); the page has already reacted. */
   @Serializable data class Tap(val part: String) : CharacterMessage
 
+  /** The page started a gesture ([ok]), or could not because its file failed to load. */
+  @Serializable data class GestureStarted(val name: String, val ok: Boolean) : CharacterMessage
+
   @Serializable
   data class LoadTimings(
     val pageToFirstFrame: Long,
@@ -61,6 +64,7 @@ sealed interface CharacterMessage {
           "error" -> json.decodeFromJsonElement<Error>(obj)
           "emotion" -> json.decodeFromJsonElement<EmotionShown>(obj)
           "tap" -> json.decodeFromJsonElement<Tap>(obj)
+          "gesture" -> json.decodeFromJsonElement<GestureStarted>(obj)
           else -> null
         }
       } catch (_: SerializationException) {
@@ -81,6 +85,34 @@ sealed interface CharacterCommand {
 
   data object Resume : CharacterCommand {
     override val json = """{"type":"resume"}"""
+  }
+
+  data object Hush : CharacterCommand {
+    override val json = """{"type":"hush"}"""
+  }
+
+  data class PlayGesture(val gesture: Gesture) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "gesture")
+          put("name", gesture.wire)
+        }
+        .toString()
+  }
+
+  /** Move the mouth along [mouth] from [at], the epoch ms the audio's first sample played (the page shares the clock). */
+  data class Speak(val mouth: MouthTrack, val at: Long) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "speak")
+          put("mouth", buildJsonObject {
+            put("v", mouth.v)
+            put("fps", mouth.fps)
+            put("f", mouth.f)
+          })
+          put("at", at)
+        }
+        .toString()
   }
 
   /** Blend to [mood]; [at] (epoch ms, the page shares the clock) lets the page time the change end to end. */

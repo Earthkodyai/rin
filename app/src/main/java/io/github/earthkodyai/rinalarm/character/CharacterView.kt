@@ -25,8 +25,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,11 +52,16 @@ import java.io.ByteArrayInputStream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-/** Debug hooks for DebugCharacterReceiver: crash the renderer (to prove the fallback) or force a mood (to time it). */
+/**
+ * Debug hooks for DebugCharacterReceiver: crash the renderer (to prove the fallback), force a mood (to time it), play
+ * a gesture, or say a debug voice line (assets voice/dev/<clip>.mp3, git-ignored).
+ */
 object CharacterDebug {
   val crashRenderer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
   /** Overrides the screen's mood until the screen's own mood next changes. */
   val mood = MutableSharedFlow<Pair<Mood, Float>>(extraBufferCapacity = 1)
+  val gesture = MutableSharedFlow<Gesture>(extraBufferCapacity = 1)
+  val say = MutableSharedFlow<String>(extraBufferCapacity = 1)
 }
 
 private enum class Phase {
@@ -68,7 +76,8 @@ private enum class Phase {
  * wrong here, the still image takes over and the rest of the app carries on. The page's canvas stays transparent
  * until Rin's first frame, so the still sits on top and fades out once she is drawn. The page stops rendering while
  * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
- * happy for a moment there, and the phone gives a light tick here.
+ * happy for a moment there, and the phone gives a light tick here. She greets the user when the app opens and
+ * gestures now and then (GestureDirector). Voice lines play natively (VoicePlayer) and only move her mouth here.
  */
 @Composable
 fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 1f) {
@@ -82,6 +91,12 @@ fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 
   var debugMood by remember { mutableStateOf<Pair<Mood, Float>?>(null) }
   val shown = debugMood ?: (mood to intensity)
   SideEffect { host.setMood(shown) }
+  val director = remember { GestureDirector() }
+  val currentMood by rememberUpdatedState(shown.first)
+  SideEffect { host.onShown = { away -> director.greetOnShow(currentMood, away)?.let(host::gesture) } }
+  val scope = rememberCoroutineScope()
+  val voice = remember { VoicePlayer(context, scope, onSpeaking = host::speak) }
+  DisposableEffect(voice) { onDispose { voice.stop() } }
 
   Box(modifier.semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
     if (model != null && phase != Phase.FALLBACK) {
@@ -113,7 +128,16 @@ fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 
     Log.w(TAG, "no first frame after $LOAD_TIMEOUT_MS ms, showing the still")
     phase = Phase.FALLBACK
   }
+  LaunchedEffect(phase) {
+    if (phase != Phase.READY) return@LaunchedEffect
+    while (true) {
+      delay(director.nextIdleDelayMs())
+      host.gesture(director.idle(currentMood)) // dropped while off screen
+    }
+  }
   LaunchedEffect(host) { CharacterDebug.crashRenderer.collect { host.crashRenderer() } }
+  LaunchedEffect(host) { CharacterDebug.gesture.collect { host.gesture(it) } }
+  LaunchedEffect(voice) { CharacterDebug.say.collect { voice.play("voice/dev/$it") } }
   LaunchedEffect(host) { CharacterDebug.mood.collect { debugMood = it } }
   LaunchedEffect(mood) { debugMood = null }
 }
@@ -131,6 +155,11 @@ private class CharacterHost {
   /** The mood the screen wants, and the one the page has (from the URL, then from the last command sent). */
   private var wanted: Pair<Mood, Float>? = null
   private var onPage: Pair<Mood, Float>? = null
+  /** The line being spoken, re-sent on resume so the mouth picks up mid-line (the page times it from `at`). */
+  private var speaking: Speaking? = null
+  private var pausedAt: Long? = null
+  /** Called when she is on screen and ready: first with null (the app just opened), then with the time away. */
+  var onShown: (awayMs: Long?) -> Unit = {}
 
   @SuppressLint("SetJavaScriptEnabled") // our own page from APK assets; nothing else can load (see the client)
   fun create(
@@ -171,9 +200,12 @@ private class CharacterHost {
           ready = true
           onReady()
           sendMood()
+          sendSpeaking()
+          if (resumed) onShown(null)
         }
         is CharacterMessage.EmotionShown ->
           Log.i(TAG, "emotion ${parsed.mood} toPage=${parsed.ms.toPage} total=${parsed.ms.total}")
+        is CharacterMessage.GestureStarted -> Log.i(TAG, "gesture ${parsed.name} ok=${parsed.ok}")
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")
           webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -210,6 +242,26 @@ private class CharacterHost {
     webView?.onResume()
     reply?.postMessage(CharacterCommand.Resume.json)
     sendMood()
+    sendSpeaking()
+    val away = pausedAt?.let { System.currentTimeMillis() - it }
+    if (ready && away != null) onShown(away)
+  }
+
+  /** Plays [gesture] if she is ready and on screen; otherwise it is dropped (gestures are of the moment). */
+  fun gesture(gesture: Gesture) {
+    val proxy = reply ?: return
+    if (ready && resumed) proxy.postMessage(CharacterCommand.PlayGesture(gesture).json)
+  }
+
+  fun speak(line: Speaking?) {
+    speaking = line
+    if (line == null) reply?.postMessage(CharacterCommand.Hush.json) else sendSpeaking()
+  }
+
+  private fun sendSpeaking() {
+    val line = speaking ?: return
+    val proxy = reply ?: return
+    if (ready && resumed) proxy.postMessage(CharacterCommand.Speak(line.mouth, line.at).json)
   }
 
   fun setMood(mood: Pair<Mood, Float>) {
@@ -231,6 +283,7 @@ private class CharacterHost {
 
   fun pause() {
     resumed = false
+    pausedAt = System.currentTimeMillis()
     reply?.postMessage(CharacterCommand.Pause.json)
     webView?.onPause()
   }

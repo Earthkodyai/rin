@@ -8,14 +8,17 @@
 //   t0=<epoch ms>         native timestamp taken before the WebView was created
 //   mood=cheerful         starting mood (emotion.ts), shown from the first frame without a blend
 //   intensity=1           starting mood intensity, 0..1
+//   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { VRM, VRMLoaderPlugin, VRMUtils, type VRMHumanBoneName } from '@pixiv/three-vrm';
 import { PROTOCOL, onNativeMessage, send, type ModelInfo } from './bridge';
 import { Behaviour } from './behaviour';
 import { isMood, isTap, type Mood } from './emotion';
+import { GESTURES, GesturePlayer, isGesture, loadGestures, type Gesture } from './gesture';
+import type { MouthTrack } from './mouth';
 import { addVroidSmile } from './vroid';
 
 const q = new URLSearchParams(location.search);
@@ -91,17 +94,41 @@ function modelInfo(vrm: VRM, bytes: number): ModelInfo {
 
 let paused = false;
 let behaviour: Behaviour | null = null;
+let loadedVrm: VRM | null = null;
 /** The latest mood change still blending, timed from the app's send until its last frame. */
 let pending: { mood: Mood; at: number; received: number } | null = null;
-onNativeMessage((message) => {
-  if (message.type === 'emotion') {
-    mood = message.mood;
-    intensity = message.intensity;
-    pending = { mood, at: message.at, received: Date.now() };
-    behaviour?.setMood(mood, intensity);
+/** A gesture asked for before the files loaded, played once they have (if still recent). */
+let queued: { name: Gesture; at: number } | null = null;
+
+function gesture(name: Gesture) {
+  const player = behaviour?.gestures;
+  if (!player) {
+    queued = { name, at: performance.now() };
     return;
   }
-  paused = message.type === 'pause';
+  send({ v: PROTOCOL, type: 'gesture', name, ok: player.play(name) });
+}
+function speak(mouth: MouthTrack, at: number) {
+  behaviour?.mouth.speak(mouth, at);
+}
+
+onNativeMessage((message) => {
+  switch (message.type) {
+    case 'emotion':
+      mood = message.mood;
+      intensity = message.intensity;
+      pending = { mood, at: message.at, received: Date.now() };
+      behaviour?.setMood(mood, intensity);
+      return;
+    case 'gesture':
+      return gesture(message.name);
+    case 'speak':
+      return speak(message.mouth, message.at);
+    case 'hush':
+      return behaviour?.mouth.hush();
+    default:
+      paused = message.type === 'pause';
+  }
 });
 
 // Touch: a finger on the strip draws her gaze; a tap on her head makes her happy. The rest of her ignores taps.
@@ -185,6 +212,7 @@ async function main() {
 
   const life = new Behaviour(vrm, camera, mood, intensity, headHalf, Math.max(headHalf + 0.03, 0.1));
   behaviour = life;
+  loadedVrm = vrm;
   pending = null; // a mood sent while loading is already in place: nothing blends, so nothing to time
   const minFrameMs = 1000 / fpsCap - 1; // 1 ms slack, so vsync jitter cannot halve the rate
   let last = -1;
@@ -212,6 +240,17 @@ async function main() {
     }
     if (reported) return;
     reported = true;
+    // Gestures load after her first frame, so they never delay her appearing.
+    loadGestures(vrm, (name, e) => console.warn(`gesture ${name} failed to load`, e)).then((clips) => {
+      life.gestures = new GesturePlayer(clips);
+      if (queued && performance.now() - queued.at < 2000) gesture(queued.name);
+      queued = null;
+      const demo = q.get('gesture');
+      if (!window.RinBridge && isGesture(demo)) {
+        gesture(demo);
+        setInterval(() => gesture(demo), 4000);
+      }
+    });
     const firstFrame = performance.now();
     const r = Math.round;
     send({
@@ -232,3 +271,23 @@ async function main() {
 }
 
 main().catch(fail);
+
+// Desktop preview only (npm run dev, no app): drive her from the browser console. After `npm run gestures`,
+// rin.reload() picks up the new files without reloading the page; rin.hold('wave', 1.2) freezes a moment.
+if (!window.RinBridge) {
+  const reload = async () => {
+    if (!behaviour || !loadedVrm) return;
+    behaviour.gestures = new GesturePlayer(await loadGestures(loadedVrm, (n, e) => console.warn(n, e), `?${Date.now()}`));
+  };
+  const hold = (name: Gesture | null, age = 0) => behaviour?.gestures?.hold(name, age);
+  const bone = (name: VRMHumanBoneName) =>
+    loadedVrm?.humanoid.getNormalizedBoneNode(name)?.getWorldPosition(new THREE.Vector3()).toArray();
+  /** Plays `<base>.mp3` with its `<base>.mouth.json`, timed like the app does it: from when the audio starts. */
+  const say = async (base: string) => {
+    const track = (await (await fetch(`${base}.mouth.json`)).json()) as MouthTrack;
+    const audio = new Audio(`${base}.mp3`);
+    audio.addEventListener('playing', () => speak(track, Date.now() - audio.currentTime * 1000), { once: true });
+    await audio.play();
+  };
+  Object.assign(window, { rin: { gestures: GESTURES, gesture, speak, say, reload, hold, bone } });
+}

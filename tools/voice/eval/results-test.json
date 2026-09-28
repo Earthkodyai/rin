@@ -1,0 +1,88 @@
+{
+  "date": "2026-09-28T05:37:23.691Z",
+  "right": 22,
+  "total": 60,
+  "confusion": {
+    "a": {
+      "a": 4,
+      "i": 0,
+      "u": 4,
+      "e": 0,
+      "o": 4,
+      "-": 0
+    },
+    "i": {
+      "a": 1,
+      "i": 5,
+      "u": 6,
+      "e": 0,
+      "o": 0,
+      "-": 0
+    },
+    "u": {
+      "a": 1,
+      "i": 4,
+      "u": 7,
+      "e": 0,
+      "o": 0,
+      "-": 0
+    },
+    "e": {
+      "a": 1,
+      "i": 0,
+      "u": 4,
+      "e": 6,
+      "o": 1,
+      "-": 0
+    },
+    "o": {
+      "a": 1,
+      "i": 0,
+      "u": 8,
+      "e": 3,
+      "o": 0,
+      "-": 0
+    }
+  },
+  "misses": [
+    "af_bella/lot a->u",
+    "af_bella/not a->u",
+    "af_bella/pot a->u",
+    "af_bella/bob a->u",
+    "af_bella/bee i->u",
+    "af_bella/we i->u",
+    "af_bella/knee i->u",
+    "af_bella/pea i->u",
+    "af_bella/shoe u->i",
+    "af_bella/zoo u->i",
+    "af_bella/pen e->u",
+    "af_bella/men e->u",
+    "af_bella/head e->u",
+    "af_bella/bell e->u",
+    "af_bella/so o->a",
+    "af_bella/low o->u",
+    "af_bella/road o->u",
+    "af_bella/phone o->u",
+    "af_nicole/knee i->a",
+    "af_nicole/shoe u->i",
+    "af_nicole/room u->a",
+    "af_nicole/pen e->a",
+    "af_nicole/so o->e",
+    "af_nicole/low o->e",
+    "af_nicole/road o->u",
+    "af_nicole/phone o->e",
+    "af_sarah/lot a->o",
+    "af_sarah/not a->o",
+    "af_sarah/pot a->o",
+    "af_sarah/bob a->o",
+    "af_sarah/knee i->u",
+    "af_sarah/pea i->u",
+    "af_sarah/zoo u->i",
+    "af_sarah/bell e->o",
+    "af_sarah/so o->u",
+    "af_sarah/low o->u",
+    "af_sarah/road o->u",
+    "af_sarah/phone o->u"
+  ],
+  "passBar": "held-out word accuracy >= 60% (chance 20%): a word counts when the most common shape over its loud voiced frames is its label"
+}

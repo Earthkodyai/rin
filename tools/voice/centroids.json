@@ -1,0 +1,5 @@
+{
+  "_note": "Frozen 2026-09-28 before the held-out run. Hillenbrand et al. (1995) adult female means (a = /ɑ/, i = /i/, u = /u/, e = /ɛ/, o = /o/), weight 1. On the dev set (af_heart, 20 words) these scored 15/20; dev-fitted medians scored 14/20 (the /oʊ/ diphthong pulls o toward u) and F1 weights 1.5/2 scored 10/20, so the literature values stay.",
+  "f1Weight": 1,
+  "shapes": { "a": [936, 1551], "i": [437, 2761], "u": [459, 1105], "e": [731, 2058], "o": [555, 1035] }
+}

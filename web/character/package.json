@@ -3,13 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "gestures": "node scripts/make-gestures.mjs",
+    "predev": "npm run gestures",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc --noEmit && vitest run && vite build"
+    "build": "npm run gestures && tsc --noEmit && vitest run && vite build"
   },
   "dependencies": {
     "@pixiv/three-vrm": "3.5.5",
+    "@pixiv/three-vrm-animation": "3.5.5",
     "three": "0.186.1"
   },
   "devDependencies": {

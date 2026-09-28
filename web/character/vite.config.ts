@@ -7,5 +7,6 @@ export default defineConfig({
   build: { outDir: 'dist', emptyOutDir: true, target: 'es2022', chunkSizeWarningLimit: 1500 },
   // `npm run dev` can load the debug-only VRoid sample (git-ignored) from the app module:
   // http://localhost:5173/?model=/@fs/<repo>/app/src/debug/assets/character/model/dev.vrm&mood=cheerful
-  server: { host: true, fs: { allow: ['.', '../../app/src/debug/assets/character/model'] } },
+  // and the debug voice clips for rin.say('/@fs/<repo>/app/src/debug/assets/voice/dev/L01') in the console.
+  server: { host: true, fs: { allow: ['.', '../../app/src/debug/assets/character/model', '../../app/src/debug/assets/voice'] } },
 });

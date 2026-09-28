@@ -1,0 +1,11 @@
+{
+  "name": "rinalarm-voice-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "mpg123-decoder": "1.0.3"
+  }
+}
