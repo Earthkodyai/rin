@@ -102,7 +102,10 @@ interface AlarmEditorActions {
 
   fun setMission(value: MissionChoice)
 
-  /** Asks for the permission [type] needs (or opens Settings once Android won't ask again). */
+  /**
+   * Makes [type] ready: asks for its permission (or opens Settings once Android won't ask again), or opens its setup
+   * (the QR sticker, whose setup asks for the camera itself).
+   */
   fun allowMission(type: MissionType)
 
   fun save()
@@ -111,7 +114,7 @@ interface AlarmEditorActions {
 }
 
 @Composable
-fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
+fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, onSetUpQr: () -> Unit = {}) {
   val viewModel =
     hiltViewModel<AlarmEditorViewModel, AlarmEditorViewModel.Factory>(creationCallback = { it.create(alarmId) })
   val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -126,7 +129,9 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
     }
   val requestMissionPermission = { type: MissionType ->
     val permission = AndroidMissionReadiness.permissionFor(type)
-    if (permission == null) {
+    if (type == MissionType.QR) {
+      onSetUpQr()
+    } else if (permission == null) {
       viewModel.refreshMissions()
     } else if (askedPermission && activity?.shouldShowRequestPermissionRationale(permission) == false) {
       SettingsLinks.open(activity, CheckId.MISSIONS, xiaomiFamily = false)
@@ -387,12 +392,28 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
           is MissionChoice.Only ->
             when (choice.type) {
               MissionType.WALK -> R.string.mission_hint_walk
+              MissionType.QR -> R.string.mission_hint_qr
             }
         }
       ),
       style = MaterialTheme.typography.bodySmall,
     )
     state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
+    state.missionOffers.forEach { type -> MissionOffer(type, actions) }
+  }
+}
+
+/** Not a problem: a mission Rin could add to her picks after its setup. */
+@Composable
+private fun MissionOffer(type: MissionType, actions: AlarmEditorActions) {
+  Row(Modifier.fillMaxWidth().testTag(MISSION_OFFER_TAG), verticalAlignment = Alignment.CenterVertically) {
+    Icon(painterResource(R.drawable.ic_info), contentDescription = null, modifier = Modifier.size(20.dp))
+    Text(
+      stringResource(R.string.mission_offer_qr),
+      style = MaterialTheme.typography.bodySmall,
+      modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+    )
+    TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_set_up)) }
   }
 }
 
@@ -408,7 +429,8 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
     Text(
       stringResource(
         when (readiness) {
-          Readiness.NO_SENSOR -> R.string.mission_no_sensor
+          Readiness.NO_SENSOR -> if (type == MissionType.QR) R.string.mission_no_camera else R.string.mission_no_sensor
+          Readiness.NOT_SET_UP -> R.string.mission_not_set_up
           else -> R.string.mission_needs_permission
         },
         missionChoiceName(MissionChoice.Only(type)),
@@ -416,8 +438,12 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
       style = MaterialTheme.typography.bodySmall,
       modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
     )
-    if (readiness == Readiness.NO_PERMISSION) {
-      TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_allow)) }
+    // The QR sticker's setup asks for the camera itself, so both of its problems lead there.
+    when {
+      type == MissionType.QR && (readiness == Readiness.NO_PERMISSION || readiness == Readiness.NOT_SET_UP) ->
+        TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_set_up)) }
+      readiness == Readiness.NO_PERMISSION ->
+        TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_allow)) }
     }
   }
 }
@@ -431,6 +457,7 @@ private fun missionChoiceName(choice: MissionChoice): String =
       is MissionChoice.Only ->
         when (choice.type) {
           MissionType.WALK -> R.string.mission_choice_walk
+          MissionType.QR -> R.string.mission_choice_qr
         }
     }
   )
@@ -552,6 +579,7 @@ private fun AlarmTimePickerDialog(initial: LocalTime, onConfirm: (LocalTime) -> 
 internal const val TIME_BUTTON_TAG = "editor_time"
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
+internal const val MISSION_OFFER_TAG = "editor_mission_offer"
 
 private object PreviewActions : AlarmEditorActions {
   override fun setTime(value: LocalTime) = Unit

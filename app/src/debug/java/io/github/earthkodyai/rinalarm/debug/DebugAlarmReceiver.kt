@@ -12,6 +12,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.data.db.AlarmDao
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
  * Debug builds only. Alarms are minute-precise, so "add" picks the first whole minute at least `sec` seconds away.
  *
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd add --ei sec 60
+ *   (optional `--es mission qr|walk|none|rin_picks`, default rin_picks)
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd clear
  */
 class DebugAlarmReceiver : BroadcastReceiver() {
@@ -43,8 +45,9 @@ class DebugAlarmReceiver : BroadcastReceiver() {
           "add" -> {
             val sec = intent.getIntExtra("sec", 60).toLong()
             val at = LocalDateTime.now().plusSeconds(sec).truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
-            val id = deps.engine().save(Alarm(time = at.toLocalTime(), label = LABEL))
-            Log.i(TAG, "added id=$id at=${at.toLocalTime()}")
+            val mission = intent.getStringExtra("mission")?.let(MissionChoice::fromStored) ?: MissionChoice.RinPicks
+            val id = deps.engine().save(Alarm(time = at.toLocalTime(), label = LABEL, mission = mission))
+            Log.i(TAG, "added id=$id at=${at.toLocalTime()} mission=${mission.stored}")
           }
           "clear" ->
             deps.alarmDao().getAll().filter { it.label == LABEL }.forEach {

@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- QR mission (task 3.2, approved in D15): asked in sticker setup, never at install. Frames stay in memory.
+         Not required: a phone without a camera still gets the other missions. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
 
     <!-- Backup stays off: later phases store data (taught mission objects) that must never leave the phone.
          allowBackup covers Android 10-11; dataExtractionRules covers cloud backup and device transfer on 12+. -->
@@ -52,6 +58,17 @@
             android:turnScreenOn="true"
             tools:ignore="DiscouragedApi,LockedOrientationActivity"
             xmlns:tools="http://schemas.android.com/tools" />
+
+        <!-- Shares the generated QR sticker image so it can be printed (task 3.2). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <service
             android:name=".alarm.ring.RingService"

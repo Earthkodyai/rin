@@ -1,11 +1,13 @@
 package io.github.earthkodyai.rinalarm.mission
 
 /**
- * The out-of-bed tasks that stop an alarm (plan 05c). Task 3.1 has walking; QR (3.2), speaking (3.3) and the photo of
- * your own object (3.5) join as they are built. Stored by [stored], so entries may be added but never renamed.
+ * The out-of-bed tasks that stop an alarm (plan 05c). Task 3.1 added walking and 3.2 the QR sticker; speaking (3.3)
+ * and the photo of your own object (3.5) join as they are built. Stored by [stored], so entries may be added but never
+ * renamed. Rin picks rotates through them in this order.
  */
 enum class MissionType(val stored: String) {
-  WALK("walk");
+  WALK("walk"),
+  QR("qr");
 
   companion object {
     fun fromStored(value: String): MissionType? = entries.firstOrNull { it.stored == value }
@@ -50,4 +52,8 @@ enum class Readiness(val reason: String) {
   NO_PERMISSION("no_permission"),
   /** The phone lacks the sensor (e.g. no step counter). */
   NO_SENSOR("no_sensor"),
+  /** It needs a one-time setup first (the QR sticker: registered and checked from bed). */
+  NOT_SET_UP("not_set_up"),
+  /** The phone has not been unlocked since it booted, and the mission needs credential-protected parts. */
+  BEFORE_UNLOCK("before_unlock"),
 }

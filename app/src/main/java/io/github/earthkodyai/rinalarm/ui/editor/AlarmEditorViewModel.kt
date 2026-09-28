@@ -206,6 +206,15 @@ sealed interface AlarmEditorUiState {
           }
         return wanted.associateWith { missionReadiness[it] ?: Readiness.READY }.filterValues { it != Readiness.READY }
       }
+
+    /**
+     * Missions Rin could also pick after a one-time setup (the QR sticker), offered under Rin picks when it already has
+     * a ready mission, so the QR sticker is found without choosing it by hand.
+     */
+    val missionOffers: List<MissionType>
+      get() =
+        if (draft.mission != MissionChoice.RinPicks || missionProblems.isNotEmpty()) emptyList()
+        else MissionType.entries.filter { missionReadiness[it] == Readiness.NOT_SET_UP }
   }
 
   data class Saved(val ringsIn: Duration?) : AlarmEditorUiState

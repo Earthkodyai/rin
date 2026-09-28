@@ -18,11 +18,31 @@ class MissionPlannerTest {
   @Test
   fun rinPicks_withNothingReady_isAPlainDismiss_withTheReasons() {
     assertEquals(
-      MissionPlan.Unavailable("walk=no_permission"),
-      MissionPlanner.plan(MissionChoice.RinPicks, walkDenied, day),
+      MissionPlan.Unavailable("walk=no_permission qr=not_set_up"),
+      MissionPlanner.plan(MissionChoice.RinPicks, walkDenied + (MissionType.QR to Readiness.NOT_SET_UP), day),
     )
     // A readiness check that knows nothing about a type counts it as not ready.
-    assertEquals(MissionPlan.Unavailable("walk=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, emptyMap(), day))
+    assertEquals(
+      MissionPlan.Unavailable("walk=no_sensor qr=no_sensor"),
+      MissionPlanner.plan(MissionChoice.RinPicks, emptyMap(), day),
+    )
+  }
+
+  @Test
+  fun rinPicks_alternatesWalkAndQr_onceBothAreReady() {
+    val both = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.READY)
+    val picks = (0L..3L).map { (MissionPlanner.plan(MissionChoice.RinPicks, both, day.plusDays(it)) as MissionPlan.Run).type }
+    assertEquals(setOf(MissionType.WALK, MissionType.QR), picks.toSet())
+    assertTrue(picks.zipWithNext().all { (a, b) -> a != b })
+  }
+
+  @Test
+  fun qrBeforeTheFirstUnlock_isSwappedForWalk() {
+    val locked = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.BEFORE_UNLOCK)
+    assertEquals(
+      MissionPlan.Run(MissionType.WALK, switchedFrom = MissionType.QR),
+      MissionPlanner.plan(MissionChoice.Only(MissionType.QR), locked, day),
+    )
   }
 
   @Test
@@ -34,7 +54,7 @@ class MissionPlannerTest {
   fun only_runsItsMission_orExplainsWhyNot() {
     val walk = MissionChoice.Only(MissionType.WALK)
     assertEquals(MissionPlan.Run(MissionType.WALK), MissionPlanner.plan(walk, walkReady, day))
-    assertEquals(MissionPlan.Unavailable("walk=no_permission"), MissionPlanner.plan(walk, walkDenied, day))
+    assertEquals(MissionPlan.Unavailable("walk=no_permission qr=no_sensor"), MissionPlanner.plan(walk, walkDenied, day))
   }
 
   @Test

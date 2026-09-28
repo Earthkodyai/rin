@@ -337,6 +337,14 @@ dependencies {
   implementation(libs.androidx.webkit)
   implementation(libs.kotlinx.serialization.json)
 
+  // QR mission (task 3.2): CameraX preview + analysis, ML Kit's bundled scanner (in the APK, so it works offline
+  // from the first launch; the Play Services variant downloads its model later), and qrcodegen to draw the sticker.
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.compose)
+  implementation(libs.mlkit.barcode.scanning)
+  implementation(libs.qrcodegen)
+
   // Navigation
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)

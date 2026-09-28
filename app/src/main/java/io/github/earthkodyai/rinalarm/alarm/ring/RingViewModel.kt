@@ -11,6 +11,10 @@ import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionState
+import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
+import io.github.earthkodyai.rinalarm.mission.ScanMission
+import io.github.earthkodyai.rinalarm.mission.ScanVerdict
+import io.github.earthkodyai.rinalarm.mission.SeenCode
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -53,9 +57,11 @@ constructor(
   /** Gestures for Rin when the phase changes (RingMoods.cue). */
   val cues: SharedFlow<Gesture> = cueFlow.asSharedFlow()
 
-  private var mission: Mission? = null
+  // Volatile: onScan reads it from the camera's analysis thread.
+  @Volatile private var mission: Mission? = null
   private var missionJob: Job? = null
   private var stallJob: Job? = null
+  private var cameraJob: Job? = null
   private var ringKey: Any? = null
   private var missionStartedAt = 0L
 
@@ -98,7 +104,8 @@ constructor(
   private fun onProgress(ring: ActiveRing, progress: MissionProgress) {
     val before = state.value.progress
     state.update { it.copy(progress = progress) }
-    if (before != null && progress.done > before.done) {
+    if (before != null && (progress.done > before.done || progress.activity > before.activity)) {
+      if (state.value.cameraOpen) scheduleCameraClose()
       ringState.reportProgress(clock.now())
       refreshPhase()
       // No event marks the idle timeout, so a timer does: STALLED arrives when progress simply stops. Each step
@@ -114,11 +121,12 @@ constructor(
       MissionState.RUNNING -> Unit
       MissionState.PASSED -> {
         if (state.value.passed) return
-        state.update { it.copy(passed = true) }
+        state.update { it.copy(passed = true, cameraOpen = false, scanHint = null) }
         log(
           RingEventType.MISSION_PASSED,
           ring,
-          "type=${mission?.type?.stored} done=${progress.done}/${progress.target} tookMs=${clock.now() - missionStartedAt}",
+          "type=${mission?.type?.stored} done=${progress.done}/${progress.target} tookMs=${clock.now() - missionStartedAt}" +
+            summary(),
         )
         stopMission()
         refreshPhase()
@@ -126,10 +134,64 @@ constructor(
       }
       MissionState.FAILED -> {
         state.update { it.copy(missionFailed = true) }
-        log(RingEventType.MISSION_FAILED, ring, "type=${mission?.type?.stored} done=${progress.done}/${progress.target}")
+        log(
+          RingEventType.MISSION_FAILED,
+          ring,
+          "type=${mission?.type?.stored} done=${progress.done}/${progress.target}" + summary(),
+        )
         stopMission()
       }
     }
+  }
+
+  private fun summary(): String = mission?.summary()?.takeIf { it.isNotEmpty() }?.let { " $it" } ?: ""
+
+  /** "Scan sticker" (user decision: the camera opens on a tap, never by itself while the user is still in bed). */
+  fun openCamera() {
+    val scan = mission as? ScanMission ?: return
+    if (state.value.cameraOpen || state.value.passed) return
+    scan.cameraOpened()
+    state.update { it.copy(cameraOpen = true, scanHint = null) }
+    scheduleCameraClose()
+  }
+
+  fun closeCamera() {
+    cameraJob?.cancel()
+    cameraJob = null
+    state.update { it.copy(cameraOpen = false, scanHint = null) }
+  }
+
+  /** [QrScanPolicy.CAMERA_IDLE] after opening, or after the last sighting or step, the camera closes by itself. */
+  private fun scheduleCameraClose() {
+    cameraJob?.cancel()
+    cameraJob =
+      viewModelScope.launch {
+        delay(QrScanPolicy.CAMERA_IDLE.toMillis())
+        closeCamera()
+      }
+  }
+
+  /** From the camera's analysis thread: one frame's codes. */
+  fun onScan(codes: List<SeenCode>) {
+    val scan = mission as? ScanMission ?: return
+    val verdict = scan.onCodes(codes)
+    // The hint keeps the last thing seen; an empty frame between two sightings must not make it flicker.
+    if (verdict == ScanVerdict.TOO_FAR || verdict == ScanVerdict.OTHER) {
+      state.update { if (it.cameraOpen) it.copy(scanHint = verdict) else it }
+    }
+  }
+
+  fun onTorch(on: Boolean, auto: Boolean) {
+    (mission as? ScanMission)?.torchChanged(on, auto)
+  }
+
+  /** The camera could not start: the ring falls back to a plain Dismiss, as for any broken mission. */
+  fun onCameraError(error: Throwable) {
+    val ring = state.value.ring ?: return
+    if (state.value.passed || state.value.missionFailed) return
+    state.update { it.copy(missionFailed = true, cameraOpen = false) }
+    log(RingEventType.MISSION_FAILED, ring, "type=${mission?.type?.stored} reason=camera_${error.javaClass.simpleName}" + summary())
+    stopMission()
   }
 
   private fun onRingEnded() {
@@ -166,6 +228,8 @@ constructor(
     missionJob = null
     stallJob?.cancel()
     stallJob = null
+    cameraJob?.cancel()
+    cameraJob = null
     mission?.stop()
     mission = null
   }
@@ -189,6 +253,8 @@ constructor(
  * @property progress the mission's, or null when there is no mission (plain Dismiss).
  * @property missionFailed the mission broke; a plain Dismiss takes over.
  * @property finished close the screen.
+ * @property cameraOpen the QR mission's camera is on (it opens on a tap).
+ * @property scanHint what the camera last saw that was not a pass: the sticker from too far, or another code.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -197,6 +263,8 @@ data class RingUiState(
   val passed: Boolean = false,
   val missionFailed: Boolean = false,
   val finished: Boolean = false,
+  val cameraOpen: Boolean = false,
+  val scanHint: ScanVerdict? = null,
 ) {
   /** A plain Dismiss button instead of the mission and the emergency hold. */
   val plainDismiss: Boolean

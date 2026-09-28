@@ -16,6 +16,9 @@ interface Mission {
 
   /** Releases sensors or the camera. Safe to call more than once. */
   fun stop()
+
+  /** Extra key=value pairs for the MISSION_PASSED / MISSION_FAILED log row (the numbers a later tuning needs). */
+  fun summary(): String = ""
 }
 
 enum class MissionState {
@@ -24,7 +27,16 @@ enum class MissionState {
   FAILED,
 }
 
-data class MissionProgress(val done: Int, val target: Int, val state: MissionState = MissionState.RUNNING) {
+/**
+ * @property activity counts signs that the user is working on it without moving [done]: the steps towards the QR
+ *   sticker, a sighting of it from too far. Like a rise in [done], a rise here quiets the tone (RingPolicy.missionQuiet).
+ */
+data class MissionProgress(
+  val done: Int,
+  val target: Int,
+  val state: MissionState = MissionState.RUNNING,
+  val activity: Int = 0,
+) {
   val fraction: Float
     get() = if (target <= 0) 1f else (done.toFloat() / target).coerceIn(0f, 1f)
 }

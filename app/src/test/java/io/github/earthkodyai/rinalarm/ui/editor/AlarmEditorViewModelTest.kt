@@ -68,6 +68,24 @@ class AlarmEditorViewModelTest {
     assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
   }
 
+  @Test
+  fun rinPicks_offersTheQrSetup_onlyWhileItHasAnotherReadyMission() = runTest {
+    missions = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.NOT_SET_UP)
+    val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
+    assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
+    assertEquals(listOf(MissionType.QR), editor.editing().missionOffers)
+
+    // Chosen by hand, it is a problem to fix rather than an offer.
+    editor.setMission(MissionChoice.Only(MissionType.QR))
+    assertEquals(mapOf(MissionType.QR to Readiness.NOT_SET_UP), editor.editing().missionProblems)
+    assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
+
+    editor.setMission(MissionChoice.RinPicks)
+    missions = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.READY)
+    editor.refreshMissions()
+    assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
+  }
+
   private suspend fun AlarmEditorViewModel.editing() =
     uiState.first { it is AlarmEditorUiState.Editing } as AlarmEditorUiState.Editing
 

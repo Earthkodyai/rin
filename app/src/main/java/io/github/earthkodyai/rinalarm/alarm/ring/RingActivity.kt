@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
@@ -26,6 +27,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -43,6 +46,8 @@ import io.github.earthkodyai.rinalarm.character.Framing
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.QrScanner
+import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -79,8 +84,12 @@ class RingActivity : ComponentActivity() {
           onSnooze = viewModel::snooze,
           onDismiss = viewModel::dismiss,
           onEmergencyStop = viewModel::emergencyStop,
+          onOpenCamera = viewModel::openCamera,
           character = { modifier ->
             CharacterView(RingMoods.mood(state.phase), modifier, framing = Framing.FULL, cues = viewModel.cues)
+          },
+          scanner = { modifier ->
+            QrScanner(viewModel::onScan, modifier, onTorch = viewModel::onTorch, onError = viewModel::onCameraError)
           },
         )
       }
@@ -95,8 +104,10 @@ internal fun RingScreen(
   onDismiss: () -> Unit,
   onEmergencyStop: () -> Unit,
   modifier: Modifier = Modifier,
-  // A slot, so previews and UI tests run without a WebView.
+  onOpenCamera: () -> Unit = {},
+  // Slots, so previews and UI tests run without a WebView or a camera.
   character: @Composable (Modifier) -> Unit = {},
+  scanner: @Composable (Modifier) -> Unit = {},
 ) {
   val ring = state.ring ?: return
   val request = ring.request
@@ -121,7 +132,8 @@ internal fun RingScreen(
       when {
         state.passed -> Passed()
         state.plainDismiss -> Unit
-        else -> MissionCard(ring.mission?.type, state.progress)
+        ring.mission?.type == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
+        else -> WalkCard(state.progress)
       }
       Spacer(Modifier.height(16.dp))
       // Big, far-apart targets: the user is half asleep.
@@ -163,15 +175,12 @@ private fun Controls(
 }
 
 @Composable
-private fun MissionCard(type: MissionType?, progress: MissionProgress?) {
+private fun WalkCard(progress: MissionProgress?) {
   Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
       val target = progress?.target ?: RingPolicy.WALK_STEPS
       Text(
-        when (type) {
-          MissionType.WALK,
-          null -> pluralStringResource(R.plurals.mission_walk_title, target, target)
-        },
+        pluralStringResource(R.plurals.mission_walk_title, target, target),
         style = MaterialTheme.typography.titleLarge,
         textAlign = TextAlign.Center,
       )
@@ -186,6 +195,45 @@ private fun MissionCard(type: MissionType?, progress: MissionProgress?) {
     }
   }
 }
+
+/**
+ * The QR mission (task 3.2): a big "Scan sticker" button until tapped, then the camera with a hint about what it sees.
+ * It closes itself after QrScanPolicy.CAMERA_IDLE without a sighting or a step; the button opens it again.
+ */
+@Composable
+private fun QrCard(state: RingUiState, onOpenCamera: () -> Unit, scanner: @Composable (Modifier) -> Unit) {
+  Card(Modifier.fillMaxWidth()) {
+    Column(
+      Modifier.padding(16.dp).fillMaxWidth(),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Text(stringResource(R.string.mission_qr_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+      if (state.cameraOpen) {
+        scanner(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(12.dp)).testTag(QR_SCANNER_TAG))
+        Text(
+          stringResource(
+            when (state.scanHint) {
+              ScanVerdict.TOO_FAR -> R.string.mission_qr_closer
+              ScanVerdict.OTHER -> R.string.mission_qr_other
+              else -> R.string.mission_qr_aim
+            }
+          ),
+          style = MaterialTheme.typography.titleMedium,
+          textAlign = TextAlign.Center,
+          modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+      } else {
+        Text(stringResource(R.string.mission_qr_walk), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        Button(onClick = onOpenCamera, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+          Text(stringResource(R.string.mission_qr_open), style = MaterialTheme.typography.titleMedium)
+        }
+      }
+    }
+  }
+}
+
+internal const val QR_SCANNER_TAG = "ring_qr_scanner"
 
 @Composable
 private fun Passed() {
@@ -207,6 +255,19 @@ private val PREVIEW_RING =
 @Composable
 private fun RingScreenMissionPreview() {
   RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(12, 30), RingPhase.WORKING), {}, {}, {}) }
+}
+
+@Preview
+@Composable
+private fun RingScreenQrPreview() {
+  RinAlarmTheme {
+    RingScreen(
+      RingUiState(PREVIEW_RING.copy(mission = MissionPlan.Run(MissionType.QR)), MissionProgress(0, 1), cameraOpen = true, scanHint = ScanVerdict.TOO_FAR),
+      {},
+      {},
+      {},
+    )
+  }
 }
 
 @Preview
