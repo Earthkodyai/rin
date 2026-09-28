@@ -3,6 +3,8 @@ package io.github.earthkodyai.rinalarm.data.db
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
 import java.io.File
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -21,8 +23,19 @@ class AlarmEntityTest {
         enabled = false,
         ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1),
         isTest = true,
+        mission = MissionChoice.Only(MissionType.WALK),
       )
     assertEquals(alarm, alarm.toEntity().toAlarm())
+  }
+
+  @Test
+  fun missionChoices_roundTrip_andUnknownValuesReadAsRinPicks() {
+    for (choice in listOf(MissionChoice.RinPicks, MissionChoice.None, MissionChoice.Only(MissionType.WALK))) {
+      assertEquals(choice, Alarm(time = LocalTime.NOON, mission = choice).toEntity().toAlarm().mission)
+    }
+    // A mission from a newer version, after a downgrade: the alarm still rings, and Rin picks.
+    val future = Alarm(time = LocalTime.NOON).toEntity().copy(mission = "hologram")
+    assertEquals(MissionChoice.RinPicks, future.toAlarm().mission)
   }
 
   @Test
@@ -38,7 +51,7 @@ class AlarmEntityTest {
     // Rows migrated from schema 1 get the SQL defaults; they must be the same alarm a new one would be.
     val defaults = RingOptions()
     // Read what Room actually uses: the exported schema (unit tests run with the module as working directory).
-    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/3.json").readText()
+    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/4.json").readText()
     val sql =
       Regex(""""fieldPath": "(\w+)",[^}]*?"defaultValue": "([^"]*)"""")
         .findAll(schema)
@@ -48,5 +61,7 @@ class AlarmEntityTest {
     assertEquals(defaults.snoozeMinutes.toString(), sql["snoozeMinutes"])
     assertEquals(defaults.maxSnoozes.toString(), sql["maxSnoozes"])
     assertEquals("0", sql["isTest"])
+    assertEquals("'${MissionChoice.DEFAULT_STORED}'", sql["mission"])
+    assertEquals(MissionChoice.RinPicks, MissionChoice.fromStored(MissionChoice.DEFAULT_STORED))
   }
 }

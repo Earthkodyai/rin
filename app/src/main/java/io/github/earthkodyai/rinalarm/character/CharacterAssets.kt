@@ -2,6 +2,14 @@ package io.github.earthkodyai.rinalarm.character
 
 import android.content.Context
 
+/** How much of Rin the page shows; the page frames her from `frame=` (web/character/src/main.ts frame()). */
+enum class Framing(val wire: String, internal val stillDir: String) {
+  /** Head and shoulders: the strip above the alarm list. */
+  STRIP("strip", ""),
+  /** Head to toe: the ring screen (task 3.1), where clap and pout show. */
+  FULL("full", "full/"),
+}
+
 /** Where the character page and its model live in the APK (web/character is built into assets/character/). */
 object CharacterAssets {
   const val ORIGIN = "https://appassets.androidplatform.net"
@@ -23,12 +31,17 @@ object CharacterAssets {
 
   /**
    * The still image for each mood this build carries, as asset paths (task 2.5: rendered from the build's model by
-   * Gradle, tools/character/render-stills.mjs). Empty in builds without a model, which show the silhouette.
+   * Gradle, tools/character/render-stills.mjs), in [framing]. Empty in builds without a model, which show the
+   * silhouette.
    */
-  fun stills(context: Context): Map<Mood, String> = pickStills(list(context, STILL_DIR))
+  fun stills(context: Context, framing: Framing = Framing.STRIP): Map<Mood, String> =
+    pickStills(list(context, "$STILL_DIR/${framing.stillDir}".trimEnd('/')), framing)
 
-  fun pickStills(available: Collection<String>): Map<Mood, String> =
-    Mood.entries.mapNotNull { mood -> "${mood.wire}.webp".takeIf { it in available }?.let { mood to "$STILL_DIR/$it" } }
+  fun pickStills(available: Collection<String>, framing: Framing = Framing.STRIP): Map<Mood, String> =
+    Mood.entries
+      .mapNotNull { mood ->
+        "${mood.wire}.webp".takeIf { it in available }?.let { mood to "$STILL_DIR/${framing.stillDir}$it" }
+      }
       .toMap()
 
   private fun list(context: Context, dir: String): List<String> =

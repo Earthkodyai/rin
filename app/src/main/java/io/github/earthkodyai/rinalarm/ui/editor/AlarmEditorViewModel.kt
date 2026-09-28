@@ -10,6 +10,10 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionReadiness
+import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.DayOfWeek
 import java.time.Duration
@@ -37,11 +41,13 @@ constructor(
   private val repository: AlarmRepository,
   private val writer: AlarmWriter,
   private val time: TimeSource,
+  private val missionReadiness: MissionReadiness,
 ) : ViewModel() {
   private val session = MutableStateFlow<Session>(Session.Loading)
+  private val readiness = MutableStateFlow(readMissions())
 
   val uiState: StateFlow<AlarmEditorUiState> =
-    combine(session, time.minuteTicks) { session, _ -> session.toUiState() }
+    combine(session, readiness, time.minuteTicks) { session, readiness, _ -> session.toUiState(readiness) }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmEditorUiState.Loading)
 
   init {
@@ -68,6 +74,15 @@ constructor(
   fun setSnoozeMinutes(value: Int) = editRing { it.copy(snoozeMinutes = value) }
 
   fun setMaxSnoozes(value: Int) = editRing { it.copy(maxSnoozes = value) }
+
+  fun setMission(value: MissionChoice) = edit { it.copy(mission = value) }
+
+  /** Re-reads which missions can run: on resume, and after a permission answer (the user may change it in Settings). */
+  fun refreshMissions() {
+    readiness.value = readMissions()
+  }
+
+  private fun readMissions(): Map<MissionType, Readiness> = runCatching { missionReadiness.check() }.getOrDefault(emptyMap())
 
   fun save() {
     val open = session.value as? Session.Open ?: return
@@ -112,7 +127,7 @@ constructor(
   private fun ringsIn(alarm: Alarm): Duration? =
     alarm.copy(enabled = true).nextTrigger(time.now(), time.zone())?.let { Duration.between(time.now(), it) }
 
-  private fun Session.toUiState(): AlarmEditorUiState =
+  private fun Session.toUiState(readiness: Map<MissionType, Readiness>): AlarmEditorUiState =
     when (this) {
       Session.Loading -> AlarmEditorUiState.Loading
       Session.NotFound -> AlarmEditorUiState.NotFound
@@ -124,6 +139,7 @@ constructor(
           ringsIn = ringsIn(draft),
           busy = busy,
           failed = failed,
+          missionReadiness = readiness,
         )
       is Session.Saved -> AlarmEditorUiState.Saved(ringsIn)
       Session.Deleted -> AlarmEditorUiState.Deleted
@@ -166,6 +182,7 @@ sealed interface AlarmEditorUiState {
    * @property ringsIn how long until the draft would ring once saved (saving switches it on).
    * @property busy a save or delete is running; edits are ignored until it finishes.
    * @property failed the last save or delete threw (e.g. disk full); the draft is kept so the user can retry.
+   * @property missionReadiness which missions can run on this phone now; the editor explains the ones that can't.
    */
   data class Editing(
     val draft: Alarm,
@@ -174,7 +191,22 @@ sealed interface AlarmEditorUiState {
     val ringsIn: Duration?,
     val busy: Boolean,
     val failed: Boolean = false,
-  ) : AlarmEditorUiState
+    val missionReadiness: Map<MissionType, Readiness> = emptyMap(),
+  ) : AlarmEditorUiState {
+    /** The missions this alarm could run that are not ready, and why (shown under the mission choice). */
+    val missionProblems: Map<MissionType, Readiness>
+      get() {
+        val wanted =
+          when (val choice = draft.mission) {
+            MissionChoice.None -> emptyList()
+            // Rin only needs one ready mission to pick from.
+            MissionChoice.RinPicks ->
+              if (MissionType.entries.any { missionReadiness[it] == Readiness.READY }) emptyList() else MissionType.entries
+            is MissionChoice.Only -> listOf(choice.type)
+          }
+        return wanted.associateWith { missionReadiness[it] ?: Readiness.READY }.filterValues { it != Readiness.READY }
+      }
+  }
 
   data class Saved(val ringsIn: Duration?) : AlarmEditorUiState
 
@@ -187,6 +219,10 @@ object RingChoices {
   val SNOOZE_MINUTES = listOf(1, 5, 10, 15)
   val MAX_SNOOZES = listOf(0, 1, 2, 3, 5)
   const val LABEL_MAX = 40
+
+  /** The mission choices, in the order the editor shows them (D15: Rin picks first, the default). */
+  val MISSIONS: List<MissionChoice> =
+    listOf(MissionChoice.RinPicks) + MissionType.entries.map(MissionChoice::Only) + MissionChoice.None
 
   /**
    * [standard] plus [current] when the alarm already holds a value outside it (set by the debug hook or a future

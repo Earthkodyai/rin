@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.alarm.ring
 
 import android.content.Intent
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.Instant
 import java.time.LocalTime
 
@@ -11,6 +12,7 @@ import java.time.LocalTime
  * @property scheduledAt the stored trigger; null when the ring fired without one (see AlarmEngine.onFire).
  * @property snoozeCount snoozes already taken; passed back to AlarmEngine.snooze.
  * @property late true when the ring started more than a minute after [scheduledAt] (phone was off or asleep).
+ * @property mission the alarm's choice; RingService turns it into a MissionPlan when ringing starts.
  */
 data class RingRequest(
   val alarmId: Long,
@@ -21,6 +23,7 @@ data class RingRequest(
   val snoozesLeft: Int,
   val late: Boolean,
   val options: RingOptions,
+  val mission: MissionChoice = MissionChoice.RinPicks,
 ) {
   fun putInto(intent: Intent): Intent =
     intent
@@ -35,6 +38,7 @@ data class RingRequest(
       .putExtra(VIBRATE, options.vibrate)
       .putExtra(SNOOZE_MINUTES, options.snoozeMinutes)
       .putExtra(MAX_SNOOZES, options.maxSnoozes)
+      .putExtra(MISSION, mission.stored)
 
   companion object {
     private const val ALARM_ID = "ring.alarmId"
@@ -48,6 +52,7 @@ data class RingRequest(
     private const val VIBRATE = "ring.vibrate"
     private const val SNOOZE_MINUTES = "ring.snoozeMinutes"
     private const val MAX_SNOOZES = "ring.maxSnoozes"
+    private const val MISSION = "ring.mission"
 
     /**
      * Never fails: a malformed intent still produces a request that rings with defaults, because the service must
@@ -74,6 +79,7 @@ data class RingRequest(
               )
             }
             .getOrDefault(defaults),
+        mission = MissionChoice.fromStored(intent.getStringExtra(MISSION) ?: MissionChoice.DEFAULT_STORED),
       )
     }
   }

@@ -24,6 +24,8 @@ data class DeviceStatus(
   val device: String,
   val androidRelease: String,
   val appVersion: String,
+  /** Missions that can run now (MissionType.stored), or null when not read (previews). */
+  val readyMissions: List<String>? = null,
 )
 
 fun interface DeviceStatusSource {
@@ -45,6 +47,8 @@ enum class CheckId {
   LOCK_SCREEN,
   /** HyperOS Autostart. No API can read it, so it is always shown as a tip. */
   AUTOSTART,
+  /** At least one mission can run (task 3.1); with none, alarms still ring and stop with a plain Dismiss. */
+  MISSIONS,
 }
 
 enum class Severity {
@@ -79,6 +83,10 @@ object SetupChecks {
         if (status.batteryUnrestricted && !status.powerSaveOn) Severity.OK else Severity.INFO,
       )
     )
+    // No ready mission: rings are unaffected, only the out-of-bed task is missing.
+    status.readyMissions?.let {
+      add(CheckResult(CheckId.MISSIONS, if (it.isEmpty()) Severity.WARNING else Severity.OK))
+    }
     // Autostart off blocks BOOT_COMPLETED on HyperOS, but LOCKED_BOOT_COMPLETED still re-arms (S1).
     if (status.xiaomiFamily) {
       add(CheckResult(CheckId.LOCK_SCREEN, Severity.INFO))

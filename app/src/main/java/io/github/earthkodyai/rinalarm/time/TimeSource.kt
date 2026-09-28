@@ -36,3 +36,12 @@ class SystemTimeSource @Inject constructor() : TimeSource {
     }
   }
 }
+
+/** Milliseconds since boot (SystemClock.elapsedRealtime), for durations that must ignore wall-clock changes. */
+fun interface ElapsedClock {
+  fun now(): Long
+}
+
+class SystemElapsedClock @Inject constructor() : ElapsedClock {
+  override fun now(): Long = android.os.SystemClock.elapsedRealtime()
+}

@@ -39,15 +39,19 @@
         </activity>
 
         <!-- Everything on the ring path is directBootAware: it must work before the first unlock after a reboot. -->
+        <!-- Portrait: a walking (or shaken) phone rotated the ring screen and reloaded Rin mid-mission (3.1 device run). -->
         <activity
             android:name=".alarm.ring.RingActivity"
             android:directBootAware="true"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleInstance"
+            android:screenOrientation="portrait"
             android:showWhenLocked="true"
             android:taskAffinity=""
-            android:turnScreenOn="true" />
+            android:turnScreenOn="true"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity"
+            xmlns:tools="http://schemas.android.com/tools" />
 
         <service
             android:name=".alarm.ring.RingService"

@@ -70,6 +70,7 @@ private fun checkTitle(id: CheckId): String =
       CheckId.BATTERY -> R.string.check_battery
       CheckId.LOCK_SCREEN -> R.string.check_lock_screen
       CheckId.AUTOSTART -> R.string.check_autostart
+      CheckId.MISSIONS -> R.string.check_missions
     }
   )
 
@@ -91,5 +92,11 @@ private fun checkText(check: CheckResult, status: DeviceStatus): String {
     CheckId.BATTERY -> stringResource(if (ok) R.string.check_battery_ok else R.string.check_battery_info)
     CheckId.LOCK_SCREEN -> stringResource(R.string.check_lock_screen_info)
     CheckId.AUTOSTART -> stringResource(R.string.check_autostart_info)
+    CheckId.MISSIONS ->
+      if (ok) {
+        stringResource(R.string.check_missions_ok, status.readyMissions.orEmpty().joinToString())
+      } else {
+        stringResource(R.string.check_missions_problem)
+      }
   }
 }

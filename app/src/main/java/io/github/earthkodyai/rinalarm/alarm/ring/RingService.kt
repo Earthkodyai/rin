@@ -23,6 +23,10 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.alarm.notify.AlarmNotifications
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.mission.MissionPlan
+import io.github.earthkodyai.rinalarm.mission.MissionPlanner
+import io.github.earthkodyai.rinalarm.mission.MissionReadiness
+import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +45,10 @@ import kotlinx.coroutines.launch
  * (1.5: `dumpsys audio` "Focus request DENIED ... procState:4" on every ring). So the tone starts without focus, the
  * request is retried every tick (it succeeds once the ring page is showing), and calls are also detected from the
  * audio mode, which needs no permission and works whether or not focus was ever granted.
+ *
+ * Missions (task 3.1): the ring's mission is planned here, before the notification is posted, so a ring with a
+ * mission offers no Dismiss action there. While the ring screen reports progress the tone drops to
+ * RingPolicy.MISSION_QUIET_GAIN and the vibration stops; after RingPolicy.MISSION_IDLE without progress both return.
  */
 @AndroidEntryPoint
 class RingService : Service() {
@@ -49,6 +57,8 @@ class RingService : Service() {
   @Inject lateinit var ringState: RingState
   @Inject lateinit var notifications: AlarmNotifications
   @Inject @AppScope lateinit var appScope: CoroutineScope
+  @Inject lateinit var missionReadiness: MissionReadiness
+  @Inject lateinit var time: TimeSource
 
   private val handler = Handler(Looper.getMainLooper())
   // One writer thread, so log rows keep the order they were recorded in.
@@ -66,6 +76,8 @@ class RingService : Service() {
     /** (user's volume, volume we raised it to), or null when we left it alone. */
     var raisedVolume: Pair<Int, Int>? = null
     var wakeLock: PowerManager.WakeLock? = null
+    /** Lowered for mission progress (RingPolicy.missionQuiet). */
+    var quiet = false
 
     fun elapsedMillis() = SystemClock.elapsedRealtime() - startedAt
   }
@@ -76,7 +88,7 @@ class RingService : Service() {
     when (intent?.action) {
       ACTION_RING -> startRinging(RingRequest.from(intent))
       ACTION_SNOOZE -> snooze()
-      ACTION_DISMISS -> stopRinging(RingEventType.DISMISSED, "source=${intent.getStringExtra(EXTRA_SOURCE)}")
+      ACTION_DISMISS -> dismiss(intent.getStringExtra(EXTRA_SOURCE).orEmpty())
       else -> if (session == null) stopSelf()
     }
     return START_NOT_STICKY
@@ -86,13 +98,15 @@ class RingService : Service() {
     val current = session
     if (current != null) {
       // Every startForegroundService call must be answered with startForeground, even when already ringing.
-      startForegroundWith(current.request)
+      startForegroundWith(ActiveRing(current.request, ringState.active.value?.mission))
       record(RingEventType.OVERLAP, request.alarmId, request.scheduledAt, "ringing=${current.request.alarmId}")
       return
     }
+    val plan = planMission(request)
     // State first: the full-screen activity may start as soon as the notification is posted, and reads it.
-    ringState.set(request)
-    startForegroundWith(request)
+    val ring = ActiveRing(request, plan as? MissionPlan.Run)
+    ringState.set(ring)
+    startForegroundWith(ring)
 
     val tone = runCatching { TonePlayer() }.getOrNull()
     val s = Session(request, tone, AlarmVibrator(this))
@@ -106,7 +120,7 @@ class RingService : Service() {
     s.focusRefused = focus == AudioManager.AUDIOFOCUS_REQUEST_FAILED
     s.pausedForFocus = focus == AudioManager.AUDIOFOCUS_REQUEST_DELAYED
     s.pausedForCall = inCall()
-    tone?.setGain(RingPolicy.rampGain(0, request.options.rampSeconds))
+    tone?.setGain(RingPolicy.toneGain(0, request.options.rampSeconds, quiet = false))
     updateTone(s)
     if (request.options.vibrate) runCatching { s.vibrator.start() }
     handler.post(rampTick)
@@ -126,6 +140,21 @@ class RingService : Service() {
       "tone=${tone != null} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}" +
         if (s.pausedForCall) " call=true" else "",
     )
+    if (plan is MissionPlan.Unavailable) record(RingEventType.MISSION_UNAVAILABLE, s, plan.reason)
+  }
+
+  /** Never throws: a failed readiness check means no mission (plain Dismiss), never a ring that cannot stop. */
+  private fun planMission(request: RingRequest): MissionPlan =
+    runCatching {
+        // atZone, not LocalDate.ofInstant: that one is API 34+, and minSdk is 29 (lint NewApi).
+        MissionPlanner.plan(request.mission, missionReadiness.check(), time.now().atZone(time.zone()).toLocalDate())
+      }
+      .getOrElse { MissionPlan.Unavailable("check_failed=${it.javaClass.simpleName}") }
+
+  private fun dismiss(source: String) {
+    val s = session ?: return stopSelf()
+    if (source == SOURCE_EMERGENCY) record(RingEventType.EMERGENCY_STOP, s, "afterMs=${s.elapsedMillis()}")
+    stopRinging(RingEventType.DISMISSED, "source=$source")
   }
 
   /** Retries refused focus and pauses the tone for calls. Runs until the ring stops. */
@@ -134,6 +163,7 @@ class RingService : Service() {
       override fun run() {
         val s = session ?: return
         if (s.focusRefused) retryFocus(s)
+        updateQuiet(s)
         val call = inCall()
         if (call != s.pausedForCall) {
           s.pausedForCall = call
@@ -143,6 +173,16 @@ class RingService : Service() {
         handler.postDelayed(this, WATCH_TICK_MS)
       }
     }
+
+  /** Follows the ring screen's mission progress: quiet while it comes in, full again once it stops. */
+  private fun updateQuiet(s: Session) {
+    val quiet = RingPolicy.missionQuiet(SystemClock.elapsedRealtime(), ringState.lastProgressAt)
+    if (quiet == s.quiet) return
+    s.quiet = quiet
+    s.tone?.setGain(RingPolicy.toneGain(s.elapsedMillis(), s.request.options.rampSeconds, quiet))
+    if (s.request.options.vibrate) runCatching { if (quiet) s.vibrator.stop() else s.vibrator.start() }
+    record(if (quiet) RingEventType.TONE_QUIET else RingEventType.TONE_FULL, s, "reason=${if (quiet) "mission" else "idle"}")
+  }
 
   private fun retryFocus(s: Session) {
     val request = s.focus ?: return
@@ -180,7 +220,7 @@ class RingService : Service() {
       override fun run() {
         val s = session ?: return
         val elapsed = s.elapsedMillis()
-        s.tone?.setGain(RingPolicy.rampGain(elapsed, s.request.options.rampSeconds))
+        s.tone?.setGain(RingPolicy.toneGain(elapsed, s.request.options.rampSeconds, s.quiet))
         if (elapsed < s.request.options.rampSeconds * 1000L) handler.postDelayed(this, RAMP_TICK_MS)
       }
     }
@@ -225,13 +265,13 @@ class RingService : Service() {
     super.onDestroy()
   }
 
-  private fun startForegroundWith(request: RingRequest) {
+  private fun startForegroundWith(ring: ActiveRing) {
     val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
     } else {
       0
     }
-    ServiceCompat.startForeground(this, AlarmNotifications.RINGING_ID, notifications.ringing(request), type)
+    ServiceCompat.startForeground(this, AlarmNotifications.RINGING_ID, notifications.ringing(ring), type)
   }
 
   /** User decision (1.2): an alarm stream below 40% is raised for the ring and put back afterwards. */
@@ -302,6 +342,10 @@ class RingService : Service() {
     private const val ACTION_SNOOZE = "io.github.earthkodyai.rinalarm.action.SNOOZE"
     private const val ACTION_DISMISS = "io.github.earthkodyai.rinalarm.action.DISMISS"
     private const val EXTRA_SOURCE = "source"
+    /** Dismiss sources that RingActivity sends: the mission passed, the emergency hold, or the plain button. */
+    const val SOURCE_MISSION = "mission"
+    const val SOURCE_EMERGENCY = "emergency"
+    const val SOURCE_SCREEN = "screen"
     private const val RAMP_TICK_MS = 200L
     private const val WATCH_TICK_MS = 500L
     private const val WAKE_LOCK_MARGIN_MS = 60_000L

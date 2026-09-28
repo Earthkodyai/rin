@@ -4,6 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -47,6 +48,26 @@ class MigrationTest {
       it.moveToFirst()
       assertEquals("Gym", it.getString(0))
       assertEquals(0, it.getInt(1))
+    }
+  }
+
+  @Test
+  fun v3to4_givesExistingAlarmsRinPicks_andKeepsTheTestAlarm() {
+    helper.createDatabase(DB, 3).use {
+      it.execSQL("INSERT INTO alarms (id, hour, minute, repeatDays, label, enabled) VALUES (1, 6, 30, 127, 'Work', 1)")
+      it.execSQL(
+        "INSERT INTO alarms (id, hour, minute, repeatDays, label, enabled, isTest) VALUES (2, 7, 0, 0, 'Test', 1, 1)"
+      )
+    }
+    val db = helper.runMigrationsAndValidate(DB, 4, true)
+
+    db.query("SELECT label, mission FROM alarms ORDER BY id").use {
+      it.moveToFirst()
+      assertEquals("Work", it.getString(0))
+      assertEquals(MissionChoice.DEFAULT_STORED, it.getString(1))
+      // A test alarm left over from before the update: rings with Rin picks once, then is deleted as usual.
+      it.moveToNext()
+      assertEquals(MissionChoice.DEFAULT_STORED, it.getString(1))
     }
   }
 

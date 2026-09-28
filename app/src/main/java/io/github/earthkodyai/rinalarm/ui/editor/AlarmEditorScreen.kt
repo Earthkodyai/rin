@@ -3,6 +3,9 @@ package io.github.earthkodyai.rinalarm.ui.editor
 import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,11 +61,18 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Readiness
+import io.github.earthkodyai.rinalarm.setup.CheckId
+import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
@@ -90,6 +100,11 @@ interface AlarmEditorActions {
 
   fun setMaxSnoozes(value: Int)
 
+  fun setMission(value: MissionChoice)
+
+  /** Asks for the permission [type] needs (or opens Settings once Android won't ask again). */
+  fun allowMission(type: MissionType)
+
   fun save()
 
   fun delete()
@@ -100,6 +115,25 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
   val viewModel =
     hiltViewModel<AlarmEditorViewModel, AlarmEditorViewModel.Factory>(creationCallback = { it.create(alarmId) })
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  // D15: a mission's permission is asked when the user picks it, never at install. Once Android stops showing the
+  // dialog (denied twice, or "don't ask again"), Allow opens the app's info page instead.
+  val activity = LocalActivity.current
+  var askedPermission by rememberSaveable { mutableStateOf(false) }
+  val permissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+      askedPermission = true
+      viewModel.refreshMissions()
+    }
+  val requestMissionPermission = { type: MissionType ->
+    val permission = AndroidMissionReadiness.permissionFor(type)
+    if (permission == null) {
+      viewModel.refreshMissions()
+    } else if (askedPermission && activity?.shouldShowRequestPermissionRationale(permission) == false) {
+      SettingsLinks.open(activity, CheckId.MISSIONS, xiaomiFamily = false)
+    } else {
+      permissionLauncher.launch(permission)
+    }
+  }
   val actions =
     object : AlarmEditorActions {
       override fun setTime(value: LocalTime) = viewModel.setTime(value)
@@ -116,11 +150,21 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
 
       override fun setMaxSnoozes(value: Int) = viewModel.setMaxSnoozes(value)
 
+      override fun setMission(value: MissionChoice) = viewModel.setMission(value)
+
+      override fun allowMission(type: MissionType) {
+        requestMissionPermission(type)
+      }
+
       override fun save() = viewModel.save()
 
       override fun delete() = viewModel.delete()
     }
 
+  LifecycleResumeEffect(viewModel) {
+    viewModel.refreshMissions()
+    onPauseOrDispose {}
+  }
   val context = LocalContext.current
   val savedText =
     (state as? AlarmEditorUiState.Saved)?.ringsIn?.let { stringResource(R.string.alarm_set_toast, durationText(it)) }
@@ -297,6 +341,10 @@ private fun EditorContent(
     )
 
     HorizontalDivider()
+    SectionTitle(stringResource(R.string.editor_mission))
+    MissionEditor(state, actions)
+
+    HorizontalDivider()
     SectionTitle(stringResource(R.string.editor_ringing))
     RingOptionsEditor(draft.ring, actions)
 
@@ -313,6 +361,79 @@ private fun EditorContent(
     }
   }
 }
+
+/** Rin picks / each mission / None, what the choice means, and what stops it from running on this phone. */
+@Composable
+private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEditorActions) {
+  val choice = state.draft.mission
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val options = RingChoices.MISSIONS
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+      options.forEachIndexed { index, option ->
+        SegmentedButton(
+          selected = option == choice,
+          onClick = { actions.setMission(option) },
+          shape = SegmentedButtonDefaults.itemShape(index, options.size),
+          icon = {},
+          label = { Text(missionChoiceName(option), maxLines = 1) },
+        )
+      }
+    }
+    Text(
+      stringResource(
+        when (choice) {
+          MissionChoice.RinPicks -> R.string.mission_hint_rin_picks
+          MissionChoice.None -> R.string.mission_hint_none
+          is MissionChoice.Only ->
+            when (choice.type) {
+              MissionType.WALK -> R.string.mission_hint_walk
+            }
+        }
+      ),
+      style = MaterialTheme.typography.bodySmall,
+    )
+    state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
+  }
+}
+
+@Composable
+private fun MissionProblem(type: MissionType, readiness: Readiness, actions: AlarmEditorActions) {
+  Row(Modifier.fillMaxWidth().testTag(MISSION_PROBLEM_TAG), verticalAlignment = Alignment.CenterVertically) {
+    Icon(
+      painterResource(R.drawable.ic_warning),
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.error,
+      modifier = Modifier.size(20.dp),
+    )
+    Text(
+      stringResource(
+        when (readiness) {
+          Readiness.NO_SENSOR -> R.string.mission_no_sensor
+          else -> R.string.mission_needs_permission
+        },
+        missionChoiceName(MissionChoice.Only(type)),
+      ),
+      style = MaterialTheme.typography.bodySmall,
+      modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+    )
+    if (readiness == Readiness.NO_PERMISSION) {
+      TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_allow)) }
+    }
+  }
+}
+
+@Composable
+private fun missionChoiceName(choice: MissionChoice): String =
+  stringResource(
+    when (choice) {
+      MissionChoice.RinPicks -> R.string.mission_choice_rin_picks
+      MissionChoice.None -> R.string.mission_choice_none
+      is MissionChoice.Only ->
+        when (choice.type) {
+          MissionType.WALK -> R.string.mission_choice_walk
+        }
+    }
+  )
 
 @Composable
 private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
@@ -430,6 +551,7 @@ private fun AlarmTimePickerDialog(initial: LocalTime, onConfirm: (LocalTime) -> 
 
 internal const val TIME_BUTTON_TAG = "editor_time"
 internal const val VIBRATE_TAG = "editor_vibrate"
+internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
 
 private object PreviewActions : AlarmEditorActions {
   override fun setTime(value: LocalTime) = Unit
@@ -445,6 +567,10 @@ private object PreviewActions : AlarmEditorActions {
   override fun setSnoozeMinutes(value: Int) = Unit
 
   override fun setMaxSnoozes(value: Int) = Unit
+
+  override fun setMission(value: MissionChoice) = Unit
+
+  override fun allowMission(type: MissionType) = Unit
 
   override fun save() = Unit
 

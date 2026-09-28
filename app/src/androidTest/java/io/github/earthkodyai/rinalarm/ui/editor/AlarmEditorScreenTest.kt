@@ -14,6 +14,9 @@ import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Readiness
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalTime
@@ -61,6 +64,14 @@ class AlarmEditorScreenTest {
         calls += "maxSnoozes $value"
       }
 
+      override fun setMission(value: MissionChoice) {
+        calls += "mission ${value.stored}"
+      }
+
+      override fun allowMission(type: MissionType) {
+        calls += "allow ${type.stored}"
+      }
+
       override fun save() {
         calls += "save"
       }
@@ -75,6 +86,25 @@ class AlarmEditorScreenTest {
   private fun show(draft: Alarm = alarm, isNew: Boolean = false, hasChanges: Boolean = false) {
     val state = AlarmEditorUiState.Editing(draft, isNew, hasChanges, ringsIn = Duration.ofMinutes(30), busy = false)
     composeTestRule.setContent { AlarmEditorScreen(state, actions, onClose = { closed++ }) }
+  }
+
+  @Test
+  fun mission_choiceAndAllow_callTheActions() {
+    val state =
+      AlarmEditorUiState.Editing(
+        alarm,
+        isNew = false,
+        hasChanges = false,
+        ringsIn = null,
+        busy = false,
+        missionReadiness = mapOf(MissionType.WALK to Readiness.NO_PERMISSION),
+      )
+    composeTestRule.setContent { AlarmEditorScreen(state, actions, onClose = {}) }
+
+    composeTestRule.onNodeWithText(string(R.string.mission_choice_none)).performScrollTo().performClick()
+    composeTestRule.onNodeWithText(string(R.string.mission_allow)).performScrollTo().performClick()
+
+    assertEquals(listOf("mission none", "allow walk"), calls)
   }
 
   @Test

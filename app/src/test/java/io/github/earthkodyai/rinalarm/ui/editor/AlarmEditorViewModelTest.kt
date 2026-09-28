@@ -3,6 +3,9 @@ package io.github.earthkodyai.rinalarm.ui.editor
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.testing.FakeAlarms
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
@@ -32,7 +35,38 @@ class AlarmEditorViewModelTest {
     Alarm(id = 7, time = LocalTime.of(6, 30), repeatDays = RepeatDays.WEEKDAYS, label = "Work", enabled = false)
   private val alarms = FakeAlarms(listOf(work))
 
-  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time)
+  private var missions = mapOf(MissionType.WALK to Readiness.NO_PERMISSION)
+
+  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time) { missions }
+
+  // --- mission (task 3.1) ---
+
+  @Test
+  fun newAlarm_letsRinPick_andSavesAChangedMission() = runTest {
+    val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
+    assertEquals(MissionChoice.RinPicks, editor.editing().draft.mission)
+
+    editor.setMission(MissionChoice.None)
+    assertTrue(editor.editing().hasChanges)
+    editor.save()
+    editor.finished()
+
+    assertEquals(MissionChoice.None, alarms.saves.last().mission)
+  }
+
+  @Test
+  fun missionProblems_explainWhyTheChoiceCannotRun_untilThePermissionArrives() = runTest {
+    val editor = editor(work.id)
+    assertEquals(mapOf(MissionType.WALK to Readiness.NO_PERMISSION), editor.editing().missionProblems)
+
+    editor.setMission(MissionChoice.None)
+    assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
+
+    editor.setMission(MissionChoice.Only(MissionType.WALK))
+    missions = mapOf(MissionType.WALK to Readiness.READY)
+    editor.refreshMissions()
+    assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
+  }
 
   private suspend fun AlarmEditorViewModel.editing() =
     uiState.first { it is AlarmEditorUiState.Editing } as AlarmEditorUiState.Editing

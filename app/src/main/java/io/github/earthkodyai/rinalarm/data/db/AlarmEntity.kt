@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.LocalTime
 
 @Entity(tableName = "alarms")
@@ -24,6 +25,8 @@ data class AlarmEntity(
   @ColumnInfo(defaultValue = "3") val maxSnoozes: Int = RingOptions.DEFAULT_MAX_SNOOZES,
   // Schema 3.
   @ColumnInfo(defaultValue = "0") val isTest: Boolean = false,
+  // Schema 4. MissionChoice.stored; the default must be MissionChoice.DEFAULT_STORED (AlarmEntityTest checks).
+  @ColumnInfo(defaultValue = "rin_picks") val mission: String = MissionChoice.DEFAULT_STORED,
 )
 
 fun AlarmEntity.toAlarm(): Alarm =
@@ -35,6 +38,7 @@ fun AlarmEntity.toAlarm(): Alarm =
     enabled = enabled,
     ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes),
     isTest = isTest,
+    mission = MissionChoice.fromStored(mission),
   )
 
 fun Alarm.toEntity(): AlarmEntity =
@@ -50,4 +54,5 @@ fun Alarm.toEntity(): AlarmEntity =
     snoozeMinutes = ring.snoozeMinutes,
     maxSnoozes = ring.maxSnoozes,
     isTest = isTest,
+    mission = mission.stored,
   )

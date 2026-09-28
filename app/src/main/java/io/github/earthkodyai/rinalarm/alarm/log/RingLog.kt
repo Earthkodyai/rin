@@ -45,6 +45,19 @@ enum class RingEventType {
   SNOOZE_DENIED,
   DISMISSED,
   AUTO_STOPPED,
+  /** The ring's mission began (task 3.1); detail = type, and what it was switched from when that was not ready. */
+  MISSION_STARTED,
+  /** Mission done: the ring stops (DISMISSED source=mission follows). detail = type, progress, time taken. */
+  MISSION_PASSED,
+  /** The mission broke mid-ring (sensor gone, camera taken); a plain Dismiss took over. */
+  MISSION_FAILED,
+  /** No mission could run (chosen None, permission denied, no sensor); plain Dismiss. detail = reasons. */
+  MISSION_UNAVAILABLE,
+  /** Stopped by holding the emergency button (Phase 5 turns this into a small Bond cost). */
+  EMERGENCY_STOP,
+  /** Tone lowered for mission progress, and back to full after the idle time; detail reason=mission|idle. */
+  TONE_QUIET,
+  TONE_FULL,
 }
 
 /** Append-only log of alarm events: the evidence for the 14-night reliability run and for Diagnostics. */

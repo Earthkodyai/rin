@@ -5,6 +5,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -25,26 +28,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.character.CharacterView
+import io.github.earthkodyai.rinalarm.character.Framing
+import io.github.earthkodyai.rinalarm.mission.MissionPlan
+import io.github.earthkodyai.rinalarm.mission.MissionProgress
+import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import javax.inject.Inject
 
 /**
- * Full-screen ring UI over the lock screen (showWhenLocked + turnScreenOn in the manifest). A plain placeholder: Rin
- * arrives in Phase 2 and missions in Phase 3. It only mirrors RingState and sends taps to RingService, so the ring
- * keeps going if this screen is closed or never shows (HyperOS full-screen permission off).
+ * Full-screen ring UI over the lock screen (showWhenLocked + turnScreenOn in the manifest): Rin head to toe, the
+ * ring's mission, Snooze, and a 3 s hold to stop in an emergency (task 3.1). It only mirrors RingState and sends
+ * commands to RingService, so the ring keeps going if this screen is closed or never shows (HyperOS full-screen
+ * permission off).
  */
 @AndroidEntryPoint
 class RingActivity : ComponentActivity() {
-  @Inject lateinit var ringState: RingState
+  private val viewModel: RingViewModel by viewModels()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -52,70 +64,153 @@ class RingActivity : ComponentActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     setContent {
       RinAlarmTheme {
-        val active by ringState.active.collectAsStateWithLifecycle()
-        LaunchedEffect(active) { if (active == null) finish() }
-        active?.let { request ->
-          RingScreen(
-            request = request,
-            onSnooze = { startService(RingService.snoozeIntent(this)) },
-            onDismiss = { startService(RingService.dismissIntent(this, "screen")) },
-          )
+        val state by viewModel.uiState.collectAsStateWithLifecycle()
+        LaunchedEffect(state.finished) { if (state.finished) finish() }
+        LaunchedEffect(viewModel) {
+          viewModel.commands.collect { command ->
+            when (command) {
+              RingCommand.Snooze -> startService(RingService.snoozeIntent(this@RingActivity))
+              is RingCommand.Dismiss -> startService(RingService.dismissIntent(this@RingActivity, command.source))
+            }
+          }
         }
+        RingScreen(
+          state = state,
+          onSnooze = viewModel::snooze,
+          onDismiss = viewModel::dismiss,
+          onEmergencyStop = viewModel::emergencyStop,
+          character = { modifier ->
+            CharacterView(RingMoods.mood(state.phase), modifier, framing = Framing.FULL, cues = viewModel.cues)
+          },
+        )
       }
     }
   }
 }
 
 @Composable
-internal fun RingScreen(request: RingRequest, onSnooze: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RingScreen(
+  state: RingUiState,
+  onSnooze: () -> Unit,
+  onDismiss: () -> Unit,
+  onEmergencyStop: () -> Unit,
+  modifier: Modifier = Modifier,
+  // A slot, so previews and UI tests run without a WebView.
+  character: @Composable (Modifier) -> Unit = {},
+) {
+  val ring = state.ring ?: return
+  val request = ring.request
   Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.primaryContainer) {
     Column(
-      Modifier.safeDrawingPadding().padding(24.dp),
-      verticalArrangement = Arrangement.Center,
+      Modifier.safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Text(
         request.time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)),
-        style = MaterialTheme.typography.displayLarge,
+        style = MaterialTheme.typography.displayMedium,
       )
       Text(
         request.label.ifBlank { stringResource(R.string.ring_default_label) },
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.titleMedium,
       )
       if (request.late) {
         Text(stringResource(R.string.ring_late_explained), style = MaterialTheme.typography.bodyMedium)
       }
-      Spacer(Modifier.height(48.dp))
+      // Rin takes what the controls leave: about half of a phone screen.
+      character(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp))
+      when {
+        state.passed -> Passed()
+        state.plainDismiss -> Unit
+        else -> MissionCard(ring.mission?.type, state.progress)
+      }
+      Spacer(Modifier.height(16.dp))
       // Big, far-apart targets: the user is half asleep.
-      if (request.snoozesLeft > 0) {
-        OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth().height(72.dp)) {
-          Text(
-            pluralStringResource(
-              R.plurals.ring_snooze_left,
-              request.snoozesLeft,
-              request.options.snoozeMinutes,
-              request.snoozesLeft,
-            ),
-            style = MaterialTheme.typography.titleMedium,
-          )
-        }
-        Spacer(Modifier.height(32.dp))
-      }
-      Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(96.dp)) {
-        Text(stringResource(R.string.ring_dismiss), style = MaterialTheme.typography.headlineSmall)
-      }
+      if (!state.passed) Controls(state, request, onSnooze, onDismiss, onEmergencyStop)
     }
   }
 }
 
+@Composable
+private fun Controls(
+  state: RingUiState,
+  request: RingRequest,
+  onSnooze: () -> Unit,
+  onDismiss: () -> Unit,
+  onEmergencyStop: () -> Unit,
+) {
+  Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    if (request.snoozesLeft > 0) {
+      OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+        Text(
+          pluralStringResource(
+            R.plurals.ring_snooze_left,
+            request.snoozesLeft,
+            request.options.snoozeMinutes,
+            request.snoozesLeft,
+          ),
+          style = MaterialTheme.typography.titleMedium,
+        )
+      }
+    }
+    if (state.plainDismiss) {
+      Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(88.dp)) {
+        Text(stringResource(R.string.ring_dismiss), style = MaterialTheme.typography.headlineSmall)
+      }
+    } else {
+      HoldToStopButton(onEmergencyStop, Modifier.fillMaxWidth().height(56.dp))
+    }
+  }
+}
+
+@Composable
+private fun MissionCard(type: MissionType?, progress: MissionProgress?) {
+  Card(Modifier.fillMaxWidth()) {
+    Column(Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+      val target = progress?.target ?: RingPolicy.WALK_STEPS
+      Text(
+        when (type) {
+          MissionType.WALK,
+          null -> pluralStringResource(R.plurals.mission_walk_title, target, target)
+        },
+        style = MaterialTheme.typography.titleLarge,
+        textAlign = TextAlign.Center,
+      )
+      Spacer(Modifier.height(12.dp))
+      LinearProgressIndicator(progress = { progress?.fraction ?: 0f }, modifier = Modifier.fillMaxWidth().height(12.dp))
+      Spacer(Modifier.height(8.dp))
+      Text(
+        stringResource(R.string.mission_progress, progress?.done ?: 0, target),
+        style = MaterialTheme.typography.headlineMedium,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+      )
+    }
+  }
+}
+
+@Composable
+private fun Passed() {
+  Text(
+    stringResource(R.string.mission_passed),
+    style = MaterialTheme.typography.headlineSmall,
+    textAlign = TextAlign.Center,
+    modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+  )
+}
+
+private val PREVIEW_RING =
+  ActiveRing(
+    RingRequest(1, LocalTime.of(7, 0), "Gym", null, 1, 2, late = false, RingOptions()),
+    MissionPlan.Run(MissionType.WALK),
+  )
+
 @Preview
 @Composable
-private fun RingScreenPreview() {
-  RinAlarmTheme {
-    RingScreen(
-      RingRequest(1, LocalTime.of(7, 0), "Gym", null, 1, 2, late = false, RingOptions()),
-      onSnooze = {},
-      onDismiss = {},
-    )
-  }
+private fun RingScreenMissionPreview() {
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(12, 30), RingPhase.WORKING), {}, {}, {}) }
+}
+
+@Preview
+@Composable
+private fun RingScreenPlainPreview() {
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING.copy(mission = null)), {}, {}, {}) }
 }

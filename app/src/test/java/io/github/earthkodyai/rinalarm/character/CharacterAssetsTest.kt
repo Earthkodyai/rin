@@ -27,6 +27,14 @@ class CharacterAssetsTest {
   }
 
   @Test
+  fun fullBodyStills_liveInTheirOwnFolder() {
+    assertEquals(
+      mapOf(Mood.PROUD to "character/stills/full/proud.webp"),
+      CharacterAssets.pickStills(listOf("proud.webp"), Framing.FULL),
+    )
+  }
+
+  @Test
   fun noModel_meansTheStillImage() {
     assertNull(CharacterAssets.pickModel(emptyList()))
     assertNull(CharacterAssets.pickModel(listOf("other.vrm")))

@@ -9,6 +9,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
@@ -17,14 +18,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** The ring on screen right now, shared between RingService (writer) and RingActivity (reader). */
+/** A ring in progress and the mission RingService planned for it (null plan: plain Dismiss). */
+data class ActiveRing(val request: RingRequest, val mission: MissionPlan.Run?)
+
+/**
+ * The ring on screen right now, shared in-process between RingService (writes the ring) and RingActivity (reads it,
+ * and reports mission progress, which RingService turns into a quieter tone).
+ */
 @Singleton
 class RingState @Inject constructor() {
-  private val current = MutableStateFlow<RingRequest?>(null)
-  val active: StateFlow<RingRequest?> = current.asStateFlow()
+  private val current = MutableStateFlow<ActiveRing?>(null)
+  val active: StateFlow<ActiveRing?> = current.asStateFlow()
 
-  internal fun set(request: RingRequest?) {
-    current.value = request
+  /** SystemClock.elapsedRealtime() of the last mission progress in this ring, or null before any. */
+  @Volatile var lastProgressAt: Long? = null
+    private set
+
+  internal fun set(ring: ActiveRing?) {
+    lastProgressAt = null
+    current.value = ring
+  }
+
+  fun reportProgress(atElapsedMs: Long) {
+    if (current.value != null) lastProgressAt = atElapsedMs
   }
 }
 

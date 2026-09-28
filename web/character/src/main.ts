@@ -8,6 +8,7 @@
 //   t0=<epoch ms>         native timestamp taken before the WebView was created
 //   mood=cheerful         starting mood (emotion.ts), shown from the first frame without a blend
 //   intensity=1           starting mood intensity, 0..1
+//   frame=full            head to toe (the ring screen, task 3.1); default: the strip's head and shoulders
 //   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
 //   still                 still-image mode for tools/character/render-stills.mjs: no loop, no bridge; window.rinStill
 
@@ -34,6 +35,7 @@ const prCap = num('pr', 2);
 const t0 = q.has('t0') ? Number(q.get('t0')) : null;
 let mood: Mood = isMood(q.get('mood')) ? (q.get('mood') as Mood) : 'relieved';
 let intensity = Math.min(num('intensity', 1), 1);
+const fullBody = q.get('frame') === 'full';
 
 const fail = (e: unknown) =>
   send({ v: PROTOCOL, type: 'error', message: String((e as Error)?.stack ?? e).slice(0, 2000) });
@@ -59,18 +61,19 @@ scene.add(light, new THREE.AmbientLight(0xffffff, 0.4 * Math.PI));
 let topY = 1.55;
 
 /**
- * Head and shoulders in a wide view (the strip above the alarm list), upper body in a tall one. The visible height
- * at the model decides the distance, so the head fills the strip whatever its pixel size. The top margin keeps the
- * hair inside the frame through breathing and the tap nod (2.1 cropped it, framing from the head bone).
+ * Head and shoulders in a wide view (the strip above the alarm list), upper body in a tall one, head to toe with
+ * `frame=full` (the ring screen, where clap and pout show). The visible height at the model decides the distance, so
+ * she fills the view whatever its pixel size. The top margin keeps the hair inside the frame through breathing and
+ * the tap nod (2.1 cropped it, framing from the head bone); full body leaves room under her feet for a stretch.
  */
 function frame() {
   camera.aspect = innerWidth / innerHeight;
   const wide = camera.aspect > 1;
-  const visibleHeight = wide ? 0.44 : 0.95; // metres at the model
-  const margin = wide ? 0.03 : 0.08;
+  const margin = fullBody ? 0.06 : wide ? 0.03 : 0.08;
+  const visibleHeight = fullBody ? topY + 2 * margin : wide ? 0.44 : 0.95; // metres at the model
   const distance = visibleHeight / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const target = topY + margin - visibleHeight / 2;
-  camera.position.set(0, target + 0.03, distance);
+  camera.position.set(0, target + (fullBody ? 0 : 0.03), distance);
   camera.lookAt(0, target, 0);
   camera.updateProjectionMatrix();
 }
@@ -309,7 +312,7 @@ type View = keyof typeof VIEWS;
 /**
  * Still mode (task 2.5): no loop and no bridge.
  * - `rinStill(mood)` (tools/character/render-stills.mjs) poses her at rest in that mood, renders one frame with the
- *   strip's framing and returns it as a PNG data URL. The app shows these while the 3D page loads, and when it fails.
+ *   page's framing (strip, or full body with `frame=full`) and returns it as a PNG data URL. The app shows these while the 3D page loads, and when it fails.
  * - `rinInspect(gesture)` and `rinView(gesture, age, view)` (tools/character/check-gestures.mjs) measure how far her
  *   arms sink into her body through a gesture (inspect.ts), and render a moment of it from any side.
  */

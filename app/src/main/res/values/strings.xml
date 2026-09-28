@@ -53,6 +53,28 @@
         <item quantity="other">Snooze %1$d min (%2$d left)</item>
     </plurals>
     <string name="ring_dismiss">Dismiss</string>
+    <string name="ring_hold_to_stop">Emergency: hold 3 s to stop</string>
+    <plurals name="mission_walk_title">
+        <item quantity="one">Walk %1$d step</item>
+        <item quantity="other">Walk %1$d steps</item>
+    </plurals>
+    <string name="mission_progress">%1$d / %2$d</string>
+    <string name="mission_passed">Nice work! Alarm off.</string>
+    <!-- Always visible on Rin (05e: AI disclosure). -->
+    <string name="character_ai_badge">AI</string>
+    <string name="character_ai_badge_description">Rin is an AI character</string>
+
+    <!-- Alarm editor: mission (task 3.1). -->
+    <string name="editor_mission">Mission</string>
+    <string name="mission_choice_rin_picks">Rin picks</string>
+    <string name="mission_choice_walk">Walk</string>
+    <string name="mission_choice_none">None</string>
+    <string name="mission_hint_rin_picks">Rin picks a different ready mission each day.</string>
+    <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
+    <string name="mission_hint_walk">Walk 30 steps to stop the alarm.</string>
+    <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm stops with a plain Dismiss.</string>
+    <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm stops with a plain Dismiss.</string>
+    <string name="mission_allow">Allow</string>
     <string name="missed_title">Missed alarm at %1$s</string>
     <string name="missed_text">Your phone was off or asleep when it was due.</string>
 
@@ -81,6 +103,9 @@
     <string name="check_lock_screen_info">Xiaomi\'s own permission, under Other permissions. Without it the ring page can\'t appear over the lock screen; the alarm still sounds. Can\'t be checked automatically.</string>
     <string name="check_autostart">Autostart</string>
     <string name="check_autostart_info">Can\'t be checked automatically. Alarms come back after a restart either way; Autostart also helps after app updates.</string>
+    <string name="check_missions">Missions</string>
+    <string name="check_missions_ok">Ready: %1$s.</string>
+    <string name="check_missions_problem">None ready on this phone. Alarms with a mission stop with a plain Dismiss.</string>
     <string name="check_fix">Fix</string>
     <string name="check_open">Open</string>
     <string name="check_status_ok">OK</string>

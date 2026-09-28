@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.alarm
 
 import io.github.earthkodyai.rinalarm.alarm.schedule.NextTrigger
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -11,6 +12,7 @@ import java.time.ZoneId
  *
  * @property isTest the Diagnostics "test alarm": rings through the real path, but is hidden from the alarm list,
  *   deleted once it has rung, and left out of the reliability numbers.
+ * @property mission what stops it (Phase 3); the test alarm uses [MissionChoice.None].
  */
 data class Alarm(
   val id: Long = 0,
@@ -20,6 +22,7 @@ data class Alarm(
   val enabled: Boolean = true,
   val ring: RingOptions = RingOptions(),
   val isTest: Boolean = false,
+  val mission: MissionChoice = MissionChoice.RinPicks,
 ) {
   /** When this alarm rings next, or null while it is switched off. */
   fun nextTrigger(now: Instant, zone: ZoneId): Instant? =

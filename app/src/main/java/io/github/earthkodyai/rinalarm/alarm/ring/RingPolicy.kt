@@ -15,6 +15,24 @@ object RingPolicy {
   /** While ringing, the alarm stream is raised to at least this share of its maximum (user decision, 1.2). */
   const val VOLUME_FLOOR = 0.4
 
+  /** Steps the walk mission asks for (user decision D15: about 20 m, out of the bedroom). */
+  const val WALK_STEPS = 30
+
+  /**
+   * Track gain while the user is making progress on a mission (D15): quiet enough to hear Rin, never silent, and the
+   * vibration stops. [MISSION_IDLE] after the last progress the tone is back at full, so nobody drifts off mid-task.
+   */
+  const val MISSION_QUIET_GAIN = 0.15f
+  val MISSION_IDLE: Duration = Duration.ofSeconds(30)
+
+  /** True while the tone should stay quiet: progress was made within [MISSION_IDLE] of [nowMs] (elapsed clock). */
+  fun missionQuiet(nowMs: Long, lastProgressMs: Long?): Boolean =
+    lastProgressMs != null && nowMs - lastProgressMs in 0 until MISSION_IDLE.toMillis()
+
+  /** The tone's gain: the ramp, capped at [MISSION_QUIET_GAIN] while [quiet]. */
+  fun toneGain(elapsedMillis: Long, rampSeconds: Int, quiet: Boolean): Float =
+    rampGain(elapsedMillis, rampSeconds).let { if (quiet) minOf(it, MISSION_QUIET_GAIN) else it }
+
   /**
    * Track gain (0..1) at [elapsedMillis] into a ramp of [rampSeconds]. The ramp is linear in decibels, which the ear
    * hears as a steady rise; a linear amplitude ramp would sound loud almost at once and then barely change.

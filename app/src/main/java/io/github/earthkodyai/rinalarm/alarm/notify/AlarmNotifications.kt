@@ -17,8 +17,8 @@ import io.github.earthkodyai.rinalarm.MainActivity
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.engine.MissedAlarmNotifier
+import io.github.earthkodyai.rinalarm.alarm.ring.ActiveRing
 import io.github.earthkodyai.rinalarm.alarm.ring.RingActivity
-import io.github.earthkodyai.rinalarm.alarm.ring.RingRequest
 import io.github.earthkodyai.rinalarm.alarm.ring.RingService
 import java.time.Instant
 import java.time.ZoneId
@@ -53,7 +53,8 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
    * the full-screen permission is off (HyperOS turns it off for sideloaded apps, S1) Android shows it as a heads-up
    * notification instead; the sound never depends on it.
    */
-  fun ringing(request: RingRequest): Notification {
+  fun ringing(ring: ActiveRing): Notification {
+    val request = ring.request
     val fullScreen =
       PendingIntent.getActivity(
         context,
@@ -78,11 +79,14 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
     if (request.snoozesLeft > 0) {
       builder.addAction(0, context.getString(R.string.ring_snooze), serviceAction(RingService.snoozeIntent(context), 1))
     }
-    builder.addAction(
-      0,
-      context.getString(R.string.ring_dismiss),
-      serviceAction(RingService.dismissIntent(context, "notification"), 2),
-    )
+    // With a mission, stopping happens on the ring screen (the notification opens it); a Dismiss here would skip it.
+    if (ring.mission == null) {
+      builder.addAction(
+        0,
+        context.getString(R.string.ring_dismiss),
+        serviceAction(RingService.dismissIntent(context, "notification"), 2),
+      )
+    }
     return builder.build()
   }
 

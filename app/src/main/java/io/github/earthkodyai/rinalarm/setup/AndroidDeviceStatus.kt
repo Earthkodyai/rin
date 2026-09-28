@@ -11,9 +11,14 @@ import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.earthkodyai.rinalarm.mission.MissionReadiness
+import io.github.earthkodyai.rinalarm.mission.Readiness
 import javax.inject.Inject
 
-class AndroidDeviceStatus @Inject constructor(@ApplicationContext private val context: Context) : DeviceStatusSource {
+class AndroidDeviceStatus
+@Inject
+constructor(@ApplicationContext private val context: Context, private val missions: MissionReadiness) :
+  DeviceStatusSource {
   override fun read(): DeviceStatus {
     val notifications = context.getSystemService(NotificationManager::class.java)
     val power = context.getSystemService(PowerManager::class.java)
@@ -40,6 +45,7 @@ class AndroidDeviceStatus @Inject constructor(@ApplicationContext private val co
       androidRelease = Build.VERSION.RELEASE,
       appVersion =
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?",
+      readyMissions = missions.check().filterValues { it == Readiness.READY }.keys.map { it.stored },
     )
   }
 

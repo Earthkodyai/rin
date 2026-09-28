@@ -11,6 +11,7 @@ import io.github.earthkodyai.rinalarm.data.db.PendingRingDao
 import io.github.earthkodyai.rinalarm.data.db.toAlarm
 import io.github.earthkodyai.rinalarm.data.db.toEntity
 import io.github.earthkodyai.rinalarm.data.db.toPendingRing
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.Duration
 import java.time.Instant
@@ -118,6 +119,7 @@ constructor(
           snoozesLeft = RingPlanner.snoozesLeft(alarm, snoozeCount),
           late = scheduledAt != null && Duration.between(scheduledAt, now) > LATE_THRESHOLD,
           options = alarm.ring,
+          mission = alarm.mission,
         )
       if (!ringer.start(request)) log.record(RingEventType.FGS_FAIL, alarmId, scheduledAt)
     }
@@ -150,9 +152,16 @@ constructor(
       deleteTestsLocked()
       val now = time.now()
       val zone = time.zone()
-      // No snoozes: the test ends on its first Dismiss, and a snooze would outlive the deleted row.
+      // No snoozes: the test ends on its first Dismiss, and a snooze would outlive the deleted row. No mission
+      // either: it tests the ring path, and a walk would get in the way.
       val test =
-        Alarm(time = RingPlanner.testRingTime(now, zone), label = label, ring = RingOptions(maxSnoozes = 0), isTest = true)
+        Alarm(
+          time = RingPlanner.testRingTime(now, zone),
+          label = label,
+          ring = RingOptions(maxSnoozes = 0),
+          isTest = true,
+          mission = MissionChoice.None,
+        )
       val id = saveLocked(test)
       checkNotNull(test.copy(id = id).nextTrigger(now, zone))
     }
