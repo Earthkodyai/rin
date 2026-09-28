@@ -28,7 +28,7 @@ function handOf(side: 'left' | 'right', channel: number[]) {
 
 describe('gesture keyframes (gestures.json)', () => {
   it('are the eight gestures from the plan (05a); idle breathing stays procedural in behaviour.ts', () => {
-    expect(GESTURES).toEqual(['nod', 'shake', 'wave', 'clap', 'joy', 'yawn', 'stretch', 'pout']);
+    expect(GESTURES).toEqual(['nod', 'shake', 'wave', 'clap', 'joy', 'yawn', 'stretch', 'pout', 'huff']);
     expect(isGesture('wave')).toBe(true);
     expect(isGesture('dance')).toBe(false);
     expect(isGesture('toString')).toBe(false);

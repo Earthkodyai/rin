@@ -31,12 +31,15 @@ class GestureContractTest {
 
 class GestureDirectorTest {
   @Test
-  fun everyMood_hasAGreeting_andIdleGestures_butNeverAClap() {
+  fun everyMood_hasAGreeting_andIdleGestures_butNeverOneWithHandsOutOfTheStrip() {
     for (mood in Mood.entries) {
-      assertNotEquals(Gesture.CLAP, GestureDirector.GREETING.getValue(mood))
       val idle = GestureDirector.IDLE.getValue(mood)
       assertTrue(idle.isNotEmpty())
-      assertFalse(Gesture.CLAP in idle) // kept for missions (Phase 3)
+      // Clap is kept for missions (Phase 3); pout's folded arms fall below the strip's frame.
+      for (offFrame in listOf(Gesture.CLAP, Gesture.POUT)) {
+        assertNotEquals(offFrame, GestureDirector.GREETING.getValue(mood))
+        assertFalse(offFrame in idle)
+      }
     }
     assertEquals(Gesture.WAVE, GestureDirector.GREETING[Mood.CHEERFUL])
     assertEquals(Gesture.YAWN, GestureDirector.GREETING[Mood.SLEEPY])
@@ -60,8 +63,8 @@ class GestureDirectorTest {
       assertNotEquals(last, next)
       last = next
     }
-    assertEquals(Gesture.POUT, director.idle(Mood.SULKY)) // the only choice repeats
-    assertEquals(Gesture.POUT, director.idle(Mood.SULKY))
+    assertEquals(Gesture.HUFF, director.idle(Mood.SULKY)) // the only choice repeats
+    assertEquals(Gesture.HUFF, director.idle(Mood.SULKY))
   }
 
   @Test

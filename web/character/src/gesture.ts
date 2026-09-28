@@ -79,6 +79,12 @@ export class Clip {
 interface Layer {
   clip: Clip;
   age: number;
+  /**
+   * Whether its arms fade in. A clip starts and ends on the idle arms (scripts/vrma.mjs restArm), and its path is
+   * cleared of her body frame by frame; blending joint angles toward it would leave that path and cut through her. So
+   * arms fade only when the clip takes over from another gesture mid-way.
+   */
+  fadeArms: boolean;
   /** Age when a newer gesture took over; the layer then fades out over FADE_IN_S while the new one fades in. */
   releasedAt: number | null;
 }
@@ -101,6 +107,11 @@ export class GesturePlayer {
     return this.clips.has(name);
   }
 
+  /** A loaded gesture's length in seconds (0 when it is not loaded). */
+  duration(name: Gesture): number {
+    return this.clips.get(name)?.duration ?? 0;
+  }
+
   /** The gesture currently in charge, if any. */
   get current(): Gesture | null {
     const top = this.layers.at(-1);
@@ -111,13 +122,15 @@ export class GesturePlayer {
   play(name: Gesture): boolean {
     const clip = this.clips.get(name);
     if (!clip) return false;
+    const interrupting = this.layers.some((l) => this.weight(l) > 0);
     for (const layer of this.layers) layer.releasedAt ??= layer.age;
-    this.layers.push({ clip, age: 0, releasedAt: null });
+    this.layers.push({ clip, age: 0, releasedAt: null, fadeArms: interrupting });
     return true;
   }
 
-  private weight(layer: Layer): number {
-    const w = envelope(layer.age, layer.clip.duration);
+  private weight(layer: Layer, arms = false): number {
+    const inClip = layer.age > 0 && layer.age < layer.clip.duration;
+    const w = arms && !layer.fadeArms ? (inClip ? 1 : 0) : envelope(layer.age, layer.clip.duration);
     if (layer.releasedAt === null) return w;
     return w * Math.max(0, 1 - (layer.age - layer.releasedAt) / FADE_IN_S);
   }
@@ -126,7 +139,7 @@ export class GesturePlayer {
   hold(name: Gesture | null, age = 0): void {
     const clip = name ? this.clips.get(name) : undefined;
     this.held = !!clip;
-    this.layers = clip ? [{ clip, age, releasedAt: null }] : [];
+    this.layers = clip ? [{ clip, age, releasedAt: null, fadeArms: false }] : [];
   }
 
   update(dt: number): void {
@@ -139,14 +152,15 @@ export class GesturePlayer {
   applyBones(vrm: VRM): void {
     for (const layer of this.layers) {
       const w = this.weight(layer);
-      if (w <= 0) continue;
+      const wArms = this.weight(layer, true);
+      if (w <= 0 && wArms <= 0) continue;
       this.pose.clear();
       layer.clip.sampleBones(layer.age, this.pose);
       for (const [bone, q] of this.pose) {
         const node = vrm.humanoid.getNormalizedBoneNode(bone);
         if (!node) continue;
         if (ADDITIVE.has(bone)) node.quaternion.multiply(this.offset.copy(IDENTITY).slerp(q, w));
-        else node.quaternion.slerp(q, w);
+        else node.quaternion.slerp(q, wArms);
       }
     }
   }

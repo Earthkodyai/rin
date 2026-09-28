@@ -85,4 +85,23 @@ class CharacterMessageTest {
     assertEquals("42", speak["at"]!!.jsonPrimitive.content)
     assertEquals("""{"v":1,"fps":30,"f":"a5-0"}""", speak["mouth"].toString())
   }
+
+  @Test
+  fun stats_isParsed() {
+    val json =
+      """{"v":1,"type":"stats","frames":900,"seconds":30,"avgFps":30,"p1LowFps":29.4,"over50":0,"maxMs":34.1,
+        |"fpsCap":30,"hitches":[{"at":1200,"ms":66.7}]}"""
+        .trimMargin()
+
+    assertEquals(
+      CharacterMessage.Stats(900, 30.0, 30.0, 29.4, 0, 34.1, 30.0, listOf(CharacterMessage.Hitch(1200, 66.7))),
+      CharacterMessage.parse(json),
+    )
+  }
+
+  @Test
+  fun measureAndFpsCap_matchWhatThePageReads() {
+    assertEquals("""{"type":"stats","ms":30000}""", CharacterCommand.MeasureFrames(30_000).json)
+    assertEquals("""{"type":"fps","cap":120}""", CharacterCommand.FpsCap(120).json)
+  }
 }

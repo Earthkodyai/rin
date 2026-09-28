@@ -15,7 +15,10 @@ enum class Gesture(val wire: String) {
   JOY("joy"),
   YAWN("yawn"),
   STRETCH("stretch"),
-  POUT("pout");
+  /** Folded arms: they sit below the home strip's frame, so only full-body views (Phase 3) use it. */
+  POUT("pout"),
+  /** Head-only sulk for the home strip (task 2.5): turns away with a small shrug, eyes shut a beat, glances back. */
+  HUFF("huff");
 
   companion object {
     fun fromWire(wire: String): Gesture? = entries.firstOrNull { it.wire == wire }
@@ -24,7 +27,9 @@ enum class Gesture(val wire: String) {
 
 /**
  * When Rin gestures on the main screen until Phase 3 drives her (your choice, 2026-09-28): a greeting when the app
- * opens, then now and then a gesture that fits her mood. Clap is kept for missions (Phase 3), so it never plays here.
+ * opens, then now and then a gesture that fits her mood. Only gestures that read from head and shoulders play here,
+ * the strip's frame: clap is kept for missions (Phase 3), and pout's folded arms fall below the frame, so a sulk is a
+ * huff (your pick, 2026-09-28).
  */
 class GestureDirector(private val random: Random = Random.Default) {
   private var last: Gesture? = null
@@ -56,8 +61,8 @@ class GestureDirector(private val random: Random = Random.Default) {
         Mood.PROUD to Gesture.WAVE,
         Mood.RELIEVED to Gesture.WAVE,
         Mood.WORRIED to Gesture.NOD,
-        Mood.POUTY to Gesture.POUT,
-        Mood.SULKY to Gesture.POUT,
+        Mood.POUTY to Gesture.HUFF,
+        Mood.SULKY to Gesture.HUFF,
       )
 
     val IDLE: Map<Mood, List<Gesture>> =
@@ -67,8 +72,8 @@ class GestureDirector(private val random: Random = Random.Default) {
         Mood.PROUD to listOf(Gesture.NOD, Gesture.JOY),
         Mood.RELIEVED to listOf(Gesture.STRETCH, Gesture.NOD),
         Mood.WORRIED to listOf(Gesture.SHAKE, Gesture.NOD),
-        Mood.POUTY to listOf(Gesture.POUT, Gesture.SHAKE),
-        Mood.SULKY to listOf(Gesture.POUT),
+        Mood.POUTY to listOf(Gesture.HUFF, Gesture.SHAKE),
+        Mood.SULKY to listOf(Gesture.HUFF),
       )
   }
 }

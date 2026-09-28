@@ -35,6 +35,26 @@ sealed interface CharacterMessage {
   /** The page started a gesture ([ok]), or could not because its file failed to load. */
   @Serializable data class GestureStarted(val name: String, val ok: Boolean) : CharacterMessage
 
+  /**
+   * Frame pacing over a window the app asked for ([CharacterCommand.MeasureFrames]); paused time is left out. The
+   * phase-exit bars (plan phase 2, task 2.5): at the 30 fps cap, [avgFps] ≥ 29 and no [over50]; with the cap lifted
+   * to 120, [avgFps] ≥ 45 (S2's bar, the headroom a slower phone would need).
+   */
+  @Serializable
+  data class Stats(
+    val frames: Int,
+    val seconds: Double,
+    val avgFps: Double,
+    val p1LowFps: Double,
+    val over50: Int,
+    val maxMs: Double,
+    val fpsCap: Double,
+    val hitches: List<Hitch> = emptyList(),
+  ) : CharacterMessage
+
+  /** A frame interval over 50 ms, ending [at] ms into the window. */
+  @Serializable data class Hitch(val at: Long, val ms: Double)
+
   @Serializable
   data class LoadTimings(
     val pageToFirstFrame: Long,
@@ -65,6 +85,7 @@ sealed interface CharacterMessage {
           "emotion" -> json.decodeFromJsonElement<EmotionShown>(obj)
           "tap" -> json.decodeFromJsonElement<Tap>(obj)
           "gesture" -> json.decodeFromJsonElement<GestureStarted>(obj)
+          "stats" -> json.decodeFromJsonElement<Stats>(obj)
           else -> null
         }
       } catch (_: SerializationException) {
@@ -111,6 +132,26 @@ sealed interface CharacterCommand {
             put("f", mouth.f)
           })
           put("at", at)
+        }
+        .toString()
+  }
+
+  /** Measure frame pacing over the next [ms] of rendering; the page answers with [CharacterMessage.Stats]. */
+  data class MeasureFrames(val ms: Long) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "stats")
+          put("ms", ms)
+        }
+        .toString()
+  }
+
+  /** Change the page's frame-rate cap (debug: measuring the headroom above [CharacterView]'s 30). */
+  data class FpsCap(val cap: Int) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "fps")
+          put("cap", cap)
         }
         .toString()
   }

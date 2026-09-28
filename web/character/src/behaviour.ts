@@ -1,14 +1,20 @@
 // Everything that keeps Rin alive between gestures (task 2.2): breathing, blinking, looking at the user with small
 // eye movements and the odd glance away, following a finger on the strip, blending moods, and the head-tap
 // reaction. The numbers behind moods and the tap live in emotion.ts; this file turns them into bones and expressions.
-// Task 2.4 layers gestures (gesture.ts) over the idle pose and the mouth (mouth.ts) over the face.
+// Task 2.4 layers gestures (gesture.ts) over the idle pose and the mouth (mouth.ts) over the face. Since task 2.5 the
+// idle arms come from the gesture builder's rest pose, cleared of her body (scripts/vrma.mjs restArm), so her hands
+// rest beside her clothes rather than in them, and gestures start and end exactly where she stands.
 import * as THREE from 'three';
+import { restArm, restFingers } from '../scripts/vrma.mjs';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { Blend, EXPRESSIONS, TapReaction, moodChannels, type Mood } from './emotion';
 import type { GesturePlayer } from './gesture';
 import { MouthPlayer, VISEMES } from './mouth';
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
+const REST_ARMS = { left: restArm('left'), right: restArm('right') };
+const REST_FINGERS = Object.entries({ ...restFingers('left'), ...restFingers('right') }) as [VRMHumanBoneName, THREE.Quaternion][];
+const Z = new THREE.Vector3(0, 0, 1);
 /** Frame-rate independent exponential approach: the fraction of the gap to close this frame. */
 const approach = (rate: number, dt: number) => 1 - Math.exp(-rate * dt);
 
@@ -40,6 +46,9 @@ export class Behaviour {
   private readonly headCenter = new THREE.Vector3();
   /** Without VRoid's eyes-open smile (vroid.ts), a little of `happy` stands in for it. */
   private readonly hasSmile: boolean;
+  private readonly breathArm = new THREE.Quaternion();
+  /** Set only inside rest(): eyes and head jump to where they are heading instead of easing there. */
+  private snap = false;
 
   /**
    * @param headCenterUp  metres from the head bone up to the middle of the head (hair included)
@@ -76,6 +85,16 @@ export class Behaviour {
     return ray.intersectsSphere(new THREE.Sphere(this.headCenter, this.headRadius));
   }
 
+  /**
+   * Her resting pose for a still image (task 2.5): the mood fully shown, eyes open (a sleepy lid stays), no breath or
+   * sway, and eyes and head already where the mood looks. Call it on a fresh Behaviour, before any update.
+   */
+  rest(): void {
+    this.snap = true;
+    this.update(0);
+    this.snap = false;
+  }
+
   /** Advances everything by dt seconds; returns true on the frame a mood blend finishes. */
   update(dt: number): boolean {
     this.t += dt;
@@ -109,7 +128,7 @@ export class Behaviour {
       this.desired.x += this.saccade.x + (away?.x ?? 0) + gaze;
       this.desired.y += this.saccade.y + (away?.y ?? 0);
     }
-    this.target.position.lerp(this.desired, approach(25, dt));
+    this.target.position.lerp(this.desired, this.snap ? 1 : approach(25, dt));
 
     // The head follows about a third of the way, within limits, and more slowly than the eyes.
     const head = this.vrm.humanoid.getNormalizedBoneNode('head');
@@ -117,7 +136,7 @@ export class Behaviour {
     const d = this.target.position.clone().sub(head.getWorldPosition(this.headPos));
     const yaw = THREE.MathUtils.clamp(0.35 * Math.atan2(d.x, d.z), -0.35, 0.35);
     const pitch = THREE.MathUtils.clamp(-0.35 * Math.atan2(d.y, Math.hypot(d.x, d.z)), -0.25, 0.25);
-    const k = approach(5, dt);
+    const k = this.snap ? 1 : approach(5, dt);
     this.lookYaw += (yaw - this.lookYaw) * k;
     this.lookPitch += (pitch - this.lookPitch) * k;
   }
@@ -127,10 +146,12 @@ export class Behaviour {
     const rot = (bone: VRMHumanBoneName, x: number, y: number, z: number) =>
       this.vrm.humanoid.getNormalizedBoneNode(bone)?.rotation.set(x, y, z);
     const breath = Math.sin((t * 2 * Math.PI) / 4); // one breath every 4 s
-    rot('leftUpperArm', 0, 0, -1.2 + 0.03 * breath);
-    rot('rightUpperArm', 0, 0, 1.2 - 0.03 * breath);
-    rot('leftLowerArm', 0, 0, -0.15);
-    rot('rightLowerArm', 0, 0, 0.15);
+    for (const [s, sign] of [['left', 1], ['right', -1]] as const) {
+      const bone = (name: VRMHumanBoneName) => this.vrm.humanoid.getNormalizedBoneNode(name)?.quaternion;
+      bone(`${s}UpperArm`)?.copy(REST_ARMS[s].upper).multiply(this.breathArm.setFromAxisAngle(Z, sign * 0.03 * breath));
+      bone(`${s}LowerArm`)?.copy(REST_ARMS[s].lower);
+    }
+    for (const [name, q] of REST_FINGERS) this.vrm.humanoid.getNormalizedBoneNode(name)?.quaternion.copy(q);
     rot('chest', 0.03 * breath, 0, 0);
     // Gestures add rotation to these (gesture.ts ADDITIVE), so they must start every frame from rest.
     rot('upperChest', 0, 0, 0);

@@ -9,17 +9,19 @@
 //   mood=cheerful         starting mood (emotion.ts), shown from the first frame without a blend
 //   intensity=1           starting mood intensity, 0..1
 //   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
+//   still                 still-image mode for tools/character/render-stills.mjs: no loop, no bridge; window.rinStill
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { VRM, VRMLoaderPlugin, VRMUtils, type VRMHumanBoneName } from '@pixiv/three-vrm';
-import { PROTOCOL, onNativeMessage, send, type ModelInfo } from './bridge';
+import { PROTOCOL, frameStats, onNativeMessage, send, type ModelInfo } from './bridge';
 import { Behaviour } from './behaviour';
-import { isMood, isTap, type Mood } from './emotion';
+import { MOODS, isMood, isTap, type Mood } from './emotion';
 import { GESTURES, GesturePlayer, isGesture, loadGestures, type Gesture } from './gesture';
 import type { MouthTrack } from './mouth';
 import { addVroidSmile } from './vroid';
+import { BodyCheck, type Depth } from './inspect';
 
 const q = new URLSearchParams(location.search);
 const num = (key: string, fallback: number) => {
@@ -27,7 +29,7 @@ const num = (key: string, fallback: number) => {
   return q.has(key) && Number.isFinite(value) && value > 0 ? value : fallback;
 };
 const modelPath = q.get('model');
-const fpsCap = num('fps', 30);
+let fpsCap = num('fps', 30);
 const prCap = num('pr', 2);
 const t0 = q.has('t0') ? Number(q.get('t0')) : null;
 let mood: Mood = isMood(q.get('mood')) ? (q.get('mood') as Mood) : 'relieved';
@@ -39,6 +41,7 @@ addEventListener('error', (e) => fail(e.error ?? e.message));
 addEventListener('unhandledrejection', (e) => fail(e.reason));
 
 // Transparent canvas: the Compose screen behind it provides the background, in light and dark themes.
+const stillMode = q.has('still');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
 const pixelRatio = Math.min(devicePixelRatio, prCap);
 renderer.setPixelRatio(pixelRatio);
@@ -99,6 +102,8 @@ let loadedVrm: VRM | null = null;
 let pending: { mood: Mood; at: number; received: number } | null = null;
 /** A gesture asked for before the files loaded, played once they have (if still recent). */
 let queued: { name: Gesture; at: number } | null = null;
+/** A frame-pacing measurement in progress (debug builds ask for it): intervals between rendered frames. */
+let measuring: { left: number; last: number; intervals: number[] } | null = null;
 
 function gesture(name: Gesture) {
   const player = behaviour?.gestures;
@@ -126,6 +131,12 @@ onNativeMessage((message) => {
       return speak(message.mouth, message.at);
     case 'hush':
       return behaviour?.mouth.hush();
+    case 'stats':
+      measuring = { left: message.ms, last: -1, intervals: [] };
+      return;
+    case 'fps':
+      fpsCap = message.cap;
+      return;
     default:
       paused = message.type === 'pause';
   }
@@ -209,25 +220,28 @@ async function main() {
   // Compile shaders and upload textures before the first frame, so Rin appears whole rather than in pieces.
   await renderer.compileAsync(scene, camera);
   ktx2.dispose(); // textures are on the GPU now; the transcoder worker is not needed again
+  if (stillMode) return exposeStills(vrm, headHalf);
 
   const life = new Behaviour(vrm, camera, mood, intensity, headHalf, Math.max(headHalf + 0.03, 0.1));
   behaviour = life;
   loadedVrm = vrm;
   pending = null; // a mood sent while loading is already in place: nothing blends, so nothing to time
-  const minFrameMs = 1000 / fpsCap - 1; // 1 ms slack, so vsync jitter cannot halve the rate
   let last = -1;
   let reported = false;
   renderer.setAnimationLoop((now) => {
     if (paused) {
       last = -1;
+      if (measuring) measuring.last = -1; // time off screen is not a slow frame
       return;
     }
+    const minFrameMs = 1000 / fpsCap - 1; // 1 ms slack, so vsync jitter cannot halve the rate
     if (last >= 0 && now - last < minFrameMs) return;
     const dt = last < 0 ? 0 : Math.min((now - last) / 1000, 0.1);
     last = now;
     const blended = life.update(dt);
     vrm.update(dt);
     renderer.render(scene, camera);
+    if (measuring) measure(now);
     if (blended && pending) {
       const done = Date.now();
       send({
@@ -268,6 +282,102 @@ async function main() {
       fpsCap,
     });
   });
+}
+
+function measure(now: number) {
+  const m = measuring!;
+  if (m.last >= 0) {
+    m.intervals.push(now - m.last);
+    m.left -= now - m.last;
+  }
+  m.last = now;
+  if (m.left > 0) return;
+  measuring = null;
+  const stats = frameStats(m.intervals, fpsCap);
+  if (stats) send({ v: PROTOCOL, type: 'stats', ...stats });
+}
+
+/** Where the inspection camera stands, relative to the middle of her upper body (metres; +X is her left). */
+const VIEWS = {
+  front: [0, 0, 1],
+  left: [1, 0, 0],
+  right: [-1, 0, 0],
+  above: [0, 0.8, 0.6],
+} as const;
+type View = keyof typeof VIEWS;
+
+/**
+ * Still mode (task 2.5): no loop and no bridge.
+ * - `rinStill(mood)` (tools/character/render-stills.mjs) poses her at rest in that mood, renders one frame with the
+ *   strip's framing and returns it as a PNG data URL. The app shows these while the 3D page loads, and when it fails.
+ * - `rinInspect(gesture)` and `rinView(gesture, age, view)` (tools/character/check-gestures.mjs) measure how far her
+ *   arms sink into her body through a gesture (inspect.ts), and render a moment of it from any side.
+ */
+async function exposeStills(vrm: VRM, headHalf: number) {
+  const body = new BodyCheck(vrm); // before any posing: it reads the rest (T) pose
+  const player = new GesturePlayer(await loadGestures(vrm, (name, e) => fail(`gesture ${name}: ${e}`)));
+  const pose = (m: Mood, name: Gesture | null, age: number) => {
+    const life = new Behaviour(vrm, camera, m, 1, headHalf, headHalf);
+    if (name) {
+      player.hold(name, age);
+      life.gestures = player;
+    }
+    life.rest();
+    vrm.humanoid.update();
+    vrm.scene.updateMatrixWorld(true);
+  };
+  const render = (eye: THREE.Camera) => {
+    vrm.springBoneManager?.reset(); // hair hangs at rest from this pose, not from the last one
+    vrm.update(0);
+    renderer.render(scene, eye);
+    return renderer.domElement.toDataURL('image/png'); // same task as the render, so the buffer is still there
+  };
+  const still = (m: Mood) => {
+    pose(m, null, 0);
+    return render(camera);
+  };
+  /** The deepest the arms sink in, sampled every `step` seconds through the gesture (null: the idle pose alone). */
+  const inspect = (name: Gesture | null, step = 1 / 30) => {
+    const duration = name ? player.duration(name) : 0;
+    let worst: (Depth & { t: number }) | null = null;
+    let frill: (Depth & { t: number }) | null = null;
+    const at = (d: Depth, age: number) => ({ ...d, mm: Math.round(d.mm), t: Math.round(age * 100) / 100 });
+    for (let age = 0; age <= duration + 1e-6; age += step) {
+      pose('cheerful', name, age);
+      const d = body.deepest();
+      if (d.solid && (!worst || d.solid.mm > worst.mm)) worst = at(d.solid, age);
+      if (d.frill && (!frill || d.frill.mm > frill.mm)) frill = at(d.frill, age);
+    }
+    return { gesture: name ?? 'idle', seconds: duration, worst, frill, ...body.counts };
+  };
+  const eye = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 20);
+  const view = (name: Gesture | null, age: number, side: View) => {
+    pose('cheerful', name, age);
+    const center = new THREE.Vector3(0, topY - 0.5, 0);
+    const distance = 0.6 / Math.tan(THREE.MathUtils.degToRad(eye.fov / 2)); // 1.2 m of her in view
+    const [x, y, z] = VIEWS[side];
+    eye.position.set(x, y, z).normalize().multiplyScalar(distance).add(center);
+    eye.lookAt(center);
+    eye.updateProjectionMatrix();
+    return render(eye);
+  };
+  /** A bone's world position after the last pose (inspection: compare with what scripts/vrma.mjs predicts). */
+  const bone = (name: VRMHumanBoneName) =>
+    vrm.humanoid.getRawBoneNode(name)?.getWorldPosition(new THREE.Vector3()).toArray();
+  const posed = (name: Gesture | null, age: number, names: VRMHumanBoneName[]) => {
+    pose('cheerful', name, age);
+    return Object.fromEntries(names.map((n) => [n, bone(n)]));
+  };
+  Object.assign(window, {
+    rinStill: still,
+    rinMoods: MOODS,
+    rinInspect: inspect,
+    rinView: view,
+    rinGestures: GESTURES,
+    rinBody: body.shape,
+    rinPosed: posed,
+  });
+  document.title = 'still-ready';
 }
 
 main().catch(fail);

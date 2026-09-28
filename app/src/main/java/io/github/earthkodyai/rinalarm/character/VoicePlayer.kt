@@ -16,7 +16,9 @@ import java.nio.ByteOrder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,6 +30,10 @@ data class Speaking(val line: String, val mouth: MouthTrack, val at: Long)
  * still speaks and the still image stays. Each line is `<base>.mp3` in assets with an optional `<base>.mouth.json`;
  * without one, the mouth follows the clip's loudness (decoded here). [onSpeaking] gets the line once its audio is
  * actually playing, timed by MediaPlayer's presentation timestamp, and null when it ends or stops. Main thread only.
+ *
+ * MediaPlayer's prepare(), release() and getTimestamp() block for tens of ms (getTimestamp for 70-90 ms while the
+ * audio output starts), so they run off the main thread: the WebView draws through the app's UI thread, and on it
+ * they froze Rin for 58-257 ms at the start and end of every line (task 2.5).
  */
 class VoicePlayer(
   private val context: Context,
@@ -51,14 +57,10 @@ class VoicePlayer(
           Log.w(TAG, "say $base: no clip")
           return@launch
         }
-        val mp = MediaPlayer()
-        try {
-          context.assets.openFd("$base.mp3").use { mp.setDataSource(it) }
-          mp.setAudioAttributes(attributes)
-          mp.prepare()
-        } catch (e: IOException) {
-          Log.w(TAG, "say $base: $e")
-          mp.release()
+        // Not cancellable, so a player prepared just as the line is cut off is still released here, not leaked.
+        val mp = withContext(Dispatchers.IO + NonCancellable) { prepare(base) } ?: return@launch
+        if (!isActive) {
+          releaseOffMain(mp)
           return@launch
         }
         player = mp
@@ -66,7 +68,7 @@ class VoicePlayer(
         audio.requestAudioFocus(focus)
         val started = System.currentTimeMillis()
         mp.start()
-        val at = firstSampleAt(mp) ?: started
+        val at = withContext(Dispatchers.IO) { firstSampleAt(mp) } ?: started
         Log.i(TAG, "say $base mouth=${mouth.second} at=start+${at - started}ms timestamp=${at != started}")
         onSpeaking(Speaking(base, mouth.first, at))
       }
@@ -77,18 +79,38 @@ class VoicePlayer(
     job = null
     val mp = player ?: return
     player = null
-    mp.release()
+    releaseOffMain(mp)
     audio.abandonAudioFocusRequest(focus)
     onSpeaking(null)
   }
 
+  /** A player for `<base>.mp3`, prepared; null when the clip cannot be read. Blocks, so never on the main thread. */
+  private fun prepare(base: String): MediaPlayer? {
+    val mp = MediaPlayer() // created off the main thread, so its events (completion) come on the main looper
+    return try {
+      context.assets.openFd("$base.mp3").use { mp.setDataSource(it) }
+      mp.setAudioAttributes(attributes)
+      mp.prepare()
+      mp
+    } catch (e: IOException) {
+      Log.w(TAG, "say $base: $e")
+      mp.release()
+      null
+    }
+  }
+
+  private fun releaseOffMain(mp: MediaPlayer) {
+    Thread(mp::release, "RinVoiceRelease").start() // not in [scope]: it may already be cancelled (the screen left)
+  }
+
   /**
    * When media time 0 reached the speaker, from MediaPlayer's timestamp (it includes the output latency). Null when
-   * no timestamp shows up within [TIMESTAMP_WAIT_MS]; the caller then uses the start() time.
+   * no timestamp shows up within [TIMESTAMP_WAIT_MS], or when the line is cut off (the player released) meanwhile; the
+   * caller then uses the start() time. Blocks on each call, so never on the main thread.
    */
   private suspend fun firstSampleAt(mp: MediaPlayer): Long? {
     repeat((TIMESTAMP_WAIT_MS / POLL_MS).toInt()) {
-      val ts = mp.timestamp
+      val ts = try { mp.timestamp } catch (_: IllegalStateException) { return null }
       if (ts != null && ts.mediaClockRate > 0f && ts.anchorMediaTimeUs > 0) {
         val anchorEpochMs = System.currentTimeMillis() - (System.nanoTime() - ts.anchorSystemNanoTime) / 1_000_000
         return anchorEpochMs - (ts.anchorMediaTimeUs / 1000 / ts.mediaClockRate).toLong()

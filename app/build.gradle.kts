@@ -56,11 +56,28 @@ kotlin {
     jvmToolchain(17)
 }
 
+/** Runs Node tools from Gradle. `npm ci` only runs when the lockfile is newer than the last install. */
+abstract class NodeTask : DefaultTask() {
+  @get:Inject protected abstract val exec: ExecOperations
+
+  @get:Internal protected val npm: List<String>
+    get() = if (System.getProperty("os.name").startsWith("Windows")) listOf("cmd", "/c", "npm") else listOf("npm")
+
+  protected fun npmCiIfStale(dir: File) {
+    val installed = File(dir, "node_modules/.package-lock.json")
+    if (installed.exists() && installed.lastModified() >= File(dir, "package-lock.json").lastModified()) return
+    exec.exec {
+      workingDir(dir)
+      commandLine(npm + listOf("ci", "--no-audit", "--no-fund"))
+    }
+  }
+}
+
 /**
  * Builds web/character (Vite + three-vrm) into generated assets under character/, so every APK, CI's included, ships
- * the page that matches its sources. Needs Node and npm on PATH. Runs `npm ci` only when the lockfile changed.
+ * the page that matches its sources. Needs Node and npm on PATH.
  */
-abstract class CharacterWebBuild @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+abstract class CharacterWebBuild : NodeTask() {
   @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val sources: ConfigurableFileCollection
 
   @get:Internal abstract val webDir: DirectoryProperty
@@ -69,15 +86,8 @@ abstract class CharacterWebBuild @Inject constructor(private val exec: ExecOpera
 
   @TaskAction
   fun build() {
-    val npm = if (System.getProperty("os.name").startsWith("Windows")) listOf("cmd", "/c", "npm") else listOf("npm")
     val dir = webDir.get().asFile
-    val installed = File(dir, "node_modules/.package-lock.json")
-    if (!installed.exists() || installed.lastModified() < File(dir, "package-lock.json").lastModified()) {
-      exec.exec {
-        workingDir(dir)
-        commandLine(npm + listOf("ci", "--no-audit", "--no-fund"))
-      }
-    }
+    npmCiIfStale(dir)
     val out = File(outputDir.get().asFile, "character").absolutePath
     exec.exec {
       workingDir(dir)
@@ -106,7 +116,7 @@ val characterWeb =
  * local.properties points at the VRoid export on this PC. Builds without it (CI, clones) ship no Rin model and show
  * the still image; debug builds on this PC may still carry the VRoid sample (app/src/debug/assets, git-ignored).
  */
-abstract class RinModelBuild @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+abstract class RinModelBuild : NodeTask() {
   @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val model: RegularFileProperty
 
   @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val tool: ConfigurableFileCollection
@@ -121,15 +131,8 @@ abstract class RinModelBuild @Inject constructor(private val exec: ExecOperation
 
   @TaskAction
   fun build() {
-    val npm = if (System.getProperty("os.name").startsWith("Windows")) listOf("cmd", "/c", "npm") else listOf("npm")
     val dir = toolDir.get().asFile
-    val installed = File(dir, "node_modules/.package-lock.json")
-    if (!installed.exists() || installed.lastModified() < File(dir, "package-lock.json").lastModified()) {
-      exec.exec {
-        workingDir(dir)
-        commandLine(npm + listOf("ci", "--no-audit", "--no-fund"))
-      }
-    }
+    npmCiIfStale(dir)
     val out = File(outputDir.get().asFile, "character/model/rin.vrm")
     exec.exec {
       workingDir(dir)
@@ -160,6 +163,98 @@ val rinModel =
     }
   }
 
+/**
+ * Renders the still images (task 2.5): one transparent WebP per mood at character/stills/, drawn by the built page
+ * itself in a headless Chrome or Edge (tools/character/render-stills.mjs), so a still matches the live strip. The app
+ * shows them while Rin loads and whenever the 3D page cannot run. Like the model, they never enter the repo.
+ */
+abstract class CharacterStills : NodeTask() {
+  @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val model: RegularFileProperty
+
+  @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) abstract val page: DirectoryProperty
+
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val tool: ConfigurableFileCollection
+
+  @get:Internal abstract val toolDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @TaskAction
+  fun render() {
+    val dir = toolDir.get().asFile
+    npmCiIfStale(dir)
+    val out = File(outputDir.get().asFile, "character/stills")
+    out.deleteRecursively() // a mood removed from moods.json must not leave its old still behind
+    exec.exec {
+      workingDir(dir)
+      commandLine("node", "render-stills.mjs", page.get().asFile.absolutePath, model.get().asFile.absolutePath, out.absolutePath)
+    }
+  }
+}
+
+fun registerStills(name: String, vrm: Provider<RegularFile>) =
+  tasks.register<CharacterStills>(name) {
+    val tools = rootProject.layout.projectDirectory.dir("tools/character")
+    model.set(vrm)
+    page.set(characterWeb.flatMap { it.outputDir.dir("character") })
+    toolDir.set(tools)
+    tool.from(tools.asFileTree.matching { include("render-stills.mjs", "package-lock.json") })
+    outputDir.set(layout.buildDirectory.dir("generated/$name"))
+  }
+
+// Rin's stills go in every build that carries her model. Without it, debug builds on this PC render the VRoid sample's
+// (git-ignored, like the sample); CI and clones have neither and show the silhouette.
+val rinStills = rinModel?.let { task -> registerStills("renderRinStills", task.flatMap { it.outputDir.file("character/model/rin.vrm") }) }
+val devModel = layout.projectDirectory.file("src/debug/assets/character/model/dev.vrm")
+val devStills = if (rinModel == null && devModel.asFile.isFile) registerStills("renderDevStills", provider { devModel }) else null
+
+/**
+ * Checks that her arms stay out of her body through every gesture, on the build's model (tools/character/
+ * check-gestures.mjs, task 2.5): fails above 10 mm, and leaves front/side/above sheets in build/reports/gesture-check.
+ * Not part of assemble. For a new model: run with -PwriteBody to re-measure web/character/src/body.json, rebuild,
+ * then run it again.
+ */
+abstract class GestureCheck : NodeTask() {
+  @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val model: RegularFileProperty
+
+  @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) abstract val page: DirectoryProperty
+
+  @get:Internal abstract val toolDir: DirectoryProperty
+
+  @get:Internal abstract val reportDir: DirectoryProperty
+
+  @get:Internal abstract val bodyFile: RegularFileProperty
+
+  @get:Input abstract val writeBody: Property<Boolean>
+
+  @TaskAction
+  fun check() {
+    val dir = toolDir.get().asFile
+    npmCiIfStale(dir)
+    val body = if (writeBody.get()) listOf("--write-body", bodyFile.get().asFile.absolutePath) else emptyList()
+    exec.exec {
+      workingDir(dir)
+      commandLine(
+        listOf("node", "check-gestures.mjs", page.get().asFile.absolutePath, model.get().asFile.absolutePath) +
+          listOf("--out", reportDir.get().asFile.absolutePath) + body,
+      )
+    }
+  }
+}
+
+(rinModel?.flatMap { it.outputDir.file("character/model/rin.vrm") } ?: devModel.takeIf { it.asFile.isFile }?.let { provider { it } })
+  ?.let { vrm ->
+    tasks.register<GestureCheck>("checkGestures") {
+      model.set(vrm)
+      page.set(characterWeb.flatMap { it.outputDir.dir("character") })
+      toolDir.set(rootProject.layout.projectDirectory.dir("tools/character"))
+      reportDir.set(layout.buildDirectory.dir("reports/gesture-check"))
+      bodyFile.set(rootProject.layout.projectDirectory.file("web/character/src/body.json"))
+      writeBody.set(providers.gradleProperty("writeBody").isPresent)
+      outputs.upToDateWhen { false } // a check: always runs when asked
+    }
+  }
+
 // MoodContractTest reads the page's mood table, so a change there must rerun the unit tests.
 tasks.withType<Test>().configureEach {
   inputs.file(rootProject.layout.projectDirectory.file("web/character/src/moods.json"))
@@ -171,6 +266,10 @@ androidComponents {
   onVariants { variant ->
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
+    rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
+    if (variant.buildType == "debug") {
+      devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
+    }
   }
 }
 

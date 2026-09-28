@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.character
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.util.Log
 import android.view.HapticFeedbackConstants
@@ -13,6 +14,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,6 +29,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,6 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,12 +55,15 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import io.github.earthkodyai.rinalarm.R
 import java.io.ByteArrayInputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.withContext
 
 /**
  * Debug hooks for DebugCharacterReceiver: crash the renderer (to prove the fallback), force a mood (to time it), play
- * a gesture, or say a debug voice line (assets voice/dev/<clip>.mp3, git-ignored).
+ * a gesture, say a debug voice line (assets voice/dev/<clip>.mp3, git-ignored), measure frame pacing, or change the
+ * frame-rate cap (to measure the headroom above it).
  */
 object CharacterDebug {
   val crashRenderer = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -62,6 +71,9 @@ object CharacterDebug {
   val mood = MutableSharedFlow<Pair<Mood, Float>>(extraBufferCapacity = 1)
   val gesture = MutableSharedFlow<Gesture>(extraBufferCapacity = 1)
   val say = MutableSharedFlow<String>(extraBufferCapacity = 1)
+  /** Milliseconds of rendering to measure; the result is logged as `RinChar: stats ...`. */
+  val measureFrames = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+  val fpsCap = MutableSharedFlow<Int>(extraBufferCapacity = 1)
 }
 
 private enum class Phase {
@@ -86,6 +98,7 @@ fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 
     CharacterAssets.model(context)?.takeIf { WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) }
   }
   var phase by remember { mutableStateOf(if (model == null) Phase.FALLBACK else Phase.LOADING) }
+  val stills = remember { CharacterAssets.stills(context) }
   val host = remember { CharacterHost() }
   val description = stringResource(R.string.character_description)
   var debugMood by remember { mutableStateOf<Pair<Mood, Float>?>(null) }
@@ -109,12 +122,7 @@ fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 
       )
     }
     AnimatedVisibility(phase != Phase.READY, enter = fadeIn(tween(FADE_MS)), exit = fadeOut(tween(FADE_MS))) {
-      Image(
-        painterResource(R.drawable.rin_still),
-        contentDescription = null,
-        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
-        modifier = Modifier.fillMaxHeight(),
-      )
+      Still(shown.first, stills)
     }
   }
 
@@ -138,8 +146,50 @@ fun CharacterView(mood: Mood, modifier: Modifier = Modifier, intensity: Float = 
   LaunchedEffect(host) { CharacterDebug.crashRenderer.collect { host.crashRenderer() } }
   LaunchedEffect(host) { CharacterDebug.gesture.collect { host.gesture(it) } }
   LaunchedEffect(voice) { CharacterDebug.say.collect { voice.play("voice/dev/$it") } }
+  LaunchedEffect(host) { CharacterDebug.measureFrames.collect { host.debug(CharacterCommand.MeasureFrames(it)) } }
+  LaunchedEffect(host) { CharacterDebug.fpsCap.collect { host.debug(CharacterCommand.FpsCap(it)) } }
   LaunchedEffect(host) { CharacterDebug.mood.collect { debugMood = it } }
   LaunchedEffect(mood) { debugMood = null }
+}
+
+/**
+ * Rin's still for [mood] (task 2.5): rendered from the build's model with the live strip's framing, scaled to the
+ * strip's height and centred, so she sits exactly where the page will draw her and the fade between them is seamless.
+ * A mood change crossfades like the page's blend. Builds without stills (no model) show a tinted silhouette.
+ */
+@Composable
+private fun Still(mood: Mood, stills: Map<Mood, String>) {
+  val context = LocalContext.current
+  // Keeps the last image while the next one decodes; null only until the first decode, or if it failed.
+  val image by produceState<StillImage?>(null, mood) {
+    val path = stills[mood] ?: stills.values.firstOrNull()
+    val bitmap =
+      path?.let {
+        withContext(Dispatchers.IO) { runCatching { context.assets.open(it).use(BitmapFactory::decodeStream) }.getOrNull() }
+      }
+    if (path != null && bitmap == null) Log.w(TAG, "could not decode $path")
+    value = bitmap?.let { StillImage.Of(it.asImageBitmap()) } ?: StillImage.None
+  }
+  Crossfade(image, animationSpec = tween(STILL_BLEND_MS), label = "still") { still ->
+    when (still) {
+      is StillImage.Of ->
+        Image(still.bitmap, contentDescription = null, contentScale = ContentScale.FillHeight, modifier = Modifier.fillMaxSize())
+      StillImage.None ->
+        Image(
+          painterResource(R.drawable.rin_still),
+          contentDescription = null,
+          colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+          modifier = Modifier.fillMaxHeight(),
+        )
+      null -> Unit // decoding (a few ms): nothing rather than a flash of the silhouette
+    }
+  }
+}
+
+private sealed interface StillImage {
+  data class Of(val bitmap: ImageBitmap) : StillImage
+
+  data object None : StillImage
 }
 
 /**
@@ -206,6 +256,7 @@ private class CharacterHost {
         is CharacterMessage.EmotionShown ->
           Log.i(TAG, "emotion ${parsed.mood} toPage=${parsed.ms.toPage} total=${parsed.ms.total}")
         is CharacterMessage.GestureStarted -> Log.i(TAG, "gesture ${parsed.name} ok=${parsed.ok}")
+        is CharacterMessage.Stats -> Log.i(TAG, "stats $parsed")
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")
           webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -288,6 +339,12 @@ private class CharacterHost {
     webView?.onPause()
   }
 
+  /** Debug commands (frame measurements, the fps cap) go straight to the page once it is ready. */
+  fun debug(command: CharacterCommand) {
+    val proxy = reply ?: return
+    if (ready) proxy.postMessage(command.json)
+  }
+
   fun crashRenderer() {
     webView?.loadUrl("chrome://crash")
   }
@@ -325,6 +382,8 @@ private class CharacterClient(private val loader: WebViewAssetLoader, private va
 private const val TAG = "RinChar"
 private const val BRIDGE = "RinBridge"
 private const val FADE_MS = 300
+/** Matches the page's mood blend (emotion.ts BLEND_S). */
+private const val STILL_BLEND_MS = 200
 private const val LOAD_TIMEOUT_MS = 10_000L
 
 /** S2: 30 fps is plenty for an idle character on a 120 Hz screen, and 2 keeps GPU memory down at no visible cost. */

@@ -14,7 +14,19 @@ export interface GestureDef {
 export const FPS: number;
 export const SKELETON: Record<string, [string | null, number[]]>;
 export const ARM_REST: { left: ArmChannel; right: ArmChannel };
-export function solveArm(side: 'left' | 'right', channel: ArmChannel): { upper: THREE.Quaternion; lower: THREE.Quaternion; reach: number };
+export function solveArm(
+  side: 'left' | 'right',
+  channel: ArmChannel,
+): { upper: THREE.Quaternion; lower: THREE.Quaternion; reach: number; elbow: THREE.Vector3; hand: THREE.Vector3 };
+export function clearArm(
+  side: 'left' | 'right',
+  channel: ArmChannel,
+  grip?: { turn: number[]; curl: number; shoulder?: number[] },
+): ArmChannel;
+export function restArm(side: 'left' | 'right'): { upper: THREE.Quaternion; lower: THREE.Quaternion };
+export function restPosition(bone: string): THREE.Vector3;
+export function restFingers(side: 'left' | 'right'): Record<string, THREE.Quaternion>;
+export function pushOut(point: THREE.Vector3, radius: number): [number, number];
 export function poseAt(gesture: GestureDef, t: number): Record<string, THREE.Quaternion>;
 export function validate(name: string, gesture: GestureDef): string[];
 export function buildVrma(name: string, gesture: GestureDef): Uint8Array;

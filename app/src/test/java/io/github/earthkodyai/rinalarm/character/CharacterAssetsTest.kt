@@ -16,6 +16,17 @@ class CharacterAssetsTest {
   }
 
   @Test
+  fun stills_areFoundPerMood_andStrayFilesIgnored() {
+    val stills = CharacterAssets.pickStills(listOf("cheerful.webp", "sleepy.webp", "cheerful.png", "angry.webp"))
+
+    assertEquals(
+      mapOf(Mood.CHEERFUL to "character/stills/cheerful.webp", Mood.SLEEPY to "character/stills/sleepy.webp"),
+      stills,
+    )
+    assertEquals(emptyMap<Mood, String>(), CharacterAssets.pickStills(emptyList()))
+  }
+
+  @Test
   fun noModel_meansTheStillImage() {
     assertNull(CharacterAssets.pickModel(emptyList()))
     assertNull(CharacterAssets.pickModel(listOf("other.vrm")))

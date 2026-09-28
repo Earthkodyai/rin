@@ -5,14 +5,18 @@
 // (motion capture, Blender) can replace one later without code changes.
 //
 // Keys are authored in body space: +X is Rin's left, +Y up, +Z forward (toward the camera). Arms are posed by where
-// the hand goes, solved with two-bone IK against SKELETON, the VRoid sample's proportions (a VRoid model of another
-// height moves its hands proportionally close; retune if Rin's model differs a lot).
+// the hand goes, solved with two-bone IK against SKELETON. Every frame, hands, forearms and elbows are then pushed out
+// of her torso from the waist up (clearArm), so a path between keys bends around her body instead of through it; below
+// the waist her hands may rest against skirts and thighs, so idle arms hang close to her (task 2.5). Both use
+// src/body.json, measured from the model by tools/character/check-gestures.mjs --write-body: for a new model, measure
+// it, rebuild and check again.
 import * as THREE from 'three';
+import body from '../src/body.json' with { type: 'json' };
 
 export const FPS = 30;
 
-/** Bone -> [parent, offset from the parent in metres]. T-pose, identity rotations everywhere (VRoid sample). */
-export const SKELETON = {
+/** The bones a .vrma carries -> [parent, offset from the parent in metres], T-pose (the VRoid sample's, as a fallback). */
+const TABLE = {
   hips: [null, [0, 0.723, 0]],
   spine: ['hips', [0, 0.045, 0]],
   chest: ['spine', [0, 0.094, 0]],
@@ -22,6 +26,14 @@ export const SKELETON = {
   ...side('left', 1),
   ...side('right', -1),
 };
+
+/** TABLE with the model's measured offsets (src/body.json) wherever it has the bone under the same parent. */
+export const SKELETON = Object.fromEntries(
+  Object.entries(TABLE).map(([bone, [parent, offset]]) => {
+    const measured = body.skeleton[bone];
+    return [bone, [parent, measured && measured[0] === parent ? measured[1] : offset]];
+  }),
+);
 
 function side(s, x) {
   const bones = {
@@ -143,7 +155,147 @@ export function solveArm(s, channel) {
   const lower = new THREE.Quaternion()
     .setFromUnitVectors(xr, xr.clone().multiplyScalar(Math.cos(bend)).add(zr.clone().multiplyScalar(Math.sin(bend))))
     .multiply(new THREE.Quaternion().setFromAxisAngle(xr, twist));
-  return { upper, lower, reach: Math.abs(target.length() - dist) };
+  return { upper, lower, reach: Math.abs(target.length() - dist), elbow, hand };
+}
+
+// Her arms' thickness, sleeves included, as measured (src/body.json `arm`, metres): what must stay outside her torso.
+// Defaults (rough adult sizes) stand in until a model has been measured.
+const { upperR: UPPER_R, lowerR: LOWER_R, handR: HAND_R } = body.arm ?? { upperR: 0.03, lowerR: 0.035, handR: 0.02 };
+/** The top of the upper arm meets the torso at rest; only what lies further out along the arm is kept clear. */
+const SHOULDER_SKIP_M = 0.08;
+const SLICES = new Map(body.slices.map((s) => [Math.round(s.y / body.sliceM), s.hull]));
+
+/** Where a bone's joint is in the T-pose, from SKELETON. */
+export function restPosition(bone) {
+  const p = new THREE.Vector3();
+  for (let b = bone; b; b = SKELETON[b][0]) p.add(v3(SKELETON[b][1]));
+  return p;
+}
+
+/** The horizontal move [x, z] that takes a point out of one torso slice's outline grown by r; [0, 0] if clear. */
+function pushFromSlice(hull, p, r) {
+  const n = hull ? hull.length / 2 : 0;
+  if (n < 3) return [0, 0];
+  let inside = Infinity;
+  let normal = [0, 0];
+  for (let i = 0; i < n; i++) {
+    const [ax, az, bx, bz] = [hull[i * 2], hull[i * 2 + 1], hull[((i + 1) % n) * 2], hull[((i + 1) % n) * 2 + 1]];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len === 0) continue;
+    const side = ((bx - ax) * (p.z - az) - (bz - az) * (p.x - ax)) / len; // > 0: inside (counter-clockwise hull)
+    if (side < inside) [inside, normal] = [side, [(bz - az) / len, -(bx - ax) / len]]; // outward
+  }
+  return inside > -r ? [normal[0] * (inside + r), normal[1] * (inside + r)] : [0, 0];
+}
+
+/**
+ * The horizontal move [x, z] that takes a point (T-pose world space) out of her torso, grown by r. The two slices
+ * around its height are blended, so the push changes smoothly as an arm moves up or down.
+ */
+export function pushOut(p, r) {
+  // From the waist up the lowest slice counts in full; a ball whose top is below the waist fades out over one slice,
+  // so arms that reach down past her waist move smoothly.
+  const h = body.sliceM;
+  const fade = THREE.MathUtils.clamp(1 - (body.waistY - (p.y + r)) / h, 0, 1);
+  if (fade === 0) return [0, 0];
+  const f = Math.max(p.y, body.waistY + h / 2) / h - 0.5; // slice centres sit half a slice above their bottoms
+  const i = Math.floor(f);
+  const w = f - i;
+  const a = pushFromSlice(SLICES.get(i), p, r);
+  const b = pushFromSlice(SLICES.get(i + 1), p, r);
+  return [(a[0] * (1 - w) + b[0] * w) * fade, (a[1] * (1 - w) + b[1] * w) * fade];
+}
+
+const longer = (a, b) => (Math.hypot(b[0], b[1]) > Math.hypot(a[0], a[1]) ? b : a);
+
+/**
+ * Her hand as points (T-pose world space): the wrist at `wrist`, then every finger joint and fingertip, by forward
+ * kinematics with the hand turned by `q` (its rotation in the world) and the fingers curled by `curl`. A flat palm
+ * is thin, so points follow its real shape where one ball around it would push her hands far off her body.
+ */
+function handPoints(s, wrist, q, curl) {
+  const turns = {};
+  curlBones(s, curl, turns);
+  const points = [wrist.clone()];
+  // Joints, and points between them: across the palm (wrist to knuckles) a ball per joint would leave gaps.
+  const segment = (from, to, steps) => {
+    for (let i = 1; i <= steps; i++) points.push(from.clone().lerp(to, i / steps));
+  };
+  for (const f of FINGERS) {
+    const p = wrist.clone();
+    const r = q.clone();
+    for (const seg of f === 'Thumb' ? ['Metacarpal', 'Proximal', 'Distal'] : ['Proximal', 'Intermediate', 'Distal']) {
+      const bone = `${s}${f}${seg}`;
+      const from = p.clone();
+      p.add(v3(SKELETON[bone][1]).applyQuaternion(r));
+      segment(from, p, seg === 'Proximal' && f !== 'Thumb' ? 3 : 2);
+      if (turns[bone]) r.multiply(turns[bone]);
+    }
+    segment(p.clone(), p.clone().add(v3(SKELETON[`${s}${f}Distal`][1]).applyQuaternion(r)), 2); // to the tip
+  }
+  return points;
+}
+
+/**
+ * An arm channel moved so her hand, fingers, forearm and elbow stay outside her torso: points near the hand move
+ * the hand target, points near the elbow move the elbow (the pole), a few rounds until nothing is inside. `grip` is
+ * the wrist's own turn (Euler, as in a key) and how curled the fingers are at that moment, since both move the
+ * fingertips, and `shoulder` the shoulder's turn (a gesture adds it, which carries the whole arm). The twist is kept.
+ * Deterministic and continuous in its inputs, so an interpolated path stays smooth.
+ */
+export function clearArm(s, channel, grip = { turn: [0, 0, 0], curl: 0, shoulder: [0, 0, 0] }) {
+  const pivot = restPosition(`${s}Shoulder`);
+  const shoulder = new THREE.Quaternion().setFromEuler(new THREE.Euler(...(grip.shoulder ?? [0, 0, 0]), 'XYZ'));
+  const unturn = shoulder.clone().invert();
+  const joint = restPosition(`${s}UpperArm`).sub(pivot).applyQuaternion(shoulder).add(pivot);
+  const world = (v) => v.clone().applyQuaternion(shoulder).add(joint); // arm space (from the joint) -> world
+  const target = v3(channel);
+  const pole = v3(channel.slice(3, 6));
+  const wristTurn = new THREE.Quaternion().setFromEuler(new THREE.Euler(...grip.turn, 'XYZ'));
+  for (let round = 0; round < 16; round++) {
+    const solved = solveArm(s, [...target.toArray(), ...pole.toArray(), channel[6]]);
+    const { elbow, hand } = solved;
+    const e = world(elbow);
+    const h = world(hand);
+    // The hand by its joints; the forearm and upper arm as balls along them, as thick as measured (sleeves included).
+    let moveHand = [0, 0];
+    const q = shoulder.clone().multiply(solved.upper).multiply(solved.lower).multiply(wristTurn);
+    for (const point of handPoints(s, h, q, grip.curl)) moveHand = longer(moveHand, pushOut(point, HAND_R));
+    moveHand = longer(moveHand, pushOut(h, Math.max(HAND_R, LOWER_R))); // the wrist wears the cuff
+    let moveElbow = pushOut(e, LOWER_R);
+    for (const t of [0.25, 0.5, 0.75]) {
+      const push = pushOut(e.clone().lerp(h, t), LOWER_R);
+      if (t > 0.5) moveHand = longer(moveHand, push);
+      else moveElbow = longer(moveElbow, push);
+    }
+    // The elbow alone cannot always swing the upper arm clear (hands held across her chest pin it in front of her), so
+    // an upper arm deep in her body also takes the hand, up to half as far. A light touch (under 2 cm, as a resting
+    // arm against her side) takes nothing, and the share ramps up smoothly from there.
+    const upperLength = elbow.length();
+    for (const t of [SHOULDER_SKIP_M / upperLength, 0.65, 0.85]) {
+      const push = pushOut(joint.clone().lerp(e, t), UPPER_R);
+      moveElbow = longer(moveElbow, push);
+      const share = 0.5 * THREE.MathUtils.clamp((Math.hypot(...push) - 0.02) / 0.02, 0, 1);
+      moveHand = longer(moveHand, [push[0] * share, push[1] * share]);
+    }
+    if (Math.hypot(...moveHand) < 1e-4 && Math.hypot(...moveElbow) < 1e-4) break;
+    // Moves are horizontal in the world; the key lives in the turned shoulder's space.
+    target.add(new THREE.Vector3(moveHand[0], 0, moveHand[1]).applyQuaternion(unturn));
+    pole.copy(elbow).add(new THREE.Vector3(moveElbow[0], 0, moveElbow[1]).applyQuaternion(unturn)); // where it was pushed
+  }
+  return [...target.toArray(), ...pole.toArray(), channel[6]];
+}
+
+/** The idle arm (behaviour.ts) as bone rotations: ARM_REST, cleared of her body, so gestures start and end on it. */
+export function restArm(s) {
+  return solveArm(s, clearArm(s, ARM_REST[s], { turn: [0, 0, 0], curl: CURL_REST, shoulder: [0, 0, 0] }));
+}
+
+/** The idle fingers (behaviour.ts): a little curled, as gestures start and end. Bone -> local rotation. */
+export function restFingers(s) {
+  const out = {};
+  curlBones(s, CURL_REST, out);
+  return out;
 }
 
 /** Curl angles per segment (radians) for a fist; the thumb folds less and across the palm. */
@@ -168,13 +320,20 @@ export function poseAt(gesture, t) {
   const { names, keys } = fillKeys(gesture.keys);
   const times = keys.map((k) => k.t);
   const out = {};
+  const values = Object.fromEntries(names.map((n) => [n, interpolate(times, keys.map((k) => k.values[n]), t)]));
   for (const name of names) {
-    const value = interpolate(times, keys.map((k) => k.values[name]), t);
+    const value = values[name];
     if (EULER_BONES.includes(name)) {
       out[name] = new THREE.Quaternion().setFromEuler(new THREE.Euler(value[0], value[1], value[2], 'XYZ'));
     } else if (name === 'leftArm' || name === 'rightArm') {
       const s = name.slice(0, -3);
-      const { upper, lower } = solveArm(s, value);
+      // Without its own channels, a hand keeps the idle pose: straight wrist, fingers a little curled.
+      const hand = {
+        turn: values[`${s}Hand`] ?? [0, 0, 0],
+        curl: values[`${s}Curl`]?.[0] ?? CURL_REST,
+        shoulder: values[`${s}Shoulder`] ?? [0, 0, 0],
+      };
+      const { upper, lower } = solveArm(s, clearArm(s, value, hand));
       out[`${s}UpperArm`] = upper;
       out[`${s}LowerArm`] = lower;
     } else if (name === 'leftCurl' || name === 'rightCurl') {
