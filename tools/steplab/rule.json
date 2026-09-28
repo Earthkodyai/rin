@@ -1,0 +1,23 @@
+{
+  "lo": 0.6,
+  "hi": 10,
+  "gmax": 2,
+  "smoothSamples": 5,
+  "minGapMs": 300.0,
+  "troughMs": 400.0,
+  "dev": {
+    "lo": 0.6,
+    "hi": 10,
+    "gmax": 2,
+    "walks": [
+      30,
+      35,
+      36
+    ],
+    "shakes": [
+      1,
+      2,
+      4
+    ]
+  }
+}
