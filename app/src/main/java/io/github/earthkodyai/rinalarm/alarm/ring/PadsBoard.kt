@@ -27,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +63,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -219,21 +220,27 @@ internal fun ScoldLine(state: PadsState, modifier: Modifier = Modifier) {
   RinLine(lines[state.line % lines.size], modifier, Modifier.testTag(PADS_SCOLD_TAG))
 }
 
-/** One of Rin's lines in a bubble over her (the games' scolds). */
+/**
+ * One of Rin's lines floating over her (the games' scolds): bold white text with a soft dark shadow, no box, so it
+ * reads over her hair, the table and the screen's colour alike. The box it had covered too much of her (the tester,
+ * dev-1 of task 3.4).
+ */
 @Composable
 internal fun RinLine(text: String, modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
-  Surface(
-    modifier.padding(16.dp).fillMaxWidth(),
-    shape = RoundedCornerShape(16.dp),
-    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-  ) {
-    Text(
-      text,
-      style = MaterialTheme.typography.titleMedium,
-      textAlign = TextAlign.Center,
-      modifier = textModifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
-    )
-  }
+  Text(
+    text,
+    style =
+      MaterialTheme.typography.titleLarge.copy(
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        shadow = Shadow(Color.Black.copy(alpha = 0.85f), offset = Offset(0f, 2f), blurRadius = 10f),
+      ),
+    textAlign = TextAlign.Center,
+    modifier =
+      modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().then(textModifier).semantics {
+        liveRegion = LiveRegionMode.Polite
+      },
+  )
 }
 
 /**
