@@ -22,6 +22,7 @@ import { MOODS, isMood, isTap, type Mood } from './emotion';
 import { GESTURES, GesturePlayer, isGesture, loadGestures, type Gesture } from './gesture';
 import type { MouthTrack } from './mouth';
 import { addVroidSmile } from './vroid';
+import { keepArmsOffSkirt } from './skirt';
 import { BodyCheck, type Depth } from './inspect';
 
 const q = new URLSearchParams(location.search);
@@ -208,6 +209,7 @@ async function main() {
   addVroidSmile(vrm); // before combineMorphs, which keeps only the morphs that expressions use
   VRMUtils.combineMorphs(vrm);
   VRMUtils.rotateVRM0(vrm);
+  keepArmsOffSkirt(vrm);
   vrm.scene.traverse((o) => {
     o.frustumCulled = false;
   });
@@ -240,9 +242,16 @@ async function main() {
     }
     const minFrameMs = 1000 / fpsCap - 1; // 1 ms slack, so vsync jitter cannot halve the rate
     if (last >= 0 && now - last < minFrameMs) return;
-    const dt = last < 0 ? 0 : Math.min((now - last) / 1000, 0.1);
+    const first = last < 0;
+    const dt = first ? 0 : Math.min((now - last) / 1000, 0.1);
     last = now;
     const blended = life.update(dt);
+    if (first) {
+      // Hair and skirt start hanging from this pose. Their stored rest came from before rotateVRM0 turned the model,
+      // so without this the skirt flew up to her chest for the first second (the tester saw it as she waved hello).
+      vrm.scene.updateMatrixWorld(true);
+      vrm.springBoneManager?.reset();
+    }
     vrm.update(dt);
     renderer.render(scene, camera);
     if (measuring) measure(now);
@@ -463,5 +472,5 @@ if (!window.RinBridge) {
     audio.addEventListener('playing', () => speak(track, Date.now() - audio.currentTime * 1000), { once: true });
     await audio.play();
   };
-  Object.assign(window, { rin: { gestures: GESTURES, gesture, speak, say, reload, hold, bone } });
+  Object.assign(window, { rin: { gestures: GESTURES, gesture, speak, say, reload, hold, bone, vrm: () => loadedVrm } });
 }
