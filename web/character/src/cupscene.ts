@@ -95,7 +95,21 @@ export class CupScene {
    * down by `pitch` (radians), fingers curled by `curl` (0 flat .. 1 fist). On a cup passing behind, the wrist sits
    * `backShift` further back at the height of the pass, so her fingers stay off the cup passing in front.
    */
-  readonly grip = { back: 0.12, up: 0.025, pitch: 0, curl: 0.1, backShift: 0.08 };
+  readonly grip = {
+    back: 0.12,
+    up: 0.025,
+    pitch: 0,
+    curl: 0.1,
+    backShift: 0.08,
+    /**
+     * The thumb's three joints, base to tip (Euler angles for her right hand). Only its joints bend, just enough to lift
+     * it off the cup: it sank 2.3 cm in; the tester asked for no hand tilt and no thumb pressed to the fingers. The
+     * smallest bend that clears it (desktop probe): 0.4 cm, the tip no nearer the index finger.
+     */
+    thumbBase: [0, 0, -0.4] as number[],
+    thumbMid: [0, -0.05, -0.4] as number[],
+    thumbTip: [0, -0.06, 0] as number[],
+  };
   private readonly arm: number;
 
   constructor(private readonly vrm: VRM) {
@@ -307,6 +321,13 @@ export class CupScene {
     for (const [bone, q] of Object.entries(curlFingers(s, this.grip.curl))) {
       node(bone as VRMHumanBoneName)?.quaternion.slerp(this.rig(q), w);
     }
+    // The thumb's two joints bend it up off the cup (Euler angles for her right hand; the left mirrors y and z).
+    const m = s === 'left' ? -1 : 1;
+    const bend = (bone: VRMHumanBoneName, [x, y, z]: readonly number[]) =>
+      node(bone)?.quaternion.slerp(this.rig(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, m * y, m * z))), w);
+    bend(`${s}ThumbMetacarpal`, this.grip.thumbBase);
+    bend(`${s}ThumbProximal`, this.grip.thumbMid);
+    bend(`${s}ThumbDistal`, this.grip.thumbTip);
   }
 
   /**
@@ -314,7 +335,7 @@ export class CupScene {
    * `depth`, how far any finger or palm point sinks into a cup (fingers taken as 8 mm thick), and `gap`, how high
    * the palm floats over the top of the cup under it.
    */
-  probe(now: number): Record<string, { depth: number; gap: number | null; slip: number }> {
+  probe(now: number): Record<string, { depth: number; thumb: number; root: number; tipToIndex: number; gap: number | null; slip: number }> {
     this.shown = 1;
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
     const saved = spine?.quaternion.clone();
@@ -330,7 +351,7 @@ export class CupScene {
     this.update(now, 0);
     this.vrm.scene.updateMatrixWorld(true);
     const l = this.layout;
-    const out: Record<string, { depth: number; gap: number | null; slip: number }> = {};
+    const out: Record<string, { depth: number; thumb: number; root: number; tipToIndex: number; gap: number | null; slip: number }> = {};
     const at = (name: string) => this.vrm.humanoid.getNormalizedBoneNode(name as VRMHumanBoneName)?.getWorldPosition(new THREE.Vector3());
     for (const s of ['right', 'left'] as const) {
       if (!this.last[s]) continue;
@@ -345,16 +366,30 @@ export class CupScene {
         points.push(p, i, d, tip, wrist.clone().lerp(p, 0.5));
         palm.push(p, wrist.clone().lerp(p, 0.5));
       }
+      // The thumb: its root (where it joins the palm, which bending cannot move) apart from the rest of it.
+      const tm = at(`${s}ThumbMetacarpal`)!;
+      const tp = at(`${s}ThumbProximal`)!;
+      const td = at(`${s}ThumbDistal`)!;
+      const tip = td.clone().add(td.clone().sub(tp).multiplyScalar(0.9));
+      const thumb = [tp.clone().lerp(td, 0.5), td, tip];
+      const root = [tm, tm.clone().lerp(tp, 0.5), tp];
+      const index = at(`${s}IndexProximal`)!;
+      const tipToIndex = tip.distanceTo(index);
       let depth = 0;
+      let thumbDepth = 0;
+      let rootDepth = 0;
       let gap: number | null = null;
       for (const cup of this.cups) {
         const c = cup.position;
-        for (const p of points) {
+        const into = (p: THREE.Vector3) => {
           const h = p.y - c.y;
           const rho = Math.hypot(p.x - c.x, p.z - c.z);
           const r = l.cupR * (1 - 0.3 * Math.min(Math.max(h / l.cupH, 0), 1));
-          if (h > -0.008 && h < l.cupH + 0.008) depth = Math.max(depth, Math.min(r + 0.008 - rho, l.cupH + 0.008 - h));
-        }
+          return h > -0.008 && h < l.cupH + 0.008 ? Math.min(r + 0.008 - rho, l.cupH + 0.008 - h) : 0;
+        };
+        for (const p of points) depth = Math.max(depth, into(p));
+        for (const p of thumb) thumbDepth = Math.max(thumbDepth, into(p));
+        for (const p of root) rootDepth = Math.max(rootDepth, into(p));
         for (const p of palm) {
           if (Math.hypot(p.x - c.x, p.z - c.z) > l.cupR * 0.7) continue;
           const g = p.y - 0.008 - (c.y + l.cupH);
@@ -364,7 +399,8 @@ export class CupScene {
       // How far the wrist ended from where it was sent (clearing her body, or out of reach), horizontally.
       const sent = this.last[s]!.pos;
       const slip = Math.hypot(wrist.x - sent.x, wrist.z - sent.z);
-      out[s] = { depth: Math.round(depth * 1000) / 10, gap: gap === null ? null : Math.round(gap * 1000) / 10, slip: Math.round(slip * 1000) / 10 };
+      const cm = (v: number) => Math.round(v * 1000) / 10;
+      out[s] = { depth: cm(depth), thumb: cm(thumbDepth), root: cm(rootDepth), tipToIndex: cm(tipToIndex), gap: gap === null ? null : Math.round(gap * 1000) / 10, slip: Math.round(slip * 1000) / 10 };
     }
     if (saved) spine?.quaternion.copy(saved);
     return out;
