@@ -1,0 +1,165 @@
+// Checks Rin's voice-pack script and writes the review table (task 4.1, docs/character/script-bible.md).
+// node script-check.mjs [--review <out.md>]   (exit 1 on any rule failure)
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const ASSETS = join(ROOT, 'app', 'src', 'main', 'assets');
+const CHARACTER = join(ROOT, 'web', 'character', 'src');
+
+export const MAX_SENTENCES = 3; // short ones: "Phew. You're up. That's what matters." (character sheet)
+export const MAX_WORDS = 12; // per sentence
+export const MAX_LINE_WORDS = 16;
+export const DAILY_MIN = 7; // a "daily" pool must last a week without a repeat
+export const INTENTS = ['affirm', 'deny'];
+// Words Rin never says (character sheet §3, §7): pet names, guilt, chat abbreviations.
+export const FORBIDDEN = [/\bdarling\b/i, /\bbabe\b/i, /\bhoney\b/i, /\bmy love\b/i, /\bsweetheart\b/i,
+  /\blonely\b/i, /\bmiss you\b/i, /\blol\b/i, /\bu\b/, /\bur\b/i];
+
+/** What TTS reads: 'say' if set, else 'text' without the screen-only '~'. */
+export function spoken(line) {
+  return (line.say ?? line.text).replaceAll('~', '').replace(/\s+/g, ' ').trim();
+}
+
+/** Characters billed for one line: tag + space + spoken text. */
+export function billed(line) {
+  const s = spoken(line);
+  return line.tag ? line.tag.length + 1 + s.length : s.length;
+}
+
+/** Sentences as a listener hears them ('…' and '~' end one too). */
+export function sentences(text) {
+  return text.replaceAll('~', '.').split(/(?<=[.!?…])\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
+export function words(sentence) {
+  return sentence.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+}
+
+/** Returns a list of problems; empty means the script passes. */
+export function check(script, { moods, gestures, repeat = [] }) {
+  const problems = [];
+  const bad = (id, msg) => problems.push(`${id}: ${msg}`);
+  const ids = new Set();
+  const byPool = new Map();
+  const tags = new Set(script.tags);
+  for (const line of script.lines) {
+    const { id } = line;
+    if (!/^[a-z0-9]+(\.[a-z0-9]+)+$/.test(id)) bad(id, 'id must be dotted lowercase');
+    if (ids.has(id)) bad(id, 'duplicate id');
+    ids.add(id);
+    const pool = script.pools[line.pool];
+    if (!pool) bad(id, `unknown pool ${line.pool}`);
+    else byPool.set(line.pool, [...(byPool.get(line.pool) ?? []), line]);
+    if (!moods.includes(line.emotion)) bad(id, `emotion ${line.emotion} is not in moods.json`);
+    if (line.gesture !== null && !gestures.includes(line.gesture)) bad(id, `gesture ${line.gesture} is not in gestures.json`);
+    if (line.tag !== null && !tags.has(line.tag)) bad(id, `tag ${line.tag} is not in the tag list`);
+    if (/[฀-๿]/.test(line.text + (line.say ?? ''))) bad(id, 'English only (Thai characters found)');
+    if (/[[\]]/.test(line.text)) bad(id, 'audio tags go in "tag", not in the text');
+    for (const re of FORBIDDEN) if (re.test(line.text)) bad(id, `forbidden word ${re}`);
+    const ss = sentences(line.text);
+    if (ss.length > MAX_SENTENCES) bad(id, `${ss.length} sentences (max ${MAX_SENTENCES})`);
+    for (const s of ss) if (words(s) > MAX_WORDS) bad(id, `"${s}" has ${words(s)} words (max ${MAX_WORDS})`);
+    const all = words(line.text);
+    if (all > MAX_LINE_WORDS) bad(id, `${all} words (max ${MAX_LINE_WORDS} per line)`);
+    if (line.pool === 'chat.question') {
+      for (const intent of INTENTS) if (!line.replies?.[intent]) bad(id, `question has no ${intent} chip`);
+    }
+  }
+  const answers = script.lines.filter((l) => l.pool === 'chat.answer');
+  for (const q of byPool.get('chat.question') ?? []) {
+    for (const intent of INTENTS) {
+      const n = answers.filter((a) => a.reply_to === q.id && a.intent === intent).length;
+      if (n !== 1) bad(q.id, `needs exactly 1 ${intent} answer, has ${n}`);
+    }
+  }
+  for (const a of answers) if (!ids.has(a.reply_to)) bad(a.id, `reply_to ${a.reply_to} does not exist`);
+  for (const [name, pool] of Object.entries(script.pools)) {
+    const own = byPool.get(name)?.length ?? 0;
+    if (own === 0) bad(name, 'pool has no lines');
+    const n = own + (pool.mix ? byPool.get(pool.mix)?.length ?? 0 : 0); // mixed pools draw from both
+    if (pool.use === 'daily' && n < DAILY_MIN) bad(name, `daily pool has ${n} lines (min ${DAILY_MIN})`);
+  }
+  const total = script.lines.reduce((sum, l) => sum + billed(l), 0) + repeat.reduce((s, r) => s + r.text.length, 0);
+  if (total > script.budget.scriptMax) bad('budget', `${total} characters (max ${script.budget.scriptMax})`);
+  return problems;
+}
+
+export function stats(script, repeat = []) {
+  const perPool = {};
+  for (const l of script.lines) {
+    const p = (perPool[l.pool] ??= { lines: 0, chars: 0 });
+    p.lines += 1;
+    p.chars += billed(l);
+  }
+  const lineChars = script.lines.reduce((s, l) => s + billed(l), 0);
+  const repeatChars = repeat.reduce((s, r) => s + r.text.length, 0);
+  return { perPool, lines: script.lines.length, repeat: repeat.length, lineChars, repeatChars, total: lineChars + repeatChars };
+}
+
+const cell = (s) => String(s ?? '').replaceAll('|', '\\|');
+
+export function review(script, repeat = []) {
+  const st = stats(script, repeat);
+  const out = [
+    '# Rin script — review table',
+    '',
+    `> Generated by \`node tools/voice/script-check.mjs --review\` from \`app/src/main/assets/dialogue/lines.json\`. Do not edit here; edit the JSON.`,
+    `> **${st.lines} lines + ${st.repeat} Repeat-after-Rin sentences = ${st.lines + st.repeat} clips · ${st.total} characters** (tags included) of ${script.budget.credits} credits, so about ${(script.budget.credits / st.total).toFixed(1)}× the pack fits (the rest is for regenerating bad takes in 4.3).`,
+    '> `~` is on screen only. A 🆕 line is new; the rest came from earlier tasks (source in the last column).',
+    '',
+  ];
+  const order = Object.keys(script.pools);
+  for (const name of order) {
+    const lines = script.lines.filter((l) => l.pool === name && l.pool !== 'chat.answer');
+    if (!lines.length) continue;
+    const pool = script.pools[name];
+    const mix = pool.mix ? `, mixed with ${pool.mix}` : '';
+    out.push(`## ${name} (${pool.use}${mix}, ${lines.length})`, '', pool.when, '');
+    if (name === 'chat.question') {
+      out.push('| id | Rin asks | chip ✅ → Rin | chip ❌ → Rin | mood |', '|---|---|---|---|---|');
+      for (const q of lines) {
+        const ans = (intent) => script.lines.find((a) => a.reply_to === q.id && a.intent === intent);
+        const yes = ans('affirm');
+        const no = ans('deny');
+        out.push(`| ${q.id} | ${cell(q.tag ? q.tag + ' ' : '')}${cell(q.text)} | “${cell(q.replies.affirm)}” → ${cell(yes?.text)} | “${cell(q.replies.deny)}” → ${cell(no?.text)} | ${q.emotion} |`);
+      }
+    } else {
+      out.push('| id | line | tag | mood | gesture | |', '|---|---|---|---|---|---|');
+      for (const l of lines) {
+        const extra = l.src ? l.src : '🆕';
+        const say = l.say ? ` *(says: ${cell(l.say)})*` : '';
+        out.push(`| ${l.id} | ${cell(l.text)}${say} | ${l.tag ?? ''} | ${l.emotion} | ${l.gesture ?? ''} | ${extra} |`);
+      }
+    }
+    out.push('');
+  }
+  out.push(`## Repeat after Rin (${repeat.length}, assets/repeat/sentences.json, approved in 3.5)`, '');
+  out.push(repeat.map((r) => `${r.id} ${r.text}`).join(' · '), '');
+  return out.join('\n');
+}
+
+export function load() {
+  const script = JSON.parse(readFileSync(join(ASSETS, 'dialogue', 'lines.json'), 'utf8'));
+  const repeat = JSON.parse(readFileSync(join(ASSETS, 'repeat', 'sentences.json'), 'utf8')).sentences;
+  const moods = Object.keys(JSON.parse(readFileSync(join(CHARACTER, 'moods.json'), 'utf8')));
+  const g = JSON.parse(readFileSync(join(CHARACTER, 'gestures.json'), 'utf8'));
+  const gestures = Object.keys(g.gestures ?? g);
+  return { script, repeat, moods, gestures };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { script, repeat, moods, gestures } = load();
+  const problems = check(script, { moods, gestures, repeat });
+  const st = stats(script, repeat);
+  console.log(`${st.lines} lines + ${st.repeat} repeat = ${st.lines + st.repeat} clips, ${st.lineChars} + ${st.repeatChars} = ${st.total} characters (max ${script.budget.scriptMax}, credits ${script.budget.credits})`);
+  const at = process.argv.indexOf('--review');
+  if (at >= 0) {
+    const file = process.argv[at + 1] ?? join(ROOT, 'docs', 'character', 'script-review.md');
+    writeFileSync(file, review(script, repeat));
+    console.log(`review: ${file}`);
+  }
+  for (const p of problems) console.error(`FAIL ${p}`);
+  process.exit(problems.length ? 1 : 0);
+}
