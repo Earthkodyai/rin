@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
@@ -116,7 +117,10 @@ private fun CupsBoard2d(act: CupsAct, modifier: Modifier) {
     val frame = CupsTimeline.frameAt(act, now)
     val w = size.width
     val h = size.height
-    drawRoundRect(WOOD, Offset(w * 0.02f, h * 0.5f), Size(w * 0.96f, h * 0.46f), CornerRadius(w * 0.03f))
+    val tableAt = Offset(w * 0.02f, h * 0.5f)
+    val tableSize = Size(w * 0.96f, h * 0.46f)
+    drawRoundRect(WOOD, tableAt, tableSize, CornerRadius(w * 0.03f))
+    drawRoundRect(WOOD_EDGE, tableAt, tableSize, CornerRadius(w * 0.03f), style = Stroke(w * 0.012f))
     val cupW = minOf(w * 0.22f, h * 0.3f)
     val cupH = cupW * 1.15f
     val base = { x: Float, z: Float -> Offset(w * (1 / 6f + x / 3f), h * 0.8f + z * h * 0.08f) }
@@ -195,8 +199,13 @@ internal fun CupsScoldLine(state: CupsState, modifier: Modifier = Modifier) {
   RinLine(lines[state.line % lines.size], modifier, Modifier.testTag(CUPS_SCOLD_TAG))
 }
 
-private val WOOD = Color(0xFFB07A4F)
-private val CUP = Color(0xFFD9534F)
+/**
+ * A dark walnut table, so the red cups stand out by brightness and not only by hue (3.7, the tester: on the lighter
+ * wood they blended in; the two were almost equally bright, 1.07:1). CupsBoardColoursTest keeps them at least 3:1 apart.
+ */
+internal val WOOD = Color(0xFF4A2E1B)
+private val WOOD_EDGE = Color(0xFFB07A4F)
+internal val CUP = Color(0xFFD9534F)
 private val CUP_RIM = Color(0xFFB8403C)
 private val BALL = Color(0xFFFFD54A)
 
