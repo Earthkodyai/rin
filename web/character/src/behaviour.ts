@@ -51,6 +51,14 @@ export class Behaviour {
   private snap = false;
 
   /**
+   * How much of the way to the camera (the user) her head turns, 0..1 (task 3.7). At 1 she meets the user's eyes: the
+   * eyes alone cannot, as VRoid's turn only a ninth of what is asked (10° for 90°), and following a third of the way
+   * left her gazing 6° over the user in the full-body view, 12° with the proud mood's raised chin (the tester saw it
+   * as she clapped). The cup table lowers it while in view (main.ts): there she watches her hands and the cups.
+   */
+  aimCamera = 1;
+
+  /**
    * @param headCenterUp  metres from the head bone up to the middle of the head (hair included)
    * @param headRadius    radius of the sphere that counts as "the head" for taps
    */
@@ -102,14 +110,14 @@ export class Behaviour {
     this.tap.step(dt);
     const c = this.tap.apply(this.blend.values);
     this.gestures?.update(dt);
-    this.look(dt, c.gaze);
+    this.look(dt, c.gaze, c.pitch);
     this.body(c.pitch + this.tap.nod, c.yaw, c.roll);
     this.gestures?.applyBones(this.vrm);
     this.face(dt, c);
     return done;
   }
 
-  private look(dt: number, gaze: number): void {
+  private look(dt: number, gaze: number, moodPitch: number): void {
     const t = this.t;
     if (t > this.nextSaccade) {
       this.saccade.set(rand(-0.02, 0.02), rand(-0.015, 0.015));
@@ -130,12 +138,24 @@ export class Behaviour {
     }
     this.target.position.lerp(this.desired, this.snap ? 1 : approach(25, dt));
 
-    // The head follows about a third of the way, within limits, and more slowly than the eyes.
+    // The head turns toward the user by aimCamera, less the mood's own pitch (body() adds it back), so a raised chin
+    // still meets their eyes; toward anything else (a saccade, a glance, a finger, the cups) it follows a third of the
+    // way. Within limits, and more slowly than the eyes.
     const head = this.vrm.humanoid.getNormalizedBoneNode('head');
     if (!head) return;
-    const d = this.target.position.clone().sub(head.getWorldPosition(this.headPos));
-    const yaw = THREE.MathUtils.clamp(0.35 * Math.atan2(d.x, d.z), -0.35, 0.35);
-    const pitch = THREE.MathUtils.clamp(-0.35 * Math.atan2(d.y, Math.hypot(d.x, d.z)), -0.25, 0.25);
+    head.getWorldPosition(this.headPos);
+    const angles = (p: THREE.Vector3) => {
+      const d = p.clone().sub(this.headPos);
+      return [Math.atan2(d.x, d.z), -Math.atan2(d.y, Math.hypot(d.x, d.z))];
+    };
+    const [camYaw, camPitch] = angles(this.camera.position);
+    const [toYaw, toPitch] = angles(this.target.position);
+    const a = this.aimCamera;
+    const baseYaw = a * camYaw;
+    const basePitch = a * camPitch;
+    const yaw = THREE.MathUtils.clamp(baseYaw + 0.35 * (toYaw - baseYaw), -0.35, 0.35);
+    const pitchLimit = 0.25 + 0.1 * a;
+    const pitch = THREE.MathUtils.clamp(basePitch + 0.35 * (toPitch - basePitch) - a * moodPitch, -pitchLimit, pitchLimit);
     const k = this.snap ? 1 : approach(5, dt);
     this.lookYaw += (yaw - this.lookYaw) * k;
     this.lookPitch += (pitch - this.lookPitch) * k;
@@ -157,12 +177,14 @@ export class Behaviour {
     rot('upperChest', 0, 0, 0);
     rot('leftShoulder', 0, 0, 0);
     rot('rightShoulder', 0, 0, 0);
-    rot('spine', 0, 0.04 * Math.sin(t * 0.7), 0.02 * Math.sin(t * 0.5));
+    const sway = 0.04 * Math.sin(t * 0.7);
+    rot('spine', 0, sway, 0.02 * Math.sin(t * 0.5));
     rot('neck', 0.4 * this.lookPitch, 0.4 * this.lookYaw, 0);
+    // While she looks at the user, the head turns against the body's sway, as a person's does to hold eye contact.
     rot(
       'head',
       0.6 * this.lookPitch + pitch + 0.03 * Math.sin(t * 0.9),
-      0.6 * this.lookYaw + yaw + 0.03 * Math.sin(t * 0.6),
+      0.6 * this.lookYaw + yaw + 0.03 * Math.sin(t * 0.6) - this.aimCamera * sway,
       roll,
     );
   }
