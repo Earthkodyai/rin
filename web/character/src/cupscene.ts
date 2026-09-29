@@ -93,9 +93,22 @@ export class CupScene {
   /**
    * How her hand holds a cup: the wrist `back` behind the top's centre and `up` above it (in arms), the hand tipped
    * down by `pitch` (radians), fingers curled by `curl` (0 flat .. 1 fist). On a cup passing behind, the wrist sits
-   * `backShift` further back at the height of the pass, so her fingers stay off the cup passing in front.
+   * `backShift` further back at the height of the pass, so her fingers stay off the cup passing in front. The hand
+   * rolls by `roll` (thumb side up) and the thumb lies along it (`thumb*`, Euler angles for her right hand): the
+   * thumb's root sank 2.3 cm into the cup before (the tester saw it); a sweep put it at 0.4 cm, the whole hand at
+   * 0.7 cm at worst, the palm 0.3 cm over the top.
    */
-  readonly grip = { back: 0.12, up: 0.025, pitch: 0, curl: 0.1, backShift: 0.08 };
+  readonly grip = {
+    back: 0.12,
+    up: 0.035,
+    pitch: 0,
+    curl: 0.1,
+    backShift: 0.08,
+    roll: 0.5,
+    thumbBase: [0, -0.3, -0.3] as number[],
+    thumbMid: [0, 0, 0] as number[],
+    thumbTip: [0, 0, 0] as number[],
+  };
   private readonly arm: number;
 
   constructor(private readonly vrm: VRM) {
@@ -299,7 +312,10 @@ export class CupScene {
     const solved = solveArm(s, channel);
     // The hand lies along the table, pointing ahead, its fingers tipped a little down over the cup's rim.
     const dir = new THREE.Vector3(0, -Math.sin(this.grip.pitch), Math.cos(this.grip.pitch)).applyQuaternion(toParent);
-    const handBody = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(sign, 0, 0), dir);
+    // Rolled about its length so the thumb side lifts off the cup (the thumb's root sank 1.3 cm into it).
+    const handBody = new THREE.Quaternion()
+      .setFromAxisAngle(dir, -sign * this.grip.roll)
+      .multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(sign, 0, 0), dir));
     const handLocal = solved.upper.clone().multiply(solved.lower).invert().multiply(handBody);
     upper.quaternion.slerp(this.rig(solved.upper), w);
     lower.quaternion.slerp(this.rig(solved.lower), w);
@@ -307,6 +323,14 @@ export class CupScene {
     for (const [bone, q] of Object.entries(curlFingers(s, this.grip.curl))) {
       node(bone as VRMHumanBoneName)?.quaternion.slerp(this.rig(q), w);
     }
+    // The thumb lies along her hand instead of hanging down the cup's side. Euler angles are for her right hand; the
+    // left mirrors them (y and z flip).
+    const m = s === 'left' ? -1 : 1;
+    const thumb = (bone: VRMHumanBoneName, [x, y, z]: readonly number[]) =>
+      node(bone)?.quaternion.slerp(this.rig(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, m * y, m * z))), w);
+    thumb(`${s}ThumbMetacarpal`, this.grip.thumbBase);
+    thumb(`${s}ThumbProximal`, this.grip.thumbMid);
+    thumb(`${s}ThumbDistal`, this.grip.thumbTip);
   }
 
   /**
@@ -314,7 +338,7 @@ export class CupScene {
    * `depth`, how far any finger or palm point sinks into a cup (fingers taken as 8 mm thick), and `gap`, how high
    * the palm floats over the top of the cup under it.
    */
-  probe(now: number): Record<string, { depth: number; gap: number | null; slip: number }> {
+  probe(now: number): Record<string, { depth: number; thumb: number; gap: number | null; slip: number }> {
     this.shown = 1;
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
     const saved = spine?.quaternion.clone();
@@ -330,7 +354,7 @@ export class CupScene {
     this.update(now, 0);
     this.vrm.scene.updateMatrixWorld(true);
     const l = this.layout;
-    const out: Record<string, { depth: number; gap: number | null; slip: number }> = {};
+    const out: Record<string, { depth: number; thumb: number; gap: number | null; slip: number }> = {};
     const at = (name: string) => this.vrm.humanoid.getNormalizedBoneNode(name as VRMHumanBoneName)?.getWorldPosition(new THREE.Vector3());
     for (const s of ['right', 'left'] as const) {
       if (!this.last[s]) continue;
@@ -345,16 +369,25 @@ export class CupScene {
         points.push(p, i, d, tip, wrist.clone().lerp(p, 0.5));
         palm.push(p, wrist.clone().lerp(p, 0.5));
       }
+      // The thumb too (the tester saw it sink into the cup once the fingers were clear).
+      const tm = at(`${s}ThumbMetacarpal`);
+      const tp = at(`${s}ThumbProximal`);
+      const td = at(`${s}ThumbDistal`);
+      const thumb = tm && tp && td ? [tm, tp, td, td.clone().add(td.clone().sub(tp).multiplyScalar(0.9)), tm.clone().lerp(tp, 0.5)] : [];
+      points.push(...thumb);
       let depth = 0;
+      let thumbDepth = 0;
       let gap: number | null = null;
       for (const cup of this.cups) {
         const c = cup.position;
-        for (const p of points) {
+        const into = (p: THREE.Vector3) => {
           const h = p.y - c.y;
           const rho = Math.hypot(p.x - c.x, p.z - c.z);
           const r = l.cupR * (1 - 0.3 * Math.min(Math.max(h / l.cupH, 0), 1));
-          if (h > -0.008 && h < l.cupH + 0.008) depth = Math.max(depth, Math.min(r + 0.008 - rho, l.cupH + 0.008 - h));
-        }
+          return h > -0.008 && h < l.cupH + 0.008 ? Math.min(r + 0.008 - rho, l.cupH + 0.008 - h) : 0;
+        };
+        for (const p of points) depth = Math.max(depth, into(p));
+        for (const p of thumb) thumbDepth = Math.max(thumbDepth, into(p));
         for (const p of palm) {
           if (Math.hypot(p.x - c.x, p.z - c.z) > l.cupR * 0.7) continue;
           const g = p.y - 0.008 - (c.y + l.cupH);
@@ -364,7 +397,7 @@ export class CupScene {
       // How far the wrist ended from where it was sent (clearing her body, or out of reach), horizontally.
       const sent = this.last[s]!.pos;
       const slip = Math.hypot(wrist.x - sent.x, wrist.z - sent.z);
-      out[s] = { depth: Math.round(depth * 1000) / 10, gap: gap === null ? null : Math.round(gap * 1000) / 10, slip: Math.round(slip * 1000) / 10 };
+      out[s] = { depth: Math.round(depth * 1000) / 10, thumb: Math.round(thumbDepth * 1000) / 10, gap: gap === null ? null : Math.round(gap * 1000) / 10, slip: Math.round(slip * 1000) / 10 };
     }
     if (saved) spine?.quaternion.copy(saved);
     return out;
