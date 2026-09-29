@@ -14,10 +14,10 @@ The 4.1 script draft made the cost concrete: 24 questions, 48 bound answers and 
 The tester extended the same reasoning to Phase 7's live chat.
 
 ## Decision
-Rin talks to the user; the user does not talk back to her. After the won line she says one short remark (the sky, the weather, Thai breakfast, the day) that ends with a goodbye (`after.remark`), and the morning is over. The microphone is used only inside the Repeat-after-Rin game. Phase 7 (backend, live chat, model eval) is cut.
+Rin talks to the user; the user does not talk back to her. After the won line she says one short remark that ends with a goodbye: the day, the sky in words that fit any weather (she can't know it), or why the next meal matters, picked by the ring time (`after.remark`, `after.meal.*`), and the morning is over. The microphone is used only inside the Repeat-after-Rin game. Phase 7 (backend, live chat, model eval) is cut.
 
 ## Consequences
-- The script drops to 208 lines + R01–R30 = 238 clips, 8,986 characters (≈3.3× fits the 30k-credit paid month, up from 2.3×).
+- The script drops to 215 lines + R01–R30 = 245 clips, 9,318 characters (≈3.2× fits the 30k-credit paid month, up from 2.3×).
 - Task 4.2 becomes a line selector (pools, 7-day no-repeat, moods) with subtitles and alarm ducking; no intent matcher and no chat screen. The Phase 4 exit drops "chat after the game".
 - Rest and sick days (Phase 5) are switched on in settings, not detected from an "I feel sick" reply.
 - **Crisis protocol:** with no free input, the app cannot detect a crisis, so there are no crisis voice lines. The 1323 hotline stays as fixed text in the app; where it goes is decided in Phase 5/6. The disclosure badge ("AI") stays on Rin at all times.
