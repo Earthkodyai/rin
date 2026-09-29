@@ -463,7 +463,7 @@ Head tap (2.2). She never asks for a reply.
 
 ## p5.rest (event, 4)
 
-Phase 5: rest day set in settings (no mission).
+Phase 5: rest day, one tap on the home screen (no game).
 
 | id | line | tag | mood | gesture | |
 |---|---|---|---|---|---|
@@ -474,7 +474,7 @@ Phase 5: rest day set in settings (no mission).
 
 ## p5.sick (event, 4)
 
-Phase 5: sick day set in settings (no mission, no pouting).
+Phase 5: sick day, one tap on the home screen (no game, no pouting).
 
 | id | line | tag | mood | gesture | |
 |---|---|---|---|---|---|

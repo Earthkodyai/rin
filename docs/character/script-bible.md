@@ -1,6 +1,6 @@
 # Script bible — คลังเสียงออฟไลน์ของริน (task 4.1, D20, D21)
 
-> **สถานะ:** ร่าง v2 (2026-09-30) Claude ร่าง คุณตรวจ · **v2 = พูดทางเดียวตาม D21** (ตัดการคุยถามตอบหลังเกมและโหมดคุยสดของเฟส 7) · บทอยู่ใน [`app/src/main/assets/dialogue/lines.json`](../../app/src/main/assets/dialogue/lines.json) · ตารางสำหรับตรวจ: [script-review.md](script-review.md) (สร้างจาก JSON อย่าแก้ในนั้น) · ตัวตรวจ: `node tools/voice/script-check.mjs --review` (เทสต์: `npm test --prefix tools/voice`, รันใน CI ด้วย)
+> **สถานะ:** **v1 ล็อกแล้ว (คุณยอมรับทั้งหมด 2026-09-30)** · แก้ข้อความได้จนถึง 4.3 แต่ id ต้องคงเดิม · **v2 = พูดทางเดียวตาม D21** (ตัดการคุยถามตอบหลังเกมและโหมดคุยสดของเฟส 7) · บทอยู่ใน [`app/src/main/assets/dialogue/lines.json`](../../app/src/main/assets/dialogue/lines.json) · ตารางสำหรับตรวจ: [script-review.md](script-review.md) (สร้างจาก JSON อย่าแก้ในนั้น) · ตัวตรวจ: `node tools/voice/script-check.mjs --review` (เทสต์: `npm test --prefix tools/voice`, รันใน CI ด้วย)
 > อ่านคู่กับ [character-sheet.md](character-sheet.md) (นิสัย, ทำ/ไม่ทำ) และ [05d](../plan/05d-voice-dialogue.md)
 
 ## 1. ตัวเลข (ร่าง v2)

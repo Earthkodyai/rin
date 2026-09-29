@@ -1,5 +1,5 @@
 {
-  "_note": "Rin's offline voice pack script (task 4.1, D20; one-way only since D21; nothing carried between days since D22: no streak, no Bond). Rules: docs/character/script-bible.md. Check and review table: node tools/voice/script-check.mjs. Ids never change or get reused once 4.3 records them. 'text' is shown on screen ('~' is screen-only and never sent to TTS); 'say' overrides what TTS reads; 'tag' is an eleven_v3 audio tag. Repeat-after-Rin sentences R01-R30 live in assets/repeat/sentences.json and are recorded with this pack.",
+  "_note": "Rin's offline voice pack script (task 4.1, D20; one-way only since D21; nothing carried between days since D22: no streak, no Bond). Rules: docs/character/script-bible.md. Check and review table: node tools/voice/script-check.mjs. v1 approved by the user 2026-09-30. Ids never change or get reused once 4.3 records them. 'text' is shown on screen ('~' is screen-only and never sent to TTS); 'say' overrides what TTS reads; 'tag' is an eleven_v3 audio tag. Repeat-after-Rin sentences R01-R30 live in assets/repeat/sentences.json and are recorded with this pack.",
   "version": 1,
   "budget": { "credits": 30000, "scriptMax": 15000 },
   "tags": ["[sleepy]", "[yawns]", "[softly]", "[gently]", "[whispers]", "[warmly]", "[cheerfully]", "[excited]", "[playfully]", "[giggles]", "[proudly]", "[pouting]", "[sighs]", "[concerned]", "[curious]", "[thinking]"],
@@ -44,8 +44,8 @@
     "app.night":        { "use": "event",   "when": "App opened, 22:00-04:59. Gentle, no pressure." },
     "app.alarmset":     { "use": "event",   "when": "An alarm was saved (any time of day)." },
     "tap.head":         { "use": "session", "when": "Head tap (2.2). She never asks for a reply." },
-    "p5.rest":          { "use": "event",   "when": "Phase 5: rest day set in settings (no mission)." },
-    "p5.sick":          { "use": "event",   "when": "Phase 5: sick day set in settings (no mission, no pouting)." }
+    "p5.rest":          { "use": "event",   "when": "Phase 5: rest day, one tap on the home screen (no game)." },
+    "p5.sick":          { "use": "event",   "when": "Phase 5: sick day, one tap on the home screen (no game, no pouting)." }
   },
   "lines": [
     {"id": "ring.sleepy.01", "pool": "ring.sleepy", "emotion": "sleepy", "gesture": "yawn", "tag": "[sleepy]", "text": "Mmh… morning already? Let's wake up together."},
