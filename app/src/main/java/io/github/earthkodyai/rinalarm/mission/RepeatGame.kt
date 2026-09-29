@@ -52,15 +52,16 @@ data class Heard(val words: List<HeardWord>, val lagMs: Long? = null, val peakDb
 }
 
 /**
- * How one try is judged. These are the numbers the dev recordings tune and that are then frozen before the held-out
- * ones (docs/spikes/3.5-repeat-after-rin.md); [RepeatMatcher] applies them.
+ * How one try is judged, [RepeatMatcher] applies it. Frozen 2026-09-29 from the dev recordings by the rule set before
+ * them (docs/spikes/3.5-repeat-after-rin.md): no decoys, 0.6 and 0.6 accepted 20/24 dev tries with 0/16 false
+ * accepts (the starting 0.6 / 0.75 / decoys on: 13/24). Not to be changed on held-out data.
  *
  * @property minConf a heard word counts only at or above this confidence.
  * @property minCoverage the share of the sentence's words that must be heard, in order.
  * @property decoys whether the grammar carries [RepeatMatcher.DECOYS], so speech that is not the sentence has
  *   somewhere to go other than the sentence's own words (S3 had three replies to choose from; here there is one).
  */
-data class MatchRules(val minConf: Float = 0.6f, val minCoverage: Float = 0.75f, val decoys: Boolean = true)
+data class MatchRules(val minConf: Float = 0.6f, val minCoverage: Float = 0.6f, val decoys: Boolean = false)
 
 /** The result of matching one try: [matched] of the sentence's [of] words were heard in order. */
 data class Match(val matched: Int, val of: Int, val needed: Int) {

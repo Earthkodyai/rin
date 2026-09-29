@@ -110,7 +110,7 @@ class VoskListener(private val context: Context, private val models: VoskModels)
     model = models.load()
   }
 
-  override suspend fun listen(grammar: List<String>, maxMs: Long): Heard =
+  override suspend fun listen(grammar: List<String>, maxMs: Long, enough: (Heard) -> Boolean): Heard =
     withContext(Dispatchers.IO) {
       val m = checkNotNull(model) { "not prepared" }
       if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -125,7 +125,7 @@ class VoskListener(private val context: Context, private val models: VoskModels)
           AudioFormat.ENCODING_PCM_16BIT,
           max(AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), chunk * 4),
         )
-      val decoder = VoskDecoder(m, grammar)
+      val decoder = VoskDecoder(m, grammar, enough)
       try {
         check(record.state == AudioRecord.STATE_INITIALIZED) { "mic did not initialise" }
         record.startRecording()
@@ -197,42 +197,110 @@ class VoskListener(private val context: Context, private val models: VoskModels)
 
 /**
  * One try's decoding, shared by the live mic ([VoskListener]) and the lab's replay of recorded tries, so both judge
- * the same way: 100 ms chunks, and the try ends at the first end of an utterance that has words in it.
+ * the same way. Fed 100 ms chunks. Words are collected across Vosk's utterances, because a pause inside a sentence
+ * ends an utterance (dev d04: "The sun is up, || and so am I" lost its second half when the first utterance ended
+ * the try). The try is over as soon as the words so far are [enough], or [QUIET_MS] after an utterance with words
+ * ended with no new speech since; the caller's time limit covers the rest.
  */
-class VoskDecoder(model: Model, grammar: List<String>) : AutoCloseable {
-  private val recognizer = Recognizer(model, VoskListener.RATE.toFloat(), JSONArray(grammar).toString()).apply { setWords(true) }
-  private var result: String? = null
+class VoskDecoder(private val recognizer: Recognizing, private val enough: (Heard) -> Boolean = { false }) : AutoCloseable {
+  constructor(model: Model, grammar: List<String>, enough: (Heard) -> Boolean = { false }) : this(VoskRecognizing(model, grammar), enough)
+  private val words = mutableListOf<HeardWord>()
+  private var unknown = 0
+  private var lastEnd: Double? = null
+  /** Sample count when the last utterance with words ended, while no new speech has started; null otherwise. */
+  private var quietFrom: Long? = null
+  private var done = false
   private var samples = 0L
   private var peak = 0
   /** The peak of the last chunk fed, for a level meter. */
   var lastPeak = 0
     private set
 
-  /** Feeds [n] samples; true once the try is over (an utterance with words ended). */
+  /** Feeds [n] samples; true once the try is over. */
   fun feed(buffer: ShortArray, n: Int): Boolean {
-    if (result != null) return true
+    if (done) return true
     samples += n
     lastPeak = (0 until n).maxOfOrNull { abs(buffer[it].toInt()) } ?: 0
     peak = max(peak, lastPeak)
-    if (recognizer.acceptWaveForm(buffer, n)) {
-      val text = recognizer.result
-      if (VoskListener.words(text).isNotEmpty()) result = text
+    if (recognizer.accept(buffer, n)) {
+      if (take(recognizer.result())) {
+        quietFrom = samples
+        if (enough(snapshot())) done = true
+      }
+    } else if (quietFrom != null && partialText(recognizer.partial()).isNotEmpty()) {
+      quietFrom = null // speaking again
     }
-    return result != null
+    quietFrom?.let { if (samples - it >= QUIET_MS * VoskListener.RATE / 1000) done = true }
+    return done
   }
 
-  /** What the try heard; after the time limit, whatever Vosk has so far. */
+  /** What the try heard; after the time limit, including whatever Vosk has not closed yet. Ends the try. */
   fun heard(): Heard {
-    val json = result ?: recognizer.finalResult
+    if (!done) {
+      take(recognizer.final())
+      done = true
+    }
+    return snapshot()
+  }
+
+  /** The words so far, without ending the try. */
+  private fun snapshot(): Heard {
     // Audio time of the last word's end, against the samples read: how long the user waited after speaking.
-    val lag = VoskListener.lastWordEnd(json)?.let { ((samples.toDouble() / VoskListener.RATE - it) * 1000).toLong().coerceAtLeast(0) }
+    val lag = lastEnd?.let { ((samples.toDouble() / VoskListener.RATE - it) * 1000).toLong().coerceAtLeast(0) }
     return Heard(
-      VoskListener.words(json),
+      words.toList(),
       lagMs = lag,
       peakDb = if (peak == 0) null else (20 * log10(peak / 32768.0)).toFloat(),
-      unknown = VoskListener.unknowns(json),
+      unknown = unknown,
     )
   }
+
+  /** Adds one utterance's result; true when it had words. */
+  private fun take(json: String): Boolean {
+    val got = VoskListener.words(json)
+    unknown += VoskListener.unknowns(json)
+    if (got.isEmpty()) return false
+    words += got
+    lastEnd = VoskListener.lastWordEnd(json) ?: lastEnd
+    return true
+  }
+
+  private fun partialText(json: String): String =
+    runCatching { Json.parseToJsonElement(json).jsonObject["partial"]?.jsonPrimitive?.content.orEmpty() }
+      .getOrDefault("")
+      .replace("[unk]", "")
+      .trim()
+
+  override fun close() = recognizer.close()
+
+  companion object {
+    /** Silence after an utterance before a try that has not passed ends (on top of Vosk's own ~0.5 s endpoint). */
+    const val QUIET_MS = 1_000L
+  }
+}
+
+/** The part of Vosk's Recognizer that [VoskDecoder] uses (results as Vosk's JSON), so its logic is unit-tested. */
+interface Recognizing : AutoCloseable {
+  /** True when an utterance ended; [result] then has it. */
+  fun accept(buffer: ShortArray, n: Int): Boolean
+
+  fun result(): String
+
+  fun partial(): String
+
+  fun final(): String
+}
+
+private class VoskRecognizing(model: Model, grammar: List<String>) : Recognizing {
+  private val recognizer = Recognizer(model, VoskListener.RATE.toFloat(), JSONArray(grammar).toString()).apply { setWords(true) }
+
+  override fun accept(buffer: ShortArray, n: Int) = recognizer.acceptWaveForm(buffer, n)
+
+  override fun result(): String = recognizer.result
+
+  override fun partial(): String = recognizer.partialResult
+
+  override fun final(): String = recognizer.finalResult
 
   override fun close() = recognizer.close()
 }

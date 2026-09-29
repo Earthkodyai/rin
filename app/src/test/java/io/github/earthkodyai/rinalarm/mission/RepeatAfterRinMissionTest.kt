@@ -46,7 +46,7 @@ class RepeatAfterRinMissionTest {
       if (broken) error("no model")
     }
 
-    override suspend fun listen(grammar: List<String>, maxMs: Long): Heard {
+    override suspend fun listen(grammar: List<String>, maxMs: Long, enough: (Heard) -> Boolean): Heard {
       grammars += grammar
       gate?.await()
       kotlinx.coroutines.delay(SPEAK_MS)

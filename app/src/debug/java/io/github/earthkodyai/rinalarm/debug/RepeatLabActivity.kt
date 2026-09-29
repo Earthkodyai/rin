@@ -42,6 +42,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import io.github.earthkodyai.rinalarm.mission.MatchRules
 import io.github.earthkodyai.rinalarm.mission.RepeatMatcher
+import io.github.earthkodyai.rinalarm.mission.RepeatRules
 import io.github.earthkodyai.rinalarm.mission.RepeatSentences
 import io.github.earthkodyai.rinalarm.mission.VoskDecoder
 import io.github.earthkodyai.rinalarm.mission.VoskListener
@@ -208,7 +209,9 @@ class RepeatLabActivity : ComponentActivity() {
           val started = SystemClock.elapsedRealtime()
           val heard =
             withContext(Dispatchers.Default) {
-              val pcm = readWav(wav)
+              // Cut at the game's listening limit, as live; no early stop (enough = false) so every rule the PC
+              // grid tries sees all the words it would see live (a match only grows with more words).
+              val pcm = readWav(wav).let { it.copyOf(minOf(it.size, (RepeatRules().listenMs * VoskListener.RATE / 1000).toInt())) }
               VoskDecoder(model, RepeatMatcher.grammar(sentence, rules)).use { d ->
                 val chunk = VoskListener.RATE / 10
                 var i = 0

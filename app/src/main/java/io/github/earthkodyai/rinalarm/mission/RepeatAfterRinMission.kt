@@ -46,8 +46,11 @@ interface SpeechListener {
   /** Loads the model; throws when speech cannot work on this phone right now. */
   suspend fun prepare()
 
-  /** Listens once, up to [maxMs], and returns what was said; throws when the mic cannot be used. */
-  suspend fun listen(grammar: List<String>, maxMs: Long): Heard
+  /**
+   * Listens once, up to [maxMs], and returns what was said; throws when the mic cannot be used. Ends early once what
+   * was heard is [enough] (the sentence passed), or after a pause that follows speech.
+   */
+  suspend fun listen(grammar: List<String>, maxMs: Long, enough: (Heard) -> Boolean): Heard
 
   fun release()
 }
@@ -204,7 +207,9 @@ class RepeatAfterRinMission(
         ready?.await()
         hushState.value = Hush.SILENT
         listens++
-        listener.listen(RepeatMatcher.grammar(sentence, rules.match), rules.listenMs)
+        listener.listen(RepeatMatcher.grammar(sentence, rules.match), rules.listenMs) {
+          RepeatMatcher.match(sentence, it, rules.match).accepted
+        }
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
