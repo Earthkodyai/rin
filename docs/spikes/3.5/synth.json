@@ -1,0 +1,4357 @@
+{
+ "_note": "Held-out items minus mumbles, once per synthetic voice (tools/stt/make-synth.py).",
+ "items": [
+  {
+   "id": "af_heart-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_heart-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "af_heart-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_heart-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_heart-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "af_heart-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will"
+  },
+  {
+   "id": "af_heart-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_heart-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_heart-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's check"
+  },
+  {
+   "id": "af_heart-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I can do"
+  },
+  {
+   "id": "af_heart-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_heart-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "af_heart-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's put"
+  },
+  {
+   "id": "af_heart-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "af_heart-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_heart-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_heart-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_heart-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "af_heart-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_heart-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_heart-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "af_heart-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "af_heart-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "af_heart-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_heart-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "af_heart-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_heart-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_heart-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "af_heart",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "af_bella-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_bella-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "af_bella-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_bella-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_bella-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "af_bella-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_bella-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will"
+  },
+  {
+   "id": "af_bella-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_bella-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_bella-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's check"
+  },
+  {
+   "id": "af_bella-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I can do"
+  },
+  {
+   "id": "af_bella-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_bella-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_bella-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "af_bella-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's put"
+  },
+  {
+   "id": "af_bella-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_bella-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "af_bella-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_bella-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_bella-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_bella-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_bella-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_bella-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_bella-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "af_bella-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_bella-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_bella-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "af_bella-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "af_bella-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "af_bella-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_bella-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "af_bella-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_bella-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_bella-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "af_bella",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "am_michael-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_michael-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "am_michael-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_michael-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_michael-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "am_michael-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will"
+  },
+  {
+   "id": "am_michael-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_michael-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_michael-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's check"
+  },
+  {
+   "id": "am_michael-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I can do"
+  },
+  {
+   "id": "am_michael-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_michael-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "am_michael-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's put"
+  },
+  {
+   "id": "am_michael-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "am_michael-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_michael-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_michael-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_michael-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "am_michael-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_michael-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_michael-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "am_michael-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "am_michael-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "am_michael-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_michael-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "am_michael-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_michael-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_michael-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "am_michael",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "am_adam-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_adam-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "am_adam-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_adam-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_adam-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "am_adam-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_adam-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will"
+  },
+  {
+   "id": "am_adam-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_adam-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_adam-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's check"
+  },
+  {
+   "id": "am_adam-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I can do"
+  },
+  {
+   "id": "am_adam-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_adam-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_adam-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "am_adam-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's put"
+  },
+  {
+   "id": "am_adam-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_adam-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "am_adam-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_adam-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_adam-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_adam-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_adam-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_adam-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_adam-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "am_adam-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_adam-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_adam-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "am_adam-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "am_adam-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "am_adam-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_adam-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "am_adam-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_adam-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_adam-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "am_adam",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "bf_emma-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "bf_emma-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "bf_emma-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "bf_emma-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "bf_emma-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "bf_emma-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bf_emma-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will"
+  },
+  {
+   "id": "bf_emma-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "bf_emma-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "bf_emma-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's check"
+  },
+  {
+   "id": "bf_emma-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I can do"
+  },
+  {
+   "id": "bf_emma-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "bf_emma-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bf_emma-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "bf_emma-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's put"
+  },
+  {
+   "id": "bf_emma-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bf_emma-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "bf_emma-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "bf_emma-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "bf_emma-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bf_emma-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "bf_emma-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bf_emma-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bf_emma-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "bf_emma-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "bf_emma-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "bf_emma-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "bf_emma-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "bf_emma-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "bf_emma-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "bf_emma-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "bf_emma-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "bf_emma-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "bf_emma-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "bf_emma",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "bm_george-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "bm_george-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "bm_george-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "bm_george-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "bm_george-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "bm_george-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bm_george-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will"
+  },
+  {
+   "id": "bm_george-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "bm_george-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "bm_george-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's check"
+  },
+  {
+   "id": "bm_george-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I can do"
+  },
+  {
+   "id": "bm_george-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "bm_george-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bm_george-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "bm_george-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's put"
+  },
+  {
+   "id": "bm_george-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bm_george-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "bm_george-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "bm_george-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "bm_george-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bm_george-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "bm_george-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "bm_george-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "bm_george-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "bm_george-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "bm_george-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "bm_george-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "bm_george-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "bm_george-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "bm_george-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "bm_george-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "bm_george-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "bm_george-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "bm_george-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "native",
+   "voice": "bm_george",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "ef_dora-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "ef_dora-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "ef_dora-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "ef_dora-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "ef_dora-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "ef_dora-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "ef_dora-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will"
+  },
+  {
+   "id": "ef_dora-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "ef_dora-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "ef_dora-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's check"
+  },
+  {
+   "id": "ef_dora-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I can do"
+  },
+  {
+   "id": "ef_dora-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "ef_dora-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "ef_dora-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "ef_dora-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's put"
+  },
+  {
+   "id": "ef_dora-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "ef_dora-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "ef_dora-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "ef_dora-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "ef_dora-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "ef_dora-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "ef_dora-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "ef_dora-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "ef_dora-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "ef_dora-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "ef_dora-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "ef_dora-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "ef_dora-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "ef_dora-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "ef_dora-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "ef_dora-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "ef_dora-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "ef_dora-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "ef_dora-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "ef_dora",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "hf_alpha-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "hf_alpha-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "hf_alpha-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "hf_alpha-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "hf_alpha-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "hf_alpha-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "hf_alpha-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will"
+  },
+  {
+   "id": "hf_alpha-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "hf_alpha-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "hf_alpha-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's check"
+  },
+  {
+   "id": "hf_alpha-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I can do"
+  },
+  {
+   "id": "hf_alpha-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "hf_alpha-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "hf_alpha-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "hf_alpha-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's put"
+  },
+  {
+   "id": "hf_alpha-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "hf_alpha-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "hf_alpha-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "hf_alpha-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "hf_alpha-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "hf_alpha-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "hf_alpha-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "hf_alpha-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "hf_alpha-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "hf_alpha-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "hf_alpha-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "hf_alpha-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "hf_alpha-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "hf_alpha-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "hf_alpha-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "hf_alpha-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "hf_alpha-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "hf_alpha-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "hf_alpha-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "hf_alpha",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "jf_alpha-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "jf_alpha-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "jf_alpha-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "jf_alpha-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "jf_alpha-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "jf_alpha-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "jf_alpha-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will"
+  },
+  {
+   "id": "jf_alpha-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "jf_alpha-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "jf_alpha-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's check"
+  },
+  {
+   "id": "jf_alpha-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I can do"
+  },
+  {
+   "id": "jf_alpha-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "jf_alpha-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "jf_alpha-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "jf_alpha-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's put"
+  },
+  {
+   "id": "jf_alpha-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "jf_alpha-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "jf_alpha-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "jf_alpha-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "jf_alpha-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "jf_alpha-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "jf_alpha-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "jf_alpha-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "jf_alpha-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "jf_alpha-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "jf_alpha-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "jf_alpha-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "jf_alpha-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "jf_alpha-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "jf_alpha-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "jf_alpha-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "jf_alpha-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "jf_alpha-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "jf_alpha-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "jf_alpha",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "zf_xiaobei-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "zf_xiaobei-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "zf_xiaobei-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "zf_xiaobei-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "zf_xiaobei-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "zf_xiaobei-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zf_xiaobei-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will"
+  },
+  {
+   "id": "zf_xiaobei-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "zf_xiaobei-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "zf_xiaobei-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's check"
+  },
+  {
+   "id": "zf_xiaobei-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I can do"
+  },
+  {
+   "id": "zf_xiaobei-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "zf_xiaobei-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zf_xiaobei-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "zf_xiaobei-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's put"
+  },
+  {
+   "id": "zf_xiaobei-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zf_xiaobei-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "zf_xiaobei-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "zf_xiaobei-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "zf_xiaobei-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zf_xiaobei-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "zf_xiaobei-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zf_xiaobei-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zf_xiaobei-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "zf_xiaobei-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "zf_xiaobei-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "zf_xiaobei-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "zf_xiaobei-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "zf_xiaobei-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "zf_xiaobei-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "zf_xiaobei-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "zf_xiaobei-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "zf_xiaobei-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "zf_xiaobei-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "zf_xiaobei",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "zm_yunxi-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "zm_yunxi-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "zm_yunxi-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "zm_yunxi-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "zm_yunxi-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "zm_yunxi-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zm_yunxi-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will"
+  },
+  {
+   "id": "zm_yunxi-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "zm_yunxi-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "zm_yunxi-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's check"
+  },
+  {
+   "id": "zm_yunxi-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I can do"
+  },
+  {
+   "id": "zm_yunxi-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "zm_yunxi-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zm_yunxi-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "zm_yunxi-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's put"
+  },
+  {
+   "id": "zm_yunxi-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zm_yunxi-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "zm_yunxi-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "zm_yunxi-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "zm_yunxi-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zm_yunxi-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "zm_yunxi-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "zm_yunxi-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "zm_yunxi-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "zm_yunxi-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "zm_yunxi-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "zm_yunxi-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "zm_yunxi-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "zm_yunxi-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "zm_yunxi-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "zm_yunxi-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "zm_yunxi-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "zm_yunxi-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "zm_yunxi-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "zm_yunxi",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "pm_alex-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "pm_alex-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "pm_alex-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "pm_alex-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "pm_alex-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "pm_alex-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "pm_alex-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will"
+  },
+  {
+   "id": "pm_alex-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "pm_alex-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "pm_alex-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's check"
+  },
+  {
+   "id": "pm_alex-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I can do"
+  },
+  {
+   "id": "pm_alex-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "pm_alex-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "pm_alex-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "pm_alex-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's put"
+  },
+  {
+   "id": "pm_alex-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "pm_alex-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "pm_alex-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "pm_alex-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "pm_alex-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "pm_alex-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "pm_alex-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "pm_alex-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "pm_alex-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "pm_alex-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "pm_alex-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "pm_alex-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "pm_alex-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "pm_alex-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "pm_alex-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "pm_alex-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "pm_alex-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "pm_alex-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "pm_alex-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "other-timbre",
+   "voice": "pm_alex",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "af_heart-slow-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_heart-slow-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "af_heart-slow-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_heart-slow-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_heart-slow-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "af_heart-slow-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-slow-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will"
+  },
+  {
+   "id": "af_heart-slow-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_heart-slow-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "af_heart-slow-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's check"
+  },
+  {
+   "id": "af_heart-slow-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I can do"
+  },
+  {
+   "id": "af_heart-slow-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_heart-slow-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-slow-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "af_heart-slow-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's put"
+  },
+  {
+   "id": "af_heart-slow-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-slow-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "af_heart-slow-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "af_heart-slow-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_heart-slow-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-slow-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "af_heart-slow-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "af_heart-slow-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "af_heart-slow-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "af_heart-slow-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_heart-slow-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "af_heart-slow-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "af_heart-slow-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "af_heart-slow-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "af_heart-slow-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "af_heart-slow-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "af_heart-slow-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "af_heart-slow-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "af_heart-slow-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "slow",
+   "voice": "af_heart-slow",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "am_michael-slow-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_michael-slow-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "am_michael-slow-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_michael-slow-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_michael-slow-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "am_michael-slow-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-slow-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will"
+  },
+  {
+   "id": "am_michael-slow-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_michael-slow-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "am_michael-slow-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's check"
+  },
+  {
+   "id": "am_michael-slow-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I can do"
+  },
+  {
+   "id": "am_michael-slow-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_michael-slow-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-slow-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "am_michael-slow-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's put"
+  },
+  {
+   "id": "am_michael-slow-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-slow-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "am_michael-slow-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "am_michael-slow-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_michael-slow-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-slow-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "am_michael-slow-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "am_michael-slow-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "am_michael-slow-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "am_michael-slow-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_michael-slow-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "am_michael-slow-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "am_michael-slow-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "am_michael-slow-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "am_michael-slow-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "am_michael-slow-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "am_michael-slow-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "am_michael-slow-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "am_michael-slow-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "slow",
+   "voice": "am_michael-slow",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "sapi_david-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "sapi_david-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "sapi_david-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "sapi_david-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "sapi_david-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "sapi_david-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_david-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will"
+  },
+  {
+   "id": "sapi_david-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "sapi_david-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "sapi_david-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's check"
+  },
+  {
+   "id": "sapi_david-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I can do"
+  },
+  {
+   "id": "sapi_david-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "sapi_david-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_david-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "sapi_david-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's put"
+  },
+  {
+   "id": "sapi_david-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_david-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "sapi_david-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "sapi_david-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "sapi_david-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_david-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "sapi_david-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_david-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_david-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "sapi_david-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "sapi_david-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "sapi_david-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "sapi_david-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "sapi_david-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "sapi_david-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "sapi_david-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "sapi_david-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "sapi_david-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "sapi_david-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "windows",
+   "voice": "sapi_david",
+   "read": "I have a lot to do today."
+  },
+  {
+   "id": "sapi_zira-h02",
+   "kind": "say",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "sapi_zira-h03",
+   "kind": "say",
+   "target": "R22",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's check the weather outside."
+  },
+  {
+   "id": "sapi_zira-h05",
+   "kind": "say",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "sapi_zira-h06",
+   "kind": "say",
+   "target": "R27",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "sapi_zira-h07",
+   "kind": "say",
+   "target": "R19",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I can do hard things today."
+  },
+  {
+   "id": "sapi_zira-h08",
+   "kind": "say",
+   "target": "R29",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_zira-h10",
+   "kind": "partial",
+   "target": "R29",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will"
+  },
+  {
+   "id": "sapi_zira-h11",
+   "kind": "say",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "sapi_zira-h12",
+   "kind": "say",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will wash my face now."
+  },
+  {
+   "id": "sapi_zira-h13",
+   "kind": "partial",
+   "target": "R22",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's check"
+  },
+  {
+   "id": "sapi_zira-h14",
+   "kind": "partial",
+   "target": "R19",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I can do"
+  },
+  {
+   "id": "sapi_zira-h15",
+   "kind": "say",
+   "target": "R14",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "sapi_zira-h16",
+   "kind": "other",
+   "target": "R24",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_zira-h17",
+   "kind": "say",
+   "target": "R21",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I'm getting out of bed now."
+  },
+  {
+   "id": "sapi_zira-h19",
+   "kind": "partial",
+   "target": "R28",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's put"
+  },
+  {
+   "id": "sapi_zira-h20",
+   "kind": "other",
+   "target": "R23",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_zira-h22",
+   "kind": "say",
+   "target": "R25",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "See you later, sleepy me."
+  },
+  {
+   "id": "sapi_zira-h23",
+   "kind": "other",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "No more snooze for me."
+  },
+  {
+   "id": "sapi_zira-h24",
+   "kind": "say",
+   "target": "R13",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "sapi_zira-h25",
+   "kind": "say",
+   "target": "R30",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_zira-h26",
+   "kind": "say",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "One small step at a time."
+  },
+  {
+   "id": "sapi_zira-h27",
+   "kind": "other",
+   "target": "R17",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Every morning is a fresh start."
+  },
+  {
+   "id": "sapi_zira-h28",
+   "kind": "other",
+   "target": "R16",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will eat something healthy."
+  },
+  {
+   "id": "sapi_zira-h29",
+   "kind": "say",
+   "target": "R20",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "The morning air feels fresh."
+  },
+  {
+   "id": "sapi_zira-h30",
+   "kind": "say",
+   "target": "R18",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "sapi_zira-h31",
+   "kind": "say",
+   "target": "R15",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Please don't let me sleep again."
+  },
+  {
+   "id": "sapi_zira-h32",
+   "kind": "say",
+   "target": "R24",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "A warm shower sounds nice."
+  },
+  {
+   "id": "sapi_zira-h33",
+   "kind": "say",
+   "target": "R23",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I will be on time today."
+  },
+  {
+   "id": "sapi_zira-h34",
+   "kind": "say",
+   "target": "R26",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I'm going to have a great morning."
+  },
+  {
+   "id": "sapi_zira-h35",
+   "kind": "say",
+   "target": "R14",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I feel better than yesterday."
+  },
+  {
+   "id": "sapi_zira-h36",
+   "kind": "say",
+   "target": "R28",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's put on some music."
+  },
+  {
+   "id": "sapi_zira-h37",
+   "kind": "say",
+   "target": "R18",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Thank you for waking me up."
+  },
+  {
+   "id": "sapi_zira-h39",
+   "kind": "say",
+   "target": "R13",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "Let's stretch our arms and legs."
+  },
+  {
+   "id": "sapi_zira-h40",
+   "kind": "other",
+   "target": "R26",
+   "cond": "windows",
+   "voice": "sapi_zira",
+   "read": "I have a lot to do today."
+  }
+ ]
+}
