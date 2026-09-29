@@ -1,6 +1,7 @@
-# เฟส 5 — ระบบอารมณ์และ Bond (≈ 4–5 วัน)
+# เฟส 5 — อารมณ์ในเช้าเดียว + ตั้งค่า (≈ 2–3 วัน)
 
-> อ่านประกอบเมื่อจำเป็น: [05a-emotion-engine.md](05a-emotion-engine.md) · [05e-companion-safety.md](05e-companion-safety.md)
-- State machine ของอารมณ์, กติกา Bond (มีขอบเขตและให้อภัยง่าย), streak, บทพิเศษที่ปลดล็อกได้ และหน้าตั้งค่า (ปิดโหมดงอน, วันพัก, วันป่วย)
-- เทสต์จำลอง 30 วันเพื่อตรวจว่า Bond ไม่แกว่งผิดปกติ
-- **จบเฟสเมื่อ:** คุณลองใช้จริง 7 เช้า และผ่าน checklist จริยธรรมใน [05e-companion-safety.md](05e-companion-safety.md)
+> **ตาม D22 (2026-09-30, [ADR 0004](../adr/0004-no-cross-day-state.md)):** ทุกเช้าเริ่มใหม่ ไม่มี Bond ไม่มี streak ไม่มีบทปลดล็อก ไม่มีอะไรข้ามวัน · อ่านประกอบเมื่อจำเป็น: [05a-emotion-engine.md](05a-emotion-engine.md) · [05e-companion-safety.md](05e-companion-safety.md)
+- State machine ของอารมณ์ภายในเช้าเดียว: sleepy/cheerful ตามเวลา → pouty/sulky ตาม snooze → proud/relieved เมื่อชนะ · รีเซ็ตทุกครั้งที่ปลุก · กดค้างปิดฉุกเฉินไม่มีบทลงโทษ
+- หน้าตั้งค่า: ปิดโหมดงอน, วันพัก (ปลุกแต่ไม่มีเกม, `p5.rest`), วันป่วย (`p5.sick`) · ที่วางข้อความสายด่วน 1323 (D21)
+- เทสต์: ทุกเส้นทางของ state machine และตั้งค่าแต่ละแบบ
+- **จบเฟสเมื่อ:** ลองใช้ 7 เช้า (หรือรอบจำลองแบบ 3.7 ตาม D19) และผ่าน checklist ใน [05e-companion-safety.md](05e-companion-safety.md)

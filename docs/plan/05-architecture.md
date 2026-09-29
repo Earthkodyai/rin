@@ -8,7 +8,7 @@ flowchart LR
     AU["AudioEngine<br/>Media3 · USAGE_ALARM"]
     ME["MissionEngine<br/>CameraX + ML Kit · steps"]
     BD["BedReturnDetector<br/>sensor heuristics"]
-    CB["CompanionBrain<br/>mood × bond state machine<br/>dialogue selector · intent matcher"]
+    CB["CompanionBrain<br/>mood state machine (one morning, D22)<br/>line selector (no intent matcher, D21)"]
     VI["VoiceIO<br/>on-device STT · clip player"]
     CV["CharacterView<br/>WebView: three.js + three-vrm"]
     DB[("Room + DataStore<br/>device-protected storage")]

@@ -1,5 +1,5 @@
 {
-  "_note": "Rin's offline voice pack script (task 4.1, D20; one-way only since D21). Rules: docs/character/script-bible.md. Check and review table: node tools/voice/script-check.mjs. Ids never change or get reused once 4.3 records them. 'text' is shown on screen ('~' is screen-only and never sent to TTS); 'say' overrides what TTS reads; 'tag' is an eleven_v3 audio tag. Repeat-after-Rin sentences R01-R30 live in assets/repeat/sentences.json and are recorded with this pack.",
+  "_note": "Rin's offline voice pack script (task 4.1, D20; one-way only since D21; nothing carried between days since D22: no streak, no Bond). Rules: docs/character/script-bible.md. Check and review table: node tools/voice/script-check.mjs. Ids never change or get reused once 4.3 records them. 'text' is shown on screen ('~' is screen-only and never sent to TTS); 'say' overrides what TTS reads; 'tag' is an eleven_v3 audio tag. Repeat-after-Rin sentences R01-R30 live in assets/repeat/sentences.json and are recorded with this pack.",
   "version": 1,
   "budget": { "credits": 30000, "scriptMax": 15000 },
   "tags": ["[sleepy]", "[yawns]", "[softly]", "[gently]", "[whispers]", "[warmly]", "[cheerfully]", "[excited]", "[playfully]", "[giggles]", "[proudly]", "[pouting]", "[sighs]", "[concerned]", "[curious]", "[thinking]"],
@@ -43,15 +43,9 @@
     "app.evening":      { "use": "event",   "when": "App opened, 18:00-21:59." },
     "app.night":        { "use": "event",   "when": "App opened, 22:00-04:59. Gentle, no pressure." },
     "app.alarmset":     { "use": "event",   "when": "An alarm was saved (any time of day)." },
-    "tap.head":         { "use": "session", "when": "Head tap (2.2). No Bond change. She never asks for a reply." },
-    "p5.streak":        { "use": "event",   "when": "Phase 5: streak milestone (see 'streak')." },
-    "p5.keep":          { "use": "daily",   "when": "Phase 5: streak goes on, no milestone today." },
-    "p5.broken":        { "use": "event",   "when": "Phase 5: first ring after a streak broke. Never shaming." },
-    "p5.welcome":       { "use": "event",   "when": "Phase 5: first ring after 3+ days away. No guilt." },
-    "p5.bond":          { "use": "event",   "when": "Phase 5: Bond level went up. Friendship, never romance." },
+    "tap.head":         { "use": "session", "when": "Head tap (2.2). She never asks for a reply." },
     "p5.rest":          { "use": "event",   "when": "Phase 5: rest day set in settings (no mission)." },
-    "p5.sick":          { "use": "event",   "when": "Phase 5: sick day set in settings (no mission, no pouting, no Bond loss)." },
-    "p5.missed":        { "use": "event",   "when": "Phase 5: first ring after a missed alarm. No guilt." }
+    "p5.sick":          { "use": "event",   "when": "Phase 5: sick day set in settings (no mission, no pouting)." }
   },
   "lines": [
     {"id": "ring.sleepy.01", "pool": "ring.sleepy", "emotion": "sleepy", "gesture": "yawn", "tag": "[sleepy]", "text": "Mmh… morning already? Let's wake up together."},
@@ -245,33 +239,6 @@
     {"id": "tap.head.04", "pool": "tap.head", "emotion": "pouty", "gesture": null, "tag": "[playfully]", "text": "Careful, my hair!"},
     {"id": "tap.head.05", "pool": "tap.head", "emotion": "cheerful", "gesture": null, "tag": "[curious]", "text": "Mm? Do you need something?"},
 
-    {"id": "p5.streak.02", "pool": "p5.streak", "streak": 2, "emotion": "proud", "gesture": "nod", "tag": null, "text": "Two days in a row! Nice start."},
-    {"id": "p5.streak.03", "pool": "p5.streak", "streak": 3, "emotion": "proud", "gesture": "joy", "tag": "[cheerfully]", "text": "Three days in a row. You're on a roll!"},
-    {"id": "p5.streak.05", "pool": "p5.streak", "streak": 5, "emotion": "proud", "gesture": "clap", "tag": "[proudly]", "text": "Day five in a row. Good job. I mean it."},
-    {"id": "p5.streak.07", "pool": "p5.streak", "streak": 7, "emotion": "proud", "gesture": "clap", "tag": "[excited]", "text": "A whole week! I'm so proud of you."},
-    {"id": "p5.streak.14", "pool": "p5.streak", "streak": 14, "emotion": "proud", "gesture": "joy", "tag": "[proudly]", "text": "Two weeks in a row. That's a real habit now."},
-    {"id": "p5.streak.30", "pool": "p5.streak", "streak": 30, "emotion": "proud", "gesture": "clap", "tag": "[excited]", "text": "Thirty days! You're amazing. Really."},
-    {"id": "p5.keep.01", "pool": "p5.keep", "emotion": "proud", "gesture": "nod", "tag": null, "text": "Another day in a row. Keep it up."},
-    {"id": "p5.keep.02", "pool": "p5.keep", "emotion": "proud", "gesture": "joy", "tag": null, "text": "Your streak keeps growing!"},
-    {"id": "p5.keep.03", "pool": "p5.keep", "emotion": "proud", "gesture": null, "tag": "[playfully]", "text": "Same time, same you. I like it."},
-    {"id": "p5.keep.04", "pool": "p5.keep", "emotion": "proud", "gesture": null, "tag": null, "text": "Look at that streak go."},
-    {"id": "p5.keep.05", "pool": "p5.keep", "emotion": "proud", "gesture": "nod", "tag": null, "text": "Day after day. Impressive."},
-    {"id": "p5.keep.06", "pool": "p5.keep", "emotion": "proud", "gesture": "joy", "tag": "[cheerfully]", "text": "The streak lives on!"},
-    {"id": "p5.keep.07", "pool": "p5.keep", "emotion": "proud", "gesture": "nod", "tag": "[warmly]", "text": "You showed up again. Good job."},
-    {"id": "p5.broken.01", "pool": "p5.broken", "emotion": "relieved", "gesture": null, "tag": "[warmly]", "text": "A new start today. That's all that matters."},
-    {"id": "p5.broken.02", "pool": "p5.broken", "emotion": "relieved", "gesture": "nod", "tag": null, "text": "Streaks come back. You're here now."},
-    {"id": "p5.broken.03", "pool": "p5.broken", "emotion": "relieved", "gesture": null, "tag": null, "text": "Yesterday was yesterday. Let's go."},
-    {"id": "p5.broken.04", "pool": "p5.broken", "emotion": "relieved", "gesture": null, "tag": "[gently]", "text": "Day one again, and that's okay."},
-    {"id": "p5.broken.05", "pool": "p5.broken", "emotion": "relieved", "gesture": "nod", "tag": null, "text": "No worries. We start fresh today."},
-    {"id": "p5.welcome.01", "pool": "p5.welcome", "emotion": "cheerful", "gesture": "wave", "tag": "[warmly]", "text": "Welcome back! Let's start where we left off."},
-    {"id": "p5.welcome.02", "pool": "p5.welcome", "emotion": "cheerful", "gesture": "wave", "tag": null, "text": "Hey, it's been a few days. Good morning!"},
-    {"id": "p5.welcome.03", "pool": "p5.welcome", "emotion": "cheerful", "gesture": "wave", "tag": "[warmly]", "text": "There you are. Ready for today?"},
-    {"id": "p5.welcome.04", "pool": "p5.welcome", "emotion": "relieved", "gesture": "wave", "tag": null, "text": "Nice to see you again. Let's start easy."},
-    {"id": "p5.bond.01", "pool": "p5.bond", "emotion": "proud", "gesture": "joy", "tag": "[warmly]", "text": "I think we're real morning buddies now."},
-    {"id": "p5.bond.02", "pool": "p5.bond", "emotion": "proud", "gesture": "nod", "tag": "[playfully]", "text": "We make a good team, you know."},
-    {"id": "p5.bond.03", "pool": "p5.bond", "emotion": "proud", "gesture": null, "tag": null, "text": "I'm getting to know your mornings."},
-    {"id": "p5.bond.04", "pool": "p5.bond", "emotion": "proud", "gesture": "joy", "tag": null, "text": "Our mornings keep getting better."},
-    {"id": "p5.bond.05", "pool": "p5.bond", "emotion": "proud", "gesture": "nod", "tag": "[warmly]", "text": "Thanks for waking up with me every day."},
     {"id": "p5.rest.01", "pool": "p5.rest", "emotion": "relieved", "gesture": "wave", "tag": "[softly]", "text": "It's your rest day. No game today."},
     {"id": "p5.rest.02", "pool": "p5.rest", "emotion": "relieved", "gesture": "stretch", "tag": "[warmly]", "text": "Rest day! Take it slow."},
     {"id": "p5.rest.03", "pool": "p5.rest", "emotion": "relieved", "gesture": "wave", "tag": null, "text": "No game today. Just a gentle hello."},
@@ -279,10 +246,7 @@
     {"id": "p5.sick.01", "pool": "p5.sick", "emotion": "worried", "gesture": null, "tag": "[gently]", "text": "Sick day. Rest, and no games today."},
     {"id": "p5.sick.02", "pool": "p5.sick", "emotion": "worried", "gesture": null, "tag": "[softly]", "text": "I hope you're feeling a little better."},
     {"id": "p5.sick.03", "pool": "p5.sick", "emotion": "worried", "gesture": null, "tag": "[softly]", "text": "Rest first. I'll keep it short today."},
-    {"id": "p5.sick.04", "pool": "p5.sick", "emotion": "worried", "gesture": null, "tag": "[gently]", "text": "Sick day mode. Water, rest, and sleep."},
-    {"id": "p5.missed.01", "pool": "p5.missed", "emotion": "relieved", "gesture": null, "tag": "[gently]", "text": "I couldn't wake you yesterday. Let's try again today."},
-    {"id": "p5.missed.02", "pool": "p5.missed", "emotion": "relieved", "gesture": null, "tag": null, "text": "Yesterday didn't work out. Today's a new try."},
-    {"id": "p5.missed.03", "pool": "p5.missed", "emotion": "relieved", "gesture": "wave", "tag": "[warmly]", "text": "No stress about yesterday. Good morning!"}
+    {"id": "p5.sick.04", "pool": "p5.sick", "emotion": "worried", "gesture": null, "tag": "[gently]", "text": "Sick day mode. Water, rest, and sleep."}
 
   ]
 }
