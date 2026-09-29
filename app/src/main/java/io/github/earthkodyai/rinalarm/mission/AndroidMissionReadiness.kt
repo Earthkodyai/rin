@@ -21,8 +21,9 @@ constructor(@ApplicationContext private val context: Context, private val sticke
 
   private fun readiness(type: MissionType): Readiness =
     when (type) {
-      // A touch screen and a speaker: every phone.
-      MissionType.PADS -> Readiness.READY
+      // A touch screen and a speaker (pads), a screen (cups, drawn natively when her page is missing): every phone.
+      MissionType.PADS,
+      MissionType.CUPS -> Readiness.READY
       MissionType.QR ->
         when {
           !context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) -> Readiness.NO_SENSOR
@@ -43,7 +44,8 @@ constructor(@ApplicationContext private val context: Context, private val sticke
      */
     fun permissionFor(type: MissionType): String? =
       when (type) {
-        MissionType.PADS -> null
+        MissionType.PADS,
+        MissionType.CUPS -> null
         MissionType.QR -> Manifest.permission.CAMERA
       }
   }

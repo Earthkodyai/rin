@@ -23,6 +23,7 @@ constructor(
     when (type) {
       // A fresh seed per ring, logged with the result so a game can be replayed.
       MissionType.PADS -> ColourPadsMission(PadsRules(), System.nanoTime(), AndroidPadNotes(), clock)
+      MissionType.CUPS -> CupShuffleMission(CupsRules(), System.nanoTime(), clock)
       // No sticker (it was removed after the ring was planned): throws, and the ring screen offers a plain Dismiss.
       MissionType.QR ->
         QrMission(

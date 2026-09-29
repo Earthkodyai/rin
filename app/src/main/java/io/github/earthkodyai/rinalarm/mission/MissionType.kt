@@ -1,14 +1,15 @@
 package io.github.earthkodyai.rinalarm.mission
 
 /**
- * What stops an alarm (D17, ADR 0001): games with Rin. Task 3.3 added colour pads; the cup shuffle (3.4) and repeat
- * after Rin (3.5) join as they are built. The QR sticker (3.2) stays in the code behind [MissionFlags.QR_STICKER].
+ * What stops an alarm (D17, ADR 0001): games with Rin. Task 3.3 added colour pads, 3.4 the cup shuffle; repeat after
+ * Rin (3.5) joins when it is built. The QR sticker (3.2) stays in the code behind [MissionFlags.QR_STICKER].
  * Walking (3.1) was removed in 3.3: a stored "walk" reads as Rin picks. Stored by [stored], so entries may be added but
  * never renamed. Rin picks rotates through them in this order.
  */
 enum class MissionType(val stored: String) {
   PADS("pads"),
-  QR("qr");
+  QR("qr"),
+  CUPS("cups");
 
   /** Shown in the editor and planned for rings; a hidden type reads as Rin picks. */
   val offered: Boolean

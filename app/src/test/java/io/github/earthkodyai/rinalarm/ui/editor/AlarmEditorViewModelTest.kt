@@ -75,7 +75,7 @@ class AlarmEditorViewModelTest {
     assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
     assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
     assertEquals(
-      listOf(MissionChoice.RinPicks, MissionChoice.Only(MissionType.PADS), MissionChoice.None),
+      listOf(MissionChoice.RinPicks, MissionChoice.Only(MissionType.PADS), MissionChoice.Only(MissionType.CUPS), MissionChoice.None),
       RingChoices.MISSIONS,
     )
   }

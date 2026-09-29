@@ -392,6 +392,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
           is MissionChoice.Only ->
             when (choice.type) {
               MissionType.PADS -> R.string.mission_hint_pads
+              MissionType.CUPS -> R.string.mission_hint_cups
               MissionType.QR -> R.string.mission_hint_qr
             }
         }
@@ -457,6 +458,7 @@ private fun missionChoiceName(choice: MissionChoice): String =
       is MissionChoice.Only ->
         when (choice.type) {
           MissionType.PADS -> R.string.mission_choice_pads
+          MissionType.CUPS -> R.string.mission_choice_cups
           MissionType.QR -> R.string.mission_choice_qr
         }
     }

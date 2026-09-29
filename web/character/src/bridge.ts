@@ -2,11 +2,12 @@
 // registers `RinBridge` with WebViewCompat.addWebMessageListener, scoped to the app's asset origin, so only this page
 // can post. Messages are JSON strings; both sides ignore types they do not know, so either side can add types first.
 // Task 2.2 added `emotion` both ways and `tap` to the app; task 2.4 added `gesture` both ways, `speak` and `hush`;
-// task 2.5 added `stats` both ways and `fps` (debug builds use them to measure). Still version 1, since every
-// addition is ignorable.
+// task 2.5 added `stats` both ways and `fps` (debug builds use them to measure); task 3.4 added `cups` both ways
+// (the cup shuffle's acts, and whether the table is in view). Still version 1, since every addition is ignorable.
 import { isMood, type Mood } from './emotion';
 import { isGesture, type Gesture } from './gesture';
 import { isMouthTrack, type MouthTrack } from './mouth';
+import { parseAct, type CupsAct } from './cups';
 
 export const PROTOCOL = 1;
 
@@ -37,7 +38,9 @@ export type ToNative =
   | { v: typeof PROTOCOL; type: 'tap'; part: 'head' }
   /** Whether a gesture started; false when its file failed to load (it has been reported as an error log). */
   | { v: typeof PROTOCOL; type: 'gesture'; name: Gesture; ok: boolean }
-  | ({ v: typeof PROTOCOL; type: 'stats' } & FrameStats);
+  | ({ v: typeof PROTOCOL; type: 'stats' } & FrameStats)
+  /** The cup table is fully in view (`x`: each slot's cup across the view, 0..1, for the tap zones) or fully away. */
+  | { v: typeof PROTOCOL; type: 'cups'; shown: boolean; x: number[] };
 
 /** Frame pacing over a window of rendered frames (paused time is left out). */
 export interface FrameStats {
@@ -91,7 +94,9 @@ export type FromNative =
   /** Measure frame pacing over the next `ms` of rendering, then send `stats`. */
   | { type: 'stats'; ms: number }
   /** Change the frame-rate cap (debug: 120 shows the headroom above the 30 fps cap). */
-  | { type: 'fps'; cap: number };
+  | { type: 'fps'; cap: number }
+  /** The cup shuffle's current act (task 3.4), or null to put the table away. */
+  | { type: 'cups'; act: CupsAct | null };
 
 interface NativeBridge {
   postMessage(message: string): void;
@@ -134,6 +139,11 @@ export function parseNative(data: string): FromNative | null {
   const positive = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0;
   if (m.type === 'stats' && positive(m.ms)) return { type: 'stats', ms: Math.min(m.ms, 300_000) };
   if (m.type === 'fps' && positive(m.cap)) return { type: 'fps', cap: Math.min(m.cap, 240) };
+  if (m.type === 'cups') {
+    if (m.act === null) return { type: 'cups', act: null };
+    const act = parseAct(m.act);
+    return act ? { type: 'cups', act } : null;
+  }
   if (m.type === 'emotion' && isMood(m.mood)) {
     const intensity = typeof m.intensity === 'number' && Number.isFinite(m.intensity) ? m.intensity : 1;
     const at = typeof m.at === 'number' && Number.isFinite(m.at) ? m.at : Date.now();

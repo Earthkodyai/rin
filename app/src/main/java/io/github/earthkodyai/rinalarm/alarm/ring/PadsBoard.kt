@@ -216,16 +216,22 @@ private fun Countdown(state: PadsState) {
 @Composable
 internal fun ScoldLine(state: PadsState, modifier: Modifier = Modifier) {
   val lines = stringArrayResource(if (state.miss == Miss.SLOW) R.array.pads_scold_slow else R.array.pads_scold_wrong)
+  RinLine(lines[state.line % lines.size], modifier, Modifier.testTag(PADS_SCOLD_TAG))
+}
+
+/** One of Rin's lines in a bubble over her (the games' scolds). */
+@Composable
+internal fun RinLine(text: String, modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
   Surface(
     modifier.padding(16.dp).fillMaxWidth(),
     shape = RoundedCornerShape(16.dp),
     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
   ) {
     Text(
-      lines[state.line % lines.size],
+      text,
       style = MaterialTheme.typography.titleMedium,
       textAlign = TextAlign.Center,
-      modifier = Modifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite }.testTag(PADS_SCOLD_TAG),
+      modifier = textModifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
     )
   }
 }

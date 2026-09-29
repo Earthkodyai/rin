@@ -1,14 +1,19 @@
 package io.github.earthkodyai.rinalarm.character
 
+import io.github.earthkodyai.rinalarm.mission.CupsAct
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 
 /**
  * What the character page (web/character/src/bridge.ts, protocol 1) tells the app. Unknown types and malformed JSON
@@ -55,6 +60,12 @@ sealed interface CharacterMessage {
   /** A frame interval over 50 ms, ending [at] ms into the window. */
   @Serializable data class Hitch(val at: Long, val ms: Double)
 
+  /**
+   * The cup table (task 3.4) is fully in view ([shown]), with each slot's cup at [x] across the view (0..1, for the tap
+   * zones), or fully away.
+   */
+  @Serializable data class CupsShown(val shown: Boolean, val x: List<Double> = emptyList()) : CharacterMessage
+
   @Serializable
   data class LoadTimings(
     val pageToFirstFrame: Long,
@@ -86,6 +97,7 @@ sealed interface CharacterMessage {
           "tap" -> json.decodeFromJsonElement<Tap>(obj)
           "gesture" -> json.decodeFromJsonElement<GestureStarted>(obj)
           "stats" -> json.decodeFromJsonElement<Stats>(obj)
+          "cups" -> json.decodeFromJsonElement<CupsShown>(obj)
           else -> null
         }
       } catch (_: SerializationException) {
@@ -157,6 +169,58 @@ sealed interface CharacterCommand {
   }
 
   /** Blend to [mood]; [at] (epoch ms, the page shares the clock) lets the page time the change end to end. */
+  /**
+   * The cup shuffle's act for the page to play (web/character/src/cups.ts), or null to put the table away. The act's
+   * times are the elapsed clock's; [epochOffset] (wall clock minus elapsed clock, now) turns them into the page's.
+   */
+  data class Cups(val act: CupsAct?, val epochOffset: Long) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "cups")
+          val act = act
+          if (act == null) {
+            put("act", JsonNull)
+            return@buildJsonObject
+          }
+          put(
+            "act",
+            buildJsonObject {
+              put("ball", act.ball)
+              put("at", act.at + epochOffset)
+              when (act) {
+                is CupsAct.Rest -> put("kind", "rest")
+                is CupsAct.Lift -> {
+                  put("kind", "lift")
+                  putJsonArray("lift") { act.lift.forEach(::add) }
+                  putJsonArray("hands") { act.hands.forEach(::add) }
+                  put("leadMs", act.leadMs)
+                  put("upMs", act.upMs)
+                  put("holdMs", act.holdMs)
+                  put("downMs", act.downMs)
+                  put("exitMs", act.exitMs)
+                }
+                is CupsAct.Shuffle -> {
+                  put("kind", "shuffle")
+                  putJsonArray("swaps") {
+                    act.swaps.forEach { (p, q) ->
+                      addJsonArray {
+                        add(p)
+                        add(q)
+                      }
+                    }
+                  }
+                  put("leadMs", act.leadMs)
+                  put("swapMs", act.swapMs)
+                  put("gapMs", act.gapMs)
+                  put("exitMs", act.exitMs)
+                }
+              }
+            },
+          )
+        }
+        .toString()
+  }
+
   data class Emotion(val mood: Mood, val intensity: Float, val at: Long) : CharacterCommand {
     override val json: String
       get() =

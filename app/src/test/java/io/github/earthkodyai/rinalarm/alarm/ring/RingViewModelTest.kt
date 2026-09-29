@@ -3,7 +3,11 @@ package io.github.earthkodyai.rinalarm.alarm.ring
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
+import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
+import io.github.earthkodyai.rinalarm.mission.CupsMission
+import io.github.earthkodyai.rinalarm.mission.CupsPhase
+import io.github.earthkodyai.rinalarm.mission.CupsState
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
@@ -253,6 +257,111 @@ class RingViewModelTest {
       assertEquals(RingMoods.mood(viewModel.uiState.value.phase), viewModel.uiState.value.mood)
       assertEquals(1, cues.count { it == Gesture.HUFF })
     }
+
+  private fun TestScope.cupsScreen(cups: FakeCupsMission): Pair<RingViewModel, MutableList<Gesture>> {
+    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope) { clockMs }
+    val cues = mutableListOf<Gesture>()
+    backgroundScope.launch { viewModel.cues.collect { cues += it } }
+    ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
+    runCurrent()
+    return viewModel to cues
+  }
+
+  @Test
+  fun cups_forwardsPlayAndPicks_andAWrongPickMakesHerSulk() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, cues) = cupsScreen(cups)
+      viewModel.startGame()
+      // The table comes into view first; the ball shows only once her page says it is there.
+      assertTrue(viewModel.uiState.value.cupsStaging)
+      assertEquals(emptyList<String>(), cups.calls)
+      viewModel.onCupsView(CupsView.Shown(listOf(0.3f, 0.5f, 0.7f)))
+      assertFalse(viewModel.uiState.value.cupsStaging)
+      viewModel.startGame() // a second tap does not restart it
+      viewModel.pickCup(2)
+      assertEquals(listOf("begin", "pick 2"), cups.calls)
+
+      cups.game.value = CupsState(CupsPhase.REVEAL, right = false, picks = 1, mistakes = 1)
+      runCurrent()
+      assertTrue(viewModel.uiState.value.cupsScold)
+      assertEquals(RingMoods.SCOLD_MOOD, viewModel.uiState.value.mood)
+      assertEquals(Gesture.HUFF, cues.last())
+
+      // A right pick is no scold.
+      cups.game.value = CupsState(CupsPhase.REVEAL, streak = 1, right = true, picks = 2, mistakes = 1)
+      runCurrent()
+      assertFalse(viewModel.uiState.value.cupsScold)
+      assertEquals(1, cues.count { it == Gesture.HUFF })
+    }
+
+  @Test
+  fun cups_theNativeBoardTakesOver_whenHerPageDoesNotShowTheTableInTime() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, _) = cupsScreen(cups)
+      viewModel.startGame()
+      advanceTimeBy(RingViewModel.CUPS_PAGE_WAIT_MS - 1)
+      assertFalse(viewModel.uiState.value.cups2d)
+      assertEquals(emptyList<String>(), cups.calls)
+      advanceTimeBy(2)
+      assertTrue(viewModel.uiState.value.cups2d)
+      assertEquals(listOf("begin"), cups.calls) // the 2D board plays at once
+      // Her page turning up late changes nothing for this ring.
+      viewModel.onCupsView(CupsView.Shown(listOf(0.3f, 0.5f, 0.7f)))
+      assertTrue(viewModel.uiState.value.cups2d)
+
+      cups.progress.value = MissionProgress(3, 3, MissionState.PASSED, activity = 4)
+      runCurrent()
+      val passed = log.details[log.types.indexOf(RingEventType.MISSION_PASSED)]
+      assertTrue(passed, passed.endsWith(" board=2d:page_timeout"))
+    }
+
+  @Test
+  fun cups_aPageThatIsGone_startsTheNativeBoardAtOnce() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, _) = cupsScreen(cups)
+      viewModel.onCupsView(CupsView.Unavailable) // no model in this build, or the renderer died before the game
+      viewModel.startGame()
+      assertTrue(viewModel.uiState.value.cups2d)
+      assertEquals(listOf("begin"), cups.calls)
+    }
+
+  @Test
+  fun cups_staysOnHerPage_onceItShowsTheTable_butNotIfThePageDies() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, _) = cupsScreen(cups)
+      viewModel.startGame()
+      viewModel.onCupsView(CupsView.Shown(listOf(0.3f, 0.5f, 0.7f)))
+      advanceTimeBy(RingViewModel.CUPS_PAGE_WAIT_MS * 2)
+      assertFalse(viewModel.uiState.value.cups2d)
+      assertEquals(CupsView.Shown(listOf(0.3f, 0.5f, 0.7f)), viewModel.uiState.value.cupsView)
+
+      viewModel.onCupsView(CupsView.Unavailable) // the renderer crashed: the still shows
+      assertTrue(viewModel.uiState.value.cups2d)
+    }
+
+  private class FakeCupsMission : CupsMission {
+    override val type = MissionType.CUPS
+    override val progress = MutableStateFlow(MissionProgress(0, 3))
+    override val game = MutableStateFlow(CupsState())
+    val calls = mutableListOf<String>()
+
+    override fun start() = Unit
+
+    override fun stop() = Unit
+
+    override fun begin() {
+      calls += "begin"
+      game.value = CupsState(CupsPhase.SHOW)
+    }
+
+    override fun pick(slot: Int) {
+      calls += "pick $slot"
+    }
+  }
 
   private class FakePadsMission : PadsMission {
     override val type = MissionType.PADS

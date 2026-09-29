@@ -298,6 +298,13 @@ export function restFingers(s) {
   return out;
 }
 
+/** Fingers (and thumb) curled by `curl`, 0 flat .. 1 fist, as bone -> local rotation (the cup shuffle's grip). */
+export function curlFingers(s, curl) {
+  const out = {};
+  curlBones(s, curl, out);
+  return out;
+}
+
 /** Curl angles per segment (radians) for a fist; the thumb folds less and across the palm. */
 const CURL = { Proximal: 1.3, Intermediate: 1.5, Distal: 1.0 };
 

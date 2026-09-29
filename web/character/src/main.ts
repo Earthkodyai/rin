@@ -10,6 +10,7 @@
 //   intensity=1           starting mood intensity, 0..1
 //   frame=full            head to toe (the ring screen, task 3.1); default: the strip's head and shoulders
 //   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
+//   cups=demo             (desktop preview) the cup shuffle (task 3.4) on a loop, as the app would drive it
 //   still                 still-image mode for tools/character/render-stills.mjs: no loop, no bridge; window.rinStill
 
 import * as THREE from 'three';
@@ -24,6 +25,8 @@ import type { MouthTrack } from './mouth';
 import { addVroidSmile } from './vroid';
 import { keepArmsOffSkirt } from './skirt';
 import { BodyCheck, type Depth } from './inspect';
+import { CupScene } from './cupscene';
+import { actLength, afterSwaps, smooth, type CupsAct, type Swap } from './cups';
 
 const q = new URLSearchParams(location.search);
 const num = (key: string, fallback: number) => {
@@ -75,9 +78,78 @@ function frame() {
   const visibleHeight = fullBody ? topY + 2 * margin : wide ? 0.44 : 0.95; // metres at the model
   const distance = visibleHeight / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const target = topY + margin - visibleHeight / 2;
-  camera.position.set(0, target + (fullBody ? 0 : 0.03), distance);
-  camera.lookAt(0, target, 0);
+  baseView.position.set(0, target + (fullBody ? 0 : 0.03), distance);
+  baseView.target.set(0, target, 0);
+  if (cups) tableView = fitView(cups.framePoints(topY + 0.03), TABLE_PITCH);
+  aim();
+  cupsReported = -1; // the tap zones move with the view
+}
+
+/** The cup table (task 3.4), built with her; an act that arrives before she loads waits in `queuedAct`. */
+let cups: CupScene | null = null;
+let queuedAct: CupsAct | null | undefined;
+/** What the app was last told about the table: -1 nothing yet (or the view moved), 0 away, 1 in view. */
+let cupsReported = -1;
+/** Desktop preview: shows one moment of the act (ms after it starts) instead of playing it. */
+let cupsFrozenAt: number | null = null;
+/** Her usual framing, and the cup table's (task 3.4); the camera blends between them as the table comes and goes. */
+const baseView = { position: new THREE.Vector3(), target: new THREE.Vector3() };
+let tableView: typeof baseView | null = null;
+/** How far the table view looks down, so the cups never hide one another and a lifted cup shows the ball. */
+const TABLE_PITCH = THREE.MathUtils.degToRad(22);
+
+function aim() {
+  const e = tableView && cups ? smooth(cups.shown) : 0;
+  const view = tableView ?? baseView;
+  camera.position.lerpVectors(baseView.position, view.position, e);
+  camera.lookAt(new THREE.Vector3().lerpVectors(baseView.target, view.target, e));
   camera.updateProjectionMatrix();
+}
+
+/**
+ * A view looking down by `pitch` that fits every point with a margin, centred on them: the camera backs off until the
+ * farthest point is inside, then shifts so the points sit in the middle, three times over.
+ */
+function fitView(points: THREE.Vector3[], pitch: number) {
+  const dir = new THREE.Vector3(0, -Math.sin(pitch), -Math.cos(pitch));
+  const eye = new THREE.PerspectiveCamera(camera.fov, camera.aspect, 0.05, 20);
+  const center = new THREE.Box3().setFromPoints(points).getCenter(new THREE.Vector3());
+  const place = (d: number) => {
+    eye.position.copy(center).addScaledVector(dir, -d);
+    eye.lookAt(center);
+    eye.updateMatrixWorld(true);
+  };
+  const extent = () => {
+    let x = 0;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of points) {
+      const n = p.clone().project(eye);
+      x = Math.max(x, Math.abs(n.x));
+      lo = Math.min(lo, n.y);
+      hi = Math.max(hi, n.y);
+    }
+    return { x, lo, hi };
+  };
+  let d = 1;
+  for (let round = 0; round < 3; round++) {
+    let near = 0.2;
+    let far = 10;
+    for (let i = 0; i < 30; i++) {
+      d = (near + far) / 2;
+      place(d);
+      const e = extent();
+      if (Math.max(e.x, -e.lo, e.hi) > 0.9) near = d;
+      else far = d;
+    }
+    d = far;
+    place(d);
+    const e = extent();
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(eye.quaternion);
+    center.addScaledVector(up, ((e.lo + e.hi) / 2) * d * Math.tan(THREE.MathUtils.degToRad(eye.fov / 2)));
+  }
+  place(d);
+  return { position: eye.position.clone(), target: center.clone() };
 }
 frame();
 addEventListener('resize', () => {
@@ -121,6 +193,29 @@ function gesture(name: Gesture) {
 function speak(mouth: MouthTrack, at: number) {
   behaviour?.mouth.speak(mouth, at);
 }
+function setAct(act: CupsAct | null) {
+  if (!cups) {
+    queuedAct = act;
+    return;
+  }
+  const was = cups.active;
+  cups.setAct(act);
+  if (was !== cups.active) cupsReported = -1;
+}
+
+/**
+ * Tells the app once the table is fully in view (with where each cup stands across the view, 0..1, for its tap
+ * zones) or fully away. The app draws its own 2D board until then, so the game never waits on this page.
+ */
+function reportCups() {
+  const table = cups;
+  if (!table) return;
+  const state = table.active && table.shown >= 1 ? 1 : !table.active && table.shown <= 0 ? 0 : null;
+  if (state === null || state === cupsReported) return;
+  cupsReported = state;
+  const x = [0, 1, 2].map((s) => Math.round(((table.slotPoint(s).project(camera).x + 1) / 2) * 1000) / 1000);
+  send({ v: PROTOCOL, type: 'cups', shown: state === 1, x });
+}
 
 onNativeMessage((message) => {
   switch (message.type) {
@@ -142,6 +237,8 @@ onNativeMessage((message) => {
     case 'fps':
       fpsCap = message.cap;
       return;
+    case 'cups':
+      return setAct(message.act);
     default:
       paused = message.type === 'pause';
   }
@@ -221,16 +318,24 @@ async function main() {
   const head = vrm.humanoid.getNormalizedBoneNode('head');
   const headY = head ? head.getWorldPosition(new THREE.Vector3()).y : topY - 0.2;
   const headHalf = (topY - headY) / 2;
+  // The cup table (task 3.4), hidden until the app sends an act; warmTable() readies it on the GPU after her first frame.
+  const table = stillMode ? null : new CupScene(vrm);
+  if (table) {
+    cups = table;
+    scene.add(table.group);
+  }
   frame();
   const tCompile = performance.now();
   // Compile shaders and upload textures before the first frame, so Rin appears whole rather than in pieces.
   await renderer.compileAsync(scene, camera);
   ktx2.dispose(); // textures are on the GPU now; the transcoder worker is not needed again
-  if (stillMode) return exposeStills(vrm, headHalf);
+  if (!table) return exposeStills(vrm, headHalf);
 
   const life = new Behaviour(vrm, camera, mood, intensity, headHalf, Math.max(headHalf + 0.03, 0.1));
   behaviour = life;
   loadedVrm = vrm;
+  if (queuedAct !== undefined) setAct(queuedAct);
+  if (!window.RinBridge && q.get('cups') === 'demo') cupsDemo();
   pending = null; // a mood sent while loading is already in place: nothing blends, so nothing to time
   let last = -1;
   let reported = false;
@@ -246,6 +351,11 @@ async function main() {
     const dt = first ? 0 : Math.min((now - last) / 1000, 0.1);
     last = now;
     const blended = life.update(dt);
+    if (table.active || table.shown > 0) {
+      life.follow(table.update(cupsFrozenAt === null ? Date.now() : table.actStart + cupsFrozenAt, dt));
+      aim();
+      reportCups();
+    }
     if (first) {
       // Hair and skirt start hanging from this pose. Their stored rest came from before rotateVRM0 turned the model,
       // so without this the skirt flew up to her chest for the first second (the tester saw it as she waved hello).
@@ -267,6 +377,7 @@ async function main() {
     }
     if (reported) return;
     reported = true;
+    warmTable(table).catch((e) => console.warn('cup table warm-up failed', e));
     // Gestures load after her first frame, so they never delay her appearing.
     loadGestures(vrm, (name, e) => console.warn(`gesture ${name} failed to load`, e)).then((clips) => {
       life.gestures = new GesturePlayer(clips);
@@ -295,6 +406,25 @@ async function main() {
       fpsCap,
     });
   });
+}
+
+/**
+ * Readies the cup table on the GPU without showing it or delaying her first frame: a copy sharing its shapes and
+ * materials, lit like the page, is compiled and drawn once into a small offscreen target. Shown cold, the table froze
+ * the ring screen as "Let's play" brought it in (14T: 108 ms; then 2 × 58 ms with only its shaders compiled), and
+ * warming it before her first frame made her appear about a second later.
+ */
+async function warmTable(table: CupScene) {
+  const stage = new THREE.Scene();
+  const copy = table.group.clone();
+  copy.visible = true;
+  stage.add(copy, light.clone(), ambient.clone());
+  await renderer.compileAsync(stage, camera);
+  const target = new THREE.WebGLRenderTarget(16, 16);
+  renderer.setRenderTarget(target);
+  renderer.render(stage, camera);
+  renderer.setRenderTarget(null);
+  target.dispose();
 }
 
 function measure(now: number) {
@@ -472,5 +602,40 @@ if (!window.RinBridge) {
     audio.addEventListener('playing', () => speak(track, Date.now() - audio.currentTime * 1000), { once: true });
     await audio.play();
   };
-  Object.assign(window, { rin: { gestures: GESTURES, gesture, speak, say, reload, hold, bone, vrm: () => loadedVrm } });
+  Object.assign(window, { rin: { gestures: GESTURES, gesture, speak, say, reload, hold, bone, vrm: () => loadedVrm, cups: setAct,
+    cupsAt: (ms: number | null) => (cupsFrozenAt = ms), camera, table: () => cups } });
+}
+
+/**
+ * Desktop preview (`cups=demo`): the game as the app plays it, without the app. Show the ball, shuffle 4, 5, then 6
+ * swaps, lift the ball's cup, and again. The timings are CupsRules' defaults.
+ */
+function cupsDemo() {
+  let ball = 1;
+  let n = 4;
+  const T = { leadMs: 300, upMs: 250, downMs: 250, exitMs: 250, swapMs: 450, gapMs: 150 };
+  const pairs: Swap[] = [[0, 1], [1, 2], [0, 2]];
+  const lift = (): CupsAct => ({ kind: 'lift', ball, at: Date.now(), lift: [ball], hands: [ball], holdMs: 900, ...T });
+  const shuffle = (): Extract<CupsAct, { kind: 'shuffle' }> => {
+    const swaps: Swap[] = [];
+    while (swaps.length < n) {
+      const s = pairs[Math.floor(Math.random() * 3)];
+      if (swaps.at(-1) !== s) swaps.push(s);
+    }
+    return { kind: 'shuffle', ball, at: Date.now(), swaps, ...T };
+  };
+  const run = (act: CupsAct, next: () => void) => {
+    setAct(act);
+    setTimeout(next, actLength(act) + 700);
+  };
+  const loop = () =>
+    run(lift(), () => {
+      const s = shuffle();
+      run(s, () => {
+        ball = afterSwaps(s.swaps, ball);
+        n = n >= 6 ? 4 : n + 1;
+        loop();
+      });
+    });
+  loop();
 }

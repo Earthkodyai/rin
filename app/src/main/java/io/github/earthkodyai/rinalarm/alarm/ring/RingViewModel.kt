@@ -5,9 +5,13 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
+import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.mission.CupsMission
+import io.github.earthkodyai.rinalarm.mission.CupsPhase
+import io.github.earthkodyai.rinalarm.mission.CupsState
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
@@ -68,6 +72,9 @@ constructor(
   private var gameJob: Job? = null
   private var stallJob: Job? = null
   private var cameraJob: Job? = null
+  private var cupsWaitJob: Job? = null
+  /** Why the cups went 2D, for the log (null: her page played them). */
+  private var cups2dReason: String? = null
   private var ringKey: Any? = null
   private var missionStartedAt = 0L
 
@@ -87,6 +94,7 @@ constructor(
     }
     ringKey = key
     stopMission()
+    cups2dReason = null
     state.value = RingUiState(ring = ring)
     refreshPhase()
     val plan = ring.mission ?: return
@@ -106,6 +114,66 @@ constructor(
     )
     missionJob = viewModelScope.launch { running.progress.collect { onProgress(ring, it) } }
     (running as? PadsMission)?.let { pads -> gameJob = viewModelScope.launch { pads.game.collect(::onGame) } }
+    (running as? CupsMission)?.let { cups -> gameJob = viewModelScope.launch { cups.game.collect(::onCups) } }
+  }
+
+  private fun onCups(game: CupsState) {
+    val before = state.value.cups
+    state.update { it.copy(cups = game) }
+    // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
+    if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) cueFlow.tryEmit(Gesture.HUFF)
+  }
+
+  /**
+   * "Let's play" on the cups brings the table into view first ([RingUiState.cupsStaging]); the game starts once her
+   * page shows it, or once the 2D board takes over (the page is gone, or [CUPS_PAGE_WAIT_MS] passed). Otherwise the
+   * ball's first showing, the only time the user sees where it starts, could play while the page was still loading
+   * (smoke ring, 2026-09-29: "Let's play" 0.25 s before her first frame).
+   */
+  private fun startCups(cups: CupsMission) {
+    if (cups.game.value.phase != CupsPhase.READY || state.value.cupsStaging) return
+    state.update { it.copy(cupsStaging = true) }
+    if (state.value.cupsView is CupsView.Shown || state.value.cups2d) return beginCups()
+    cupsWaitJob?.cancel()
+    cupsWaitJob =
+      viewModelScope.launch {
+        delay(CUPS_PAGE_WAIT_MS)
+        if (state.value.cupsView !is CupsView.Shown) use2dCups("page_timeout")
+      }
+  }
+
+  private fun beginCups() {
+    val cups = mission as? CupsMission ?: return
+    if (cups.game.value.phase != CupsPhase.READY) return
+    cups.begin()
+    state.update { it.copy(cupsStaging = false) }
+  }
+
+  /** What the character page says about the cup table (CharacterView). */
+  fun onCupsView(view: CupsView) {
+    if (state.value.cups2d) return
+    state.update { it.copy(cupsView = view) }
+    when (view) {
+      is CupsView.Shown -> {
+        cupsWaitJob?.cancel()
+        if (state.value.cupsStaging) beginCups()
+      }
+      CupsView.Unavailable -> if (state.value.cups != null) use2dCups("page_unavailable")
+      CupsView.Pending -> Unit
+    }
+  }
+
+  /** For the rest of this ring the game draws natively: no flipping back and forth if the page shows up late. */
+  private fun use2dCups(reason: String) {
+    if (state.value.cups2d) return
+    cupsWaitJob?.cancel()
+    cups2dReason = reason
+    state.update { it.copy(cups2d = true) }
+    if (state.value.cupsStaging) beginCups()
+  }
+
+  fun pickCup(slot: Int) {
+    (mission as? CupsMission)?.pick(slot)
   }
 
   private fun onGame(game: PadsState) {
@@ -118,6 +186,7 @@ constructor(
   /** "Let's play" on the colour pads. */
   fun startGame() {
     (mission as? PadsMission)?.begin()
+    (mission as? CupsMission)?.let(::startCups)
   }
 
   fun tapPad(pad: Pad) {
@@ -167,7 +236,10 @@ constructor(
     }
   }
 
-  private fun summary(): String = mission?.summary()?.takeIf { it.isNotEmpty() }?.let { " $it" } ?: ""
+  private fun summary(): String {
+    val board = if (mission is CupsMission) " board=" + (cups2dReason?.let { "2d:$it" } ?: "3d") else ""
+    return (mission?.summary()?.takeIf { it.isNotEmpty() }?.let { " $it" } ?: "") + board
+  }
 
   /** "Scan sticker" (user decision: the camera opens on a tap, never by itself while the user is still in bed). */
   fun openCamera() {
@@ -255,6 +327,8 @@ constructor(
     stallJob = null
     cameraJob?.cancel()
     cameraJob = null
+    cupsWaitJob?.cancel()
+    cupsWaitJob = null
     mission?.stop()
     mission = null
   }
@@ -271,6 +345,12 @@ constructor(
   companion object {
     /** How long Rin claps after a pass before the ring screen closes. */
     const val CELEBRATE_MS = 2_500L
+
+    /**
+     * How long "Let's play" waits for her page to show the cup table before the 2D board takes over: her page's first
+     * frame came 1.8 s after the ring screen opened on the 14T, and the camera move takes 0.6 s.
+     */
+    const val CUPS_PAGE_WAIT_MS = 4_000L
   }
 }
 
@@ -282,6 +362,9 @@ constructor(
  * @property cameraOpen the QR mission's camera is on (it opens on a tap).
  * @property scanHint what the camera last saw that was not a pass: the sticker from too far, or another code.
  * @property pads the colour-pads game, when that is the mission.
+ * @property cups the cup shuffle, when that is the mission; [cupsView] what her page shows of it, and [cups2d] that the
+ *   native 2D board plays it instead (her page is gone, or did not show the table in time). [cupsStaging]: "Let's
+ *   play" was tapped and the table is coming into view; the game starts once it is.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -293,10 +376,18 @@ data class RingUiState(
   val cameraOpen: Boolean = false,
   val scanHint: ScanVerdict? = null,
   val pads: PadsState? = null,
+  val cups: CupsState? = null,
+  val cupsView: CupsView = CupsView.Pending,
+  val cups2d: Boolean = false,
+  val cupsStaging: Boolean = false,
 ) {
   /** Rin's mood: the phase's, except while she scolds a missed round. */
   val mood: Mood
-    get() = if (pads?.phase == PadsPhase.SCOLD) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+    get() = if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+
+  /** A wrong cup is up: Rin sulks and says one of her lines. */
+  val cupsScold: Boolean
+    get() = cups?.phase == CupsPhase.REVEAL && cups.right == false
 
   /** A plain Dismiss button instead of the mission and the emergency hold. */
   val plainDismiss: Boolean

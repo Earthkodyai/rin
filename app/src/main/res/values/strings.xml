@@ -78,6 +78,20 @@
         <item>Close! The blanket made you miss it.</item>
         <item>Oops. Okay, a fresh one. Eyes open~</item>
     </string-array>
+    <!-- Ring screen: cup shuffle (task 3.4). -->
+    <string name="cups_title">Find the ball</string>
+    <string name="cups_intro">Rin hides a ball under a cup and shuffles. Tap the cup with the ball, three times in a row.</string>
+    <string name="cups_watch">Watch the ball…</string>
+    <string name="cups_pick">Which cup?</string>
+    <string name="cups_right">Found it!</string>
+    <string name="cups_streak">%1$d of %2$d in a row</string>
+    <string name="cups_cup">Cup %1$d</string>
+    <!-- Rin's lines for a wrong pick (the user's pick, set A). Keep in step with CupsGame.WRONG_LINES. -->
+    <string-array name="cups_scold_wrong">
+        <item>Hmm? It was right here the whole time.</item>
+        <item>Eyes open, sleepyhead. Again!</item>
+        <item>So close… no, not really. Once more.</item>
+    </string-array>
     <!-- Ring screen: QR mission (task 3.2). -->
     <string name="mission_qr_title">Scan your QR sticker</string>
     <string name="mission_qr_walk">Walk to your sticker, then tap below.</string>
@@ -96,11 +110,13 @@
     <string name="mission_choice_rin_picks">Rin picks</string>
     <string name="mission_choice_pads">Pads</string>
     <string name="mission_choice_qr">QR</string>
+    <string name="mission_choice_cups">Cups</string>
     <string name="mission_choice_none">None</string>
     <string name="mission_hint_rin_picks">Rin picks a different game each day.</string>
     <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
     <string name="mission_hint_pads">Watch Rin\'s hand, then tap the colours in the same order: 3 rounds.</string>
     <string name="mission_hint_qr">Walk to your QR sticker and scan it up close.</string>
+    <string name="mission_hint_cups">Follow the ball as Rin shuffles the cups, then tap its cup: 3 in a row.</string>
     <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_camera">%1$s needs a camera this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>

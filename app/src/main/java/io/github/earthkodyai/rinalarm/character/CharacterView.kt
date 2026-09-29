@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.os.SystemClock
 import android.os.UserManager
 import android.util.Log
 import android.view.HapticFeedbackConstants
@@ -60,6 +61,7 @@ import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.mission.CupsAct
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -81,6 +83,18 @@ object CharacterDebug {
   /** Milliseconds of rendering to measure; the result is logged as `RinChar: stats ...`. */
   val measureFrames = MutableSharedFlow<Long>(extraBufferCapacity = 1)
   val fpsCap = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+}
+
+/** Whether the page shows the cup table (task 3.4), so the ring screen knows when to draw its own 2D board. */
+sealed interface CupsView {
+  /** Loading, moving the camera, or not asked yet. */
+  data object Pending : CupsView
+
+  /** The table is in view; [x] is each slot's cup across the view (0..1), for the tap zones. */
+  data class Shown(val x: List<Float>) : CupsView
+
+  /** The page is gone for good (the still image shows): only the 2D board can play. */
+  data object Unavailable : CupsView
 }
 
 private enum class Phase {
@@ -109,6 +123,8 @@ fun CharacterView(
   intensity: Float = 1f,
   framing: Framing = Framing.STRIP,
   cues: Flow<Gesture>? = null,
+  cups: CupsAct? = null,
+  onCups: (CupsView) -> Unit = {},
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -124,6 +140,11 @@ fun CharacterView(
   var debugMood by remember { mutableStateOf<Pair<Mood, Float>?>(null) }
   val shown = debugMood ?: (mood to intensity)
   SideEffect { host.setMood(shown) }
+  val currentOnCups by rememberUpdatedState(onCups)
+  SideEffect {
+    host.onCups = { currentOnCups(it) }
+    host.setCups(cups)
+  }
   val director = remember { GestureDirector() }
   val currentMood by rememberUpdatedState(shown.first)
   SideEffect { host.onShown = { away -> director.greetOnShow(currentMood, away)?.let(host::gesture) } }
@@ -151,6 +172,7 @@ fun CharacterView(
     host.resume()
     onPauseOrDispose { host.pause() }
   }
+  LaunchedEffect(phase) { if (phase == Phase.FALLBACK) currentOnCups(CupsView.Unavailable) }
   LaunchedEffect(phase) {
     if (phase != Phase.LOADING) return@LaunchedEffect
     delay(LOAD_TIMEOUT_MS)
@@ -250,6 +272,10 @@ private class CharacterHost {
   private var pausedAt: Long? = null
   /** Called when she is on screen and ready: first with null (the app just opened), then with the time away. */
   var onShown: (awayMs: Long?) -> Unit = {}
+  /** The cup shuffle's act the screen wants shown, and whether the page has it. */
+  private var cups: CupsAct? = null
+  private var cupsSent = false
+  var onCups: (CupsView) -> Unit = {}
 
   @SuppressLint("SetJavaScriptEnabled") // our own page from APK assets; nothing else can load (see the client)
   fun create(
@@ -261,7 +287,8 @@ private class CharacterHost {
     onFailed: () -> Unit,
   ): View {
     val t0 = System.currentTimeMillis() // before Chromium starts, so the load time includes WebView start-up
-    WebView.setWebContentsDebuggingEnabled(context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
+    val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    WebView.setWebContentsDebuggingEnabled(debuggable)
     val loader =
       WebViewAssetLoader.Builder().addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context)).build()
     val web = WebView(context)
@@ -292,12 +319,19 @@ private class CharacterHost {
           onReady()
           sendMood()
           sendSpeaking()
+          sendCups()
+          // Debug builds: frame pacing over the ring screen's first seconds, where the tester saw her stutter (3.4).
+          if (debuggable && framing == Framing.FULL) proxy.postMessage(CharacterCommand.MeasureFrames(STARTUP_MEASURE_MS).json)
           if (resumed) onShown(null)
         }
         is CharacterMessage.EmotionShown ->
           Log.i(TAG, "emotion ${parsed.mood} toPage=${parsed.ms.toPage} total=${parsed.ms.total}")
         is CharacterMessage.GestureStarted -> Log.i(TAG, "gesture ${parsed.name} ok=${parsed.ok}")
         is CharacterMessage.Stats -> Log.i(TAG, "stats $parsed")
+        is CharacterMessage.CupsShown -> {
+          Log.i(TAG, "cups shown=${parsed.shown} x=${parsed.x}")
+          onCups(if (parsed.shown && parsed.x.size == 3) CupsView.Shown(parsed.x.map { it.toFloat() }) else CupsView.Pending)
+        }
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")
           webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -313,7 +347,7 @@ private class CharacterHost {
       CharacterAssets.PAGE.toUri()
         .buildUpon()
         .appendQueryParameter("model", model)
-        .appendQueryParameter("fps", FPS_CAP.toString())
+        .appendQueryParameter("fps", framing.fpsCap.toString())
         .appendQueryParameter("pr", PIXEL_RATIO_CAP.toString())
         .appendQueryParameter("t0", t0.toString())
         .appendQueryParameter("mood", mood.first.wire)
@@ -336,6 +370,8 @@ private class CharacterHost {
     reply?.postMessage(CharacterCommand.Resume.json)
     sendMood()
     sendSpeaking()
+    cupsSent = false // re-sent on every resume: the page times acts by the clock, so it picks up where they are now
+    sendCups()
     val away = pausedAt?.let { System.currentTimeMillis() - it }
     if (ready && away != null) onShown(away)
   }
@@ -355,6 +391,21 @@ private class CharacterHost {
     val line = speaking ?: return
     val proxy = reply ?: return
     if (ready && resumed) proxy.postMessage(CharacterCommand.Speak(line.mouth, line.at).json)
+  }
+
+  fun setCups(act: CupsAct?) {
+    if (act == cups) return
+    cups = act
+    cupsSent = false
+    sendCups()
+  }
+
+  private fun sendCups() {
+    val proxy = reply ?: return
+    if (!ready || !resumed || cupsSent) return
+    val offset = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+    proxy.postMessage(CharacterCommand.Cups(cups, offset).json)
+    cupsSent = true
   }
 
   fun setMood(mood: Pair<Mood, Float>) {
@@ -427,7 +478,7 @@ private const val FADE_MS = 300
 /** Matches the page's mood blend (emotion.ts BLEND_S). */
 private const val STILL_BLEND_MS = 200
 private const val LOAD_TIMEOUT_MS = 10_000L
+private const val STARTUP_MEASURE_MS = 10_000L
 
-/** S2: 30 fps is plenty for an idle character on a 120 Hz screen, and 2 keeps GPU memory down at no visible cost. */
-private const val FPS_CAP = 30
+/** S2: a pixel ratio of 2 keeps GPU memory down at no visible cost. The frame-rate cap is per framing (Framing.fpsCap). */
 private const val PIXEL_RATIO_CAP = 2

@@ -26,6 +26,7 @@ export function clearArm(
 export function restArm(side: 'left' | 'right'): { upper: THREE.Quaternion; lower: THREE.Quaternion };
 export function restPosition(bone: string): THREE.Vector3;
 export function restFingers(side: 'left' | 'right'): Record<string, THREE.Quaternion>;
+export function curlFingers(side: 'left' | 'right', curl: number): Record<string, THREE.Quaternion>;
 export function pushOut(point: THREE.Vector3, radius: number): [number, number];
 export function poseAt(gesture: GestureDef, t: number): Record<string, THREE.Quaternion>;
 export function validate(name: string, gesture: GestureDef): string[];
