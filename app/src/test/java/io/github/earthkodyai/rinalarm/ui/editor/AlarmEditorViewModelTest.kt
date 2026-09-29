@@ -35,7 +35,7 @@ class AlarmEditorViewModelTest {
     Alarm(id = 7, time = LocalTime.of(6, 30), repeatDays = RepeatDays.WEEKDAYS, label = "Work", enabled = false)
   private val alarms = FakeAlarms(listOf(work))
 
-  private var missions = mapOf(MissionType.WALK to Readiness.NO_PERMISSION)
+  private var missions = mapOf(MissionType.PADS to Readiness.NO_PERMISSION)
 
   private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time) { missions }
 
@@ -57,33 +57,27 @@ class AlarmEditorViewModelTest {
   @Test
   fun missionProblems_explainWhyTheChoiceCannotRun_untilThePermissionArrives() = runTest {
     val editor = editor(work.id)
-    assertEquals(mapOf(MissionType.WALK to Readiness.NO_PERMISSION), editor.editing().missionProblems)
+    assertEquals(mapOf(MissionType.PADS to Readiness.NO_PERMISSION), editor.editing().missionProblems)
 
     editor.setMission(MissionChoice.None)
     assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
 
-    editor.setMission(MissionChoice.Only(MissionType.WALK))
-    missions = mapOf(MissionType.WALK to Readiness.READY)
+    editor.setMission(MissionChoice.Only(MissionType.PADS))
+    missions = mapOf(MissionType.PADS to Readiness.READY)
     editor.refreshMissions()
     assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
   }
 
   @Test
-  fun rinPicks_offersTheQrSetup_onlyWhileItHasAnotherReadyMission() = runTest {
-    missions = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.NOT_SET_UP)
+  fun hiddenQr_isNeitherOfferedNorAProblem_norAChoice() = runTest {
+    missions = mapOf(MissionType.PADS to Readiness.READY, MissionType.QR to Readiness.NOT_SET_UP)
     val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
     assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
-    assertEquals(listOf(MissionType.QR), editor.editing().missionOffers)
-
-    // Chosen by hand, it is a problem to fix rather than an offer.
-    editor.setMission(MissionChoice.Only(MissionType.QR))
-    assertEquals(mapOf(MissionType.QR to Readiness.NOT_SET_UP), editor.editing().missionProblems)
     assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
-
-    editor.setMission(MissionChoice.RinPicks)
-    missions = mapOf(MissionType.WALK to Readiness.READY, MissionType.QR to Readiness.READY)
-    editor.refreshMissions()
-    assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
+    assertEquals(
+      listOf(MissionChoice.RinPicks, MissionChoice.Only(MissionType.PADS), MissionChoice.None),
+      RingChoices.MISSIONS,
+    )
   }
 
   private suspend fun AlarmEditorViewModel.editing() =

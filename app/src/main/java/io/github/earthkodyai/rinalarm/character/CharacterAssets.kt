@@ -44,6 +44,14 @@ object CharacterAssets {
       }
       .toMap()
 
+  /**
+   * Rin's hand for the colour pads (task 3.3), rendered with the stills: seen from above, fingertip at the bottom
+   * centre. Null in builds without a model, which draw a plain hand.
+   */
+  fun hand(context: Context): String? = "$STILL_DIR/$HAND".takeIf { HAND in list(context, STILL_DIR) }
+
+  private const val HAND = "hand.webp"
+
   private fun list(context: Context, dir: String): List<String> =
     runCatching { context.assets.list(dir)?.toList() }.getOrNull().orEmpty()
 }

@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * Debug builds only. Alarms are minute-precise, so "add" picks the first whole minute at least `sec` seconds away.
  *
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd add --ei sec 60
- *   (optional `--es mission qr|walk|none|rin_picks`, default rin_picks)
+ *   (optional `--es mission pads|none|rin_picks`, default rin_picks)
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd clear
  */
 class DebugAlarmReceiver : BroadcastReceiver() {

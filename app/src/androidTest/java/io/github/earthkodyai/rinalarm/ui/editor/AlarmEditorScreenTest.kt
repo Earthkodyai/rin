@@ -97,14 +97,14 @@ class AlarmEditorScreenTest {
         hasChanges = false,
         ringsIn = null,
         busy = false,
-        missionReadiness = mapOf(MissionType.WALK to Readiness.NO_PERMISSION),
+        missionReadiness = mapOf(MissionType.PADS to Readiness.NO_PERMISSION),
       )
     composeTestRule.setContent { AlarmEditorScreen(state, actions, onClose = {}) }
 
     composeTestRule.onNodeWithText(string(R.string.mission_choice_none)).performScrollTo().performClick()
     composeTestRule.onNodeWithText(string(R.string.mission_allow)).performScrollTo().performClick()
 
-    assertEquals(listOf("mission none", "allow walk"), calls)
+    assertEquals(listOf("mission none", "allow pads"), calls)
   }
 
   @Test

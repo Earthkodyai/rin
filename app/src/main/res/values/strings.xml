@@ -54,12 +54,29 @@
     </plurals>
     <string name="ring_dismiss">Dismiss</string>
     <string name="ring_hold_to_stop">Emergency: hold 3 s to stop</string>
-    <plurals name="mission_walk_title">
-        <item quantity="one">Walk %1$d step</item>
-        <item quantity="other">Walk %1$d steps</item>
-    </plurals>
-    <string name="mission_progress">%1$d / %2$d</string>
     <string name="mission_passed">Nice work! Alarm off.</string>
+    <!-- Ring screen: colour pads (task 3.3). -->
+    <string name="pads_title">Copy Rin\'s colours</string>
+    <string name="pads_intro">Watch her hand, then tap the same colours in order. Three rounds.</string>
+    <string name="pads_start">Let\'s play</string>
+    <string name="pads_round">Round %1$d of %2$d</string>
+    <string name="pads_watch">Watch…</string>
+    <string name="pads_your_turn">Your turn</string>
+    <string name="pad_red">Red</string>
+    <string name="pad_blue">Blue</string>
+    <string name="pad_yellow">Yellow</string>
+    <string name="pad_green">Green</string>
+    <!-- Rin's lines when a round is missed (the user's pick, set A). Keep in step with PadsGame.SLOW_LINES / WRONG_LINES. -->
+    <string-array name="pads_scold_slow">
+        <item>Too slow~ Is the blanket helping you?</item>
+        <item>Hello? My hand got tired waiting.</item>
+        <item>Still dreaming? Let\'s try a new one.</item>
+    </string-array>
+    <string-array name="pads_scold_wrong">
+        <item>Hmm, not that one. Watch my hand again.</item>
+        <item>Close! The blanket made you miss it.</item>
+        <item>Oops. Okay, a fresh one. Eyes open~</item>
+    </string-array>
     <!-- Ring screen: QR mission (task 3.2). -->
     <string name="mission_qr_title">Scan your QR sticker</string>
     <string name="mission_qr_walk">Walk to your sticker, then tap below.</string>
@@ -76,12 +93,12 @@
     <!-- Alarm editor: mission (task 3.1). -->
     <string name="editor_mission">Mission</string>
     <string name="mission_choice_rin_picks">Rin picks</string>
-    <string name="mission_choice_walk">Walk</string>
+    <string name="mission_choice_pads">Pads</string>
     <string name="mission_choice_qr">QR</string>
     <string name="mission_choice_none">None</string>
-    <string name="mission_hint_rin_picks">Rin picks a different ready mission each day.</string>
+    <string name="mission_hint_rin_picks">Rin picks a different game each day.</string>
     <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
-    <string name="mission_hint_walk">Walk 30 steps to stop the alarm.</string>
+    <string name="mission_hint_pads">Watch Rin\'s hand, then tap the colours in the same order: 3 rounds.</string>
     <string name="mission_hint_qr">Walk to your QR sticker and scan it up close.</string>
     <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>

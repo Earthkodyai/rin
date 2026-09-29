@@ -201,7 +201,8 @@ sealed interface AlarmEditorUiState {
             MissionChoice.None -> emptyList()
             // Rin only needs one ready mission to pick from.
             MissionChoice.RinPicks ->
-              if (MissionType.entries.any { missionReadiness[it] == Readiness.READY }) emptyList() else MissionType.entries
+              if (MissionType.offeredEntries.any { missionReadiness[it] == Readiness.READY }) emptyList()
+              else MissionType.offeredEntries
             is MissionChoice.Only -> listOf(choice.type)
           }
         return wanted.associateWith { missionReadiness[it] ?: Readiness.READY }.filterValues { it != Readiness.READY }
@@ -214,7 +215,7 @@ sealed interface AlarmEditorUiState {
     val missionOffers: List<MissionType>
       get() =
         if (draft.mission != MissionChoice.RinPicks || missionProblems.isNotEmpty()) emptyList()
-        else MissionType.entries.filter { missionReadiness[it] == Readiness.NOT_SET_UP }
+        else MissionType.offeredEntries.filter { missionReadiness[it] == Readiness.NOT_SET_UP }
   }
 
   data class Saved(val ringsIn: Duration?) : AlarmEditorUiState
@@ -231,7 +232,7 @@ object RingChoices {
 
   /** The mission choices, in the order the editor shows them (D15: Rin picks first, the default). */
   val MISSIONS: List<MissionChoice> =
-    listOf(MissionChoice.RinPicks) + MissionType.entries.map(MissionChoice::Only) + MissionChoice.None
+    listOf(MissionChoice.RinPicks) + MissionType.offeredEntries.map(MissionChoice::Only) + MissionChoice.None
 
   /**
    * [standard] plus [current] when the alarm already holds a value outside it (set by the debug hook or a future

@@ -6,11 +6,16 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.Gesture
+import io.github.earthkodyai.rinalarm.character.Mood
 import io.github.earthkodyai.rinalarm.di.AppScope
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionState
+import io.github.earthkodyai.rinalarm.mission.Pad
+import io.github.earthkodyai.rinalarm.mission.PadsMission
+import io.github.earthkodyai.rinalarm.mission.PadsPhase
+import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
 import io.github.earthkodyai.rinalarm.mission.ScanMission
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
@@ -60,6 +65,7 @@ constructor(
   // Volatile: onScan reads it from the camera's analysis thread.
   @Volatile private var mission: Mission? = null
   private var missionJob: Job? = null
+  private var gameJob: Job? = null
   private var stallJob: Job? = null
   private var cameraJob: Job? = null
   private var ringKey: Any? = null
@@ -99,6 +105,23 @@ constructor(
         (plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: ""),
     )
     missionJob = viewModelScope.launch { running.progress.collect { onProgress(ring, it) } }
+    (running as? PadsMission)?.let { pads -> gameJob = viewModelScope.launch { pads.game.collect(::onGame) } }
+  }
+
+  private fun onGame(game: PadsState) {
+    val before = state.value.pads
+    state.update { it.copy(pads = game) }
+    // The cut to Rin (D17): she sulks with a huff for the length of the scold.
+    if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) cueFlow.tryEmit(Gesture.HUFF)
+  }
+
+  /** "Let's play" on the colour pads. */
+  fun startGame() {
+    (mission as? PadsMission)?.begin()
+  }
+
+  fun tapPad(pad: Pad) {
+    (mission as? PadsMission)?.tap(pad)
   }
 
   private fun onProgress(ring: ActiveRing, progress: MissionProgress) {
@@ -226,6 +249,8 @@ constructor(
   private fun stopMission() {
     missionJob?.cancel()
     missionJob = null
+    gameJob?.cancel()
+    gameJob = null
     stallJob?.cancel()
     stallJob = null
     cameraJob?.cancel()
@@ -245,7 +270,8 @@ constructor(
 
   companion object {
     /** How long Rin claps after a pass before the ring screen closes. */
-    const val CELEBRATE_MS = 2_500L  }
+    const val CELEBRATE_MS = 2_500L
+  }
 }
 
 /**
@@ -255,6 +281,7 @@ constructor(
  * @property finished close the screen.
  * @property cameraOpen the QR mission's camera is on (it opens on a tap).
  * @property scanHint what the camera last saw that was not a pass: the sticker from too far, or another code.
+ * @property pads the colour-pads game, when that is the mission.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -265,7 +292,12 @@ data class RingUiState(
   val finished: Boolean = false,
   val cameraOpen: Boolean = false,
   val scanHint: ScanVerdict? = null,
+  val pads: PadsState? = null,
 ) {
+  /** Rin's mood: the phase's, except while she scolds a missed round. */
+  val mood: Mood
+    get() = if (pads?.phase == PadsPhase.SCOLD) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+
   /** A plain Dismiss button instead of the mission and the emergency hold. */
   val plainDismiss: Boolean
     get() = ring?.mission == null || missionFailed

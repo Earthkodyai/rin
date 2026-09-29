@@ -20,6 +20,9 @@ enum class RingPhase {
  * enters it. Full body, so clap and pout show here (task 2.5 kept them off the home strip).
  */
 object RingMoods {
+  /** A missed colour-pads round (D17): she sulks, gently. The ring view model cues the huff. */
+  val SCOLD_MOOD = Mood.POUTY
+
   fun mood(phase: RingPhase): Mood =
     when (phase) {
       RingPhase.WAKING -> Mood.CHEERFUL

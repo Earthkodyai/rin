@@ -1,17 +1,33 @@
 package io.github.earthkodyai.rinalarm.mission
 
 /**
- * The out-of-bed tasks that stop an alarm (plan 05c). Task 3.1 added walking and 3.2 the QR sticker; speaking (3.3)
- * and the photo of your own object (3.5) join as they are built. Stored by [stored], so entries may be added but never
- * renamed. Rin picks rotates through them in this order.
+ * What stops an alarm (D17, ADR 0001): games with Rin. Task 3.3 added colour pads; the cup shuffle (3.4) and repeat
+ * after Rin (3.5) join as they are built. The QR sticker (3.2) stays in the code behind [MissionFlags.QR_STICKER].
+ * Walking (3.1) was removed in 3.3: a stored "walk" reads as Rin picks. Stored by [stored], so entries may be added but
+ * never renamed. Rin picks rotates through them in this order.
  */
 enum class MissionType(val stored: String) {
-  WALK("walk"),
+  PADS("pads"),
   QR("qr");
 
+  /** Shown in the editor and planned for rings; a hidden type reads as Rin picks. */
+  val offered: Boolean
+    get() = this != QR || MissionFlags.QR_STICKER
+
   companion object {
-    fun fromStored(value: String): MissionType? = entries.firstOrNull { it.stored == value }
+    val offeredEntries: List<MissionType>
+      get() = entries.filter { it.offered }
+
+    fun fromStored(value: String): MissionType? = entries.firstOrNull { it.stored == value && it.offered }
   }
+}
+
+object MissionFlags {
+  /**
+   * The QR sticker mission (task 3.2) found no valid size bar and the setup was too much work (ADR 0001). Off until a
+   * placement passes its frozen rule; QrLabActivity (debug) still works.
+   */
+  const val QR_STICKER = false
 }
 
 /** What an alarm asks for (user decision D15: per alarm, "Rin picks" by default, None for naps and the test alarm). */

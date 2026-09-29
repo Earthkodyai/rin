@@ -55,7 +55,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 20);
 const light = new THREE.DirectionalLight(0xffffff, Math.PI);
 light.position.set(1, 1.5, 1.5);
-scene.add(light, new THREE.AmbientLight(0xffffff, 0.4 * Math.PI));
+const ambient = new THREE.AmbientLight(0xffffff, 0.4 * Math.PI);
+scene.add(light, ambient);
 
 /** The top of the model (hair included); framing hangs from it, so any model (the sample, Rin) sits the same way. */
 let topY = 1.55;
@@ -300,6 +301,15 @@ function measure(now: number) {
   if (stats) send({ v: PROTOCOL, type: 'stats', ...stats });
 }
 
+/** Her right arm reaching for the colour pads (task 3.3): forward, a little down and in. */
+const HAND_REACH = [0.18, -0.4, 1] as const;
+/** The wrist bent down toward the pads, radians. */
+const HAND_BEND = 0.35;
+/** Metres of the table in view along the frame's height, around her hand. */
+const HAND_VIEW = 0.3;
+/** How far below her fingertip the hand render cuts everything away (her skirt is under her arm). */
+const HAND_CLIP = 0.06;
+
 /** Where the inspection camera stands, relative to the middle of her upper body (metres; +X is her left). */
 const VIEWS = {
   front: [0, 0, 1],
@@ -313,6 +323,9 @@ type View = keyof typeof VIEWS;
  * Still mode (task 2.5): no loop and no bridge.
  * - `rinStill(mood)` (tools/character/render-stills.mjs) poses her at rest in that mood, renders one frame with the
  *   page's framing (strip, or full body with `frame=full`) and returns it as a PNG data URL. The app shows these while the 3D page loads, and when it fails.
+ * - `rinHand(width, height)` (task 3.3) renders her right hand for the colour pads, seen from above as if she sat across
+ *   the table: arm reaching forward, index finger out, the other fingers curled, her body toward the top of the frame.
+ *   Returns the PNG and the fingertip's pixel position, which the tool puts at the bottom centre of the crop.
  * - `rinInspect(gesture)` and `rinView(gesture, age, view)` (tools/character/check-gestures.mjs) measure how far her
  *   arms sink into her body through a gesture (inspect.ts), and render a moment of it from any side.
  */
@@ -364,6 +377,53 @@ async function exposeStills(vrm: VRM, headHalf: number) {
     eye.updateProjectionMatrix();
     return render(eye);
   };
+  const hand = (width: number, height: number) => {
+    pose('cheerful', null, 0);
+    const node = (name: VRMHumanBoneName) => vrm.humanoid.getNormalizedBoneNode(name);
+    const euler = (name: VRMHumanBoneName, x: number, y: number, z: number) => node(name)?.rotation.set(x, y, z);
+    // Normalized bones share the world's axes at rest (T-pose, facing +Z): the right arm points -X, palm down, and a
+    // positive Z turn curls a right finger toward the palm (scripts/vrma.mjs curlBones).
+    const reach = new THREE.Vector3(HAND_REACH[0], HAND_REACH[1], HAND_REACH[2]).normalize();
+    node('rightUpperArm')?.quaternion.setFromUnitVectors(new THREE.Vector3(-1, 0, 0), reach);
+    euler('rightLowerArm', 0, 0, 0);
+    euler('rightHand', 0, 0, HAND_BEND);
+    for (const f of ['Middle', 'Ring', 'Little'] as const) {
+      euler(`right${f}Proximal`, 0, 0, 1.2);
+      euler(`right${f}Intermediate`, 0, 0, 1.4);
+      euler(`right${f}Distal`, 0, 0, 0.9);
+    }
+    euler('rightIndexProximal', 0, 0, 0.08);
+    euler('rightIndexIntermediate', 0, 0, 0.08);
+    euler('rightIndexDistal', 0, 0, 0.05);
+    euler('rightThumbProximal', 0, -0.8, 0.3);
+    euler('rightThumbDistal', 0, -0.7, 0);
+    vrm.humanoid.update();
+    vrm.scene.updateMatrixWorld(true);
+    const at = (name: VRMHumanBoneName) => vrm.humanoid.getRawBoneNode(name)!.getWorldPosition(new THREE.Vector3());
+    // The fingertip: past the last joint by about the last segment's length.
+    const distal = at('rightIndexDistal');
+    const tip = distal.clone().add(distal.clone().sub(at('rightIndexIntermediate')).multiplyScalar(0.9));
+    const center = tip.clone().add(at('rightHand')).multiplyScalar(0.5);
+    const eye = new THREE.PerspectiveCamera(30, width / height, 0.05, 5);
+    eye.up.set(0, 0, -1); // her body at the top of the frame, her fingertip toward the user
+    eye.position.copy(center).add(new THREE.Vector3(0, HAND_VIEW / 2 / Math.tan(THREE.MathUtils.degToRad(15)), 0));
+    eye.lookAt(center);
+    eye.updateProjectionMatrix();
+    // Only her arm: a plane just under the hand cuts away the skirt and legs below it. From straight above, the page's
+    // light washes the back of the hand out, so this frame is lit more softly.
+    const saved = { size: renderer.getSize(new THREE.Vector2()), light: light.intensity, ambient: ambient.intensity };
+    renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -(tip.y - HAND_CLIP))];
+    light.intensity = saved.light * 0.6;
+    ambient.intensity = saved.ambient * 0.5;
+    renderer.setSize(width, height, false);
+    const png = render(eye);
+    renderer.setSize(saved.size.x, saved.size.y, false);
+    renderer.clippingPlanes = [];
+    light.intensity = saved.light;
+    ambient.intensity = saved.ambient;
+    const p = tip.clone().project(eye);
+    return { png, tip: [((p.x + 1) / 2) * width, ((1 - p.y) / 2) * height] };
+  };
   /** A bone's world position after the last pose (inspection: compare with what scripts/vrma.mjs predicts). */
   const bone = (name: VRMHumanBoneName) =>
     vrm.humanoid.getRawBoneNode(name)?.getWorldPosition(new THREE.Vector3()).toArray();
@@ -373,6 +433,7 @@ async function exposeStills(vrm: VRM, headHalf: number) {
   };
   Object.assign(window, {
     rinStill: still,
+    rinHand: hand,
     rinMoods: MOODS,
     rinInspect: inspect,
     rinView: view,

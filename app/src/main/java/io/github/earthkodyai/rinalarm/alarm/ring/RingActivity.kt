@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -46,6 +46,10 @@ import io.github.earthkodyai.rinalarm.character.Framing
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Miss
+import io.github.earthkodyai.rinalarm.mission.Pad
+import io.github.earthkodyai.rinalarm.mission.PadsPhase
+import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.QrScanner
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
@@ -55,7 +59,7 @@ import java.time.format.FormatStyle
 
 /**
  * Full-screen ring UI over the lock screen (showWhenLocked + turnScreenOn in the manifest): Rin head to toe, the
- * ring's mission, Snooze, and a 3 s hold to stop in an emergency (task 3.1). It only mirrors RingState and sends
+ * ring's mission (a game with her since task 3.3), Snooze, and a 3 s hold to stop in an emergency (task 3.1). It only mirrors RingState and sends
  * commands to RingService, so the ring keeps going if this screen is closed or never shows (HyperOS full-screen
  * permission off).
  */
@@ -85,9 +89,10 @@ class RingActivity : ComponentActivity() {
           onDismiss = viewModel::dismiss,
           onEmergencyStop = viewModel::emergencyStop,
           onOpenCamera = viewModel::openCamera,
-          character = { modifier ->
-            CharacterView(RingMoods.mood(state.phase), modifier, framing = Framing.FULL, cues = viewModel.cues)
-          },
+          onStartGame = viewModel::startGame,
+          onTapPad = viewModel::tapPad,
+          character = { modifier -> CharacterView(state.mood, modifier, framing = Framing.FULL, cues = viewModel.cues) },
+          hand = { modifier -> RinHand(modifier) },
           scanner = { modifier ->
             QrScanner(viewModel::onScan, modifier, onTorch = viewModel::onTorch, onError = viewModel::onCameraError)
           },
@@ -105,9 +110,12 @@ internal fun RingScreen(
   onEmergencyStop: () -> Unit,
   modifier: Modifier = Modifier,
   onOpenCamera: () -> Unit = {},
+  onStartGame: () -> Unit = {},
+  onTapPad: (Pad) -> Unit = {},
   // Slots, so previews and UI tests run without a WebView or a camera.
   character: @Composable (Modifier) -> Unit = {},
   scanner: @Composable (Modifier) -> Unit = {},
+  hand: @Composable (Modifier) -> Unit = { DrawnHand(it) },
 ) {
   val ring = state.ring ?: return
   val request = ring.request
@@ -127,13 +135,23 @@ internal fun RingScreen(
       if (request.late) {
         Text(stringResource(R.string.ring_late_explained), style = MaterialTheme.typography.bodyMedium)
       }
-      // Rin takes what the controls leave: about half of a phone screen.
-      character(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp))
+      val pads = state.pads.takeIf { ring.mission?.type == MissionType.PADS && !state.plainDismiss && !state.passed }
+      // Rin takes what the controls leave: about half of a phone screen. The colour pads cover her while the game is
+      // on (only her hand shows), and step aside when she scolds (D17, the user's pick).
+      Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
+        character(Modifier.fillMaxSize())
+        when (pads?.phase) {
+          PadsPhase.DEMO,
+          PadsPhase.INPUT -> PadsBoard(pads, onTapPad, Modifier.fillMaxSize(), hand)
+          PadsPhase.SCOLD -> ScoldLine(pads, Modifier.align(Alignment.BottomCenter))
+          else -> Unit
+        }
+      }
       when {
         state.passed -> Passed()
         state.plainDismiss -> Unit
         ring.mission?.type == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
-        else -> WalkCard(state.progress)
+        ring.mission?.type == MissionType.PADS -> PadsCard(state.pads, onStartGame)
       }
       Spacer(Modifier.height(16.dp))
       // Big, far-apart targets: the user is half asleep.
@@ -170,28 +188,6 @@ private fun Controls(
       }
     } else {
       HoldToStopButton(onEmergencyStop, Modifier.fillMaxWidth().height(56.dp))
-    }
-  }
-}
-
-@Composable
-private fun WalkCard(progress: MissionProgress?) {
-  Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-      val target = progress?.target ?: RingPolicy.WALK_STEPS
-      Text(
-        pluralStringResource(R.plurals.mission_walk_title, target, target),
-        style = MaterialTheme.typography.titleLarge,
-        textAlign = TextAlign.Center,
-      )
-      Spacer(Modifier.height(12.dp))
-      LinearProgressIndicator(progress = { progress?.fraction ?: 0f }, modifier = Modifier.fillMaxWidth().height(12.dp))
-      Spacer(Modifier.height(8.dp))
-      Text(
-        stringResource(R.string.mission_progress, progress?.done ?: 0, target),
-        style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-      )
     }
   }
 }
@@ -248,13 +244,28 @@ private fun Passed() {
 private val PREVIEW_RING =
   ActiveRing(
     RingRequest(1, LocalTime.of(7, 0), "Gym", null, 1, 2, late = false, RingOptions()),
-    MissionPlan.Run(MissionType.WALK),
+    MissionPlan.Run(MissionType.PADS),
   )
 
 @Preview
 @Composable
-private fun RingScreenMissionPreview() {
-  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(12, 30), RingPhase.WORKING), {}, {}, {}) }
+private fun RingScreenPadsReadyPreview() {
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(0, 3), pads = PadsState()), {}, {}, {}) }
+}
+
+@Preview
+@Composable
+private fun RingScreenPadsDemoPreview() {
+  val pads =
+    PadsState(PadsPhase.DEMO, round = 1, sequence = listOf(Pad.RED, Pad.GREEN, Pad.BLUE, Pad.YELLOW), hand = Pad.GREEN, pressing = true, lit = Pad.GREEN)
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(1, 3), RingPhase.WORKING, pads = pads), {}, {}, {}) }
+}
+
+@Preview
+@Composable
+private fun RingScreenPadsScoldPreview() {
+  val pads = PadsState(PadsPhase.SCOLD, round = 0, sequence = listOf(Pad.RED, Pad.GREEN, Pad.BLUE), miss = Miss.SLOW, line = 0)
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(0, 3), pads = pads), {}, {}, {}) }
 }
 
 @Preview

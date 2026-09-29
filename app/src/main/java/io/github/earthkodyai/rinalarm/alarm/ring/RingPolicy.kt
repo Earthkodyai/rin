@@ -15,9 +15,6 @@ object RingPolicy {
   /** While ringing, the alarm stream is raised to at least this share of its maximum (user decision, 1.2). */
   const val VOLUME_FLOOR = 0.4
 
-  /** Steps the walk mission asks for (user decision D15: about 20 m, out of the bedroom). */
-  const val WALK_STEPS = 30
-
   /**
    * Track gain while the user is making progress on a mission (D15): quiet enough to hear Rin, never silent, and the
    * vibration stops. [MISSION_IDLE] after the last progress the tone is back at full, so nobody drifts off mid-task.

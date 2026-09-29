@@ -14,7 +14,7 @@ sealed interface MissionPlan {
 /** Pure rules for [MissionPlan], unit-tested; the Android readiness checks are in AndroidMissionReadiness. */
 object MissionPlanner {
   fun plan(choice: MissionChoice, readiness: Map<MissionType, Readiness>, day: LocalDate): MissionPlan {
-    val ready = MissionType.entries.filter { readiness[it] == Readiness.READY }
+    val ready = MissionType.offeredEntries.filter { readiness[it] == Readiness.READY }
     return when (choice) {
       MissionChoice.None -> MissionPlan.Unavailable("chosen_none")
       MissionChoice.RinPicks ->
@@ -36,5 +36,5 @@ object MissionPlanner {
   fun <T> rotate(options: List<T>, day: LocalDate): T = options[Math.floorMod(day.toEpochDay(), options.size.toLong()).toInt()]
 
   private fun reasons(readiness: Map<MissionType, Readiness>): String =
-    MissionType.entries.joinToString(" ") { "${it.stored}=${(readiness[it] ?: Readiness.NO_SENSOR).reason}" }
+    MissionType.offeredEntries.joinToString(" ") { "${it.stored}=${(readiness[it] ?: Readiness.NO_SENSOR).reason}" }
 }

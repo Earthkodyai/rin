@@ -391,7 +391,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
           MissionChoice.None -> R.string.mission_hint_none
           is MissionChoice.Only ->
             when (choice.type) {
-              MissionType.WALK -> R.string.mission_hint_walk
+              MissionType.PADS -> R.string.mission_hint_pads
               MissionType.QR -> R.string.mission_hint_qr
             }
         }
@@ -456,7 +456,7 @@ private fun missionChoiceName(choice: MissionChoice): String =
       MissionChoice.None -> R.string.mission_choice_none
       is MissionChoice.Only ->
         when (choice.type) {
-          MissionType.WALK -> R.string.mission_choice_walk
+          MissionType.PADS -> R.string.mission_choice_pads
           MissionType.QR -> R.string.mission_choice_qr
         }
     }

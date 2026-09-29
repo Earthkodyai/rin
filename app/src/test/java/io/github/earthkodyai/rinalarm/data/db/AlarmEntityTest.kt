@@ -23,14 +23,14 @@ class AlarmEntityTest {
         enabled = false,
         ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1),
         isTest = true,
-        mission = MissionChoice.Only(MissionType.WALK),
+        mission = MissionChoice.Only(MissionType.PADS),
       )
     assertEquals(alarm, alarm.toEntity().toAlarm())
   }
 
   @Test
   fun missionChoices_roundTrip_andUnknownValuesReadAsRinPicks() {
-    for (choice in listOf(MissionChoice.RinPicks, MissionChoice.None, MissionChoice.Only(MissionType.WALK))) {
+    for (choice in listOf(MissionChoice.RinPicks, MissionChoice.None, MissionChoice.Only(MissionType.PADS))) {
       assertEquals(choice, Alarm(time = LocalTime.NOON, mission = choice).toEntity().toAlarm().mission)
     }
     // A mission from a newer version, after a downgrade: the alarm still rings, and Rin picks.

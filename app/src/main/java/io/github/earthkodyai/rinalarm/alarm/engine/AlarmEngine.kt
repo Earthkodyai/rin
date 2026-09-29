@@ -153,7 +153,7 @@ constructor(
       val now = time.now()
       val zone = time.zone()
       // No snoozes: the test ends on its first Dismiss, and a snooze would outlive the deleted row. No mission
-      // either: it tests the ring path, and a walk would get in the way.
+      // either: it tests the ring path, and a game would get in the way.
       val test =
         Alarm(
           time = RingPlanner.testRingTime(now, zone),

@@ -2,7 +2,9 @@
 // Renders the still images the app shows while Rin's 3D page loads, or instead of it when it fails (task 2.5): one
 // transparent WebP per mood, from the model the build ships, through the built page itself (its `still` mode), so a
 // still matches the live page's framing, lighting and faces exactly. Two sets: <out-dir>/<mood>.webp for the home
-// strip (head and shoulders) and <out-dir>/full/<mood>.webp for the ring screen (head to toe, task 3.1).
+// strip (head and shoulders) and <out-dir>/full/<mood>.webp for the ring screen (head to toe, task 3.1). Also
+// <out-dir>/hand.webp, her right hand from above for the colour pads (task 3.3), cropped so her fingertip sits at the
+// bottom centre and her forearm runs off the top edge.
 //
 // usage: node render-stills.mjs <page-dir> <model.vrm> <out-dir> [--height 720] [--browser <path>] [--software]
 //   page-dir  the built web/character page (the folder holding index.html)
@@ -140,7 +142,43 @@ export async function renderStills({ pageDir, model, outDir, height = 720, brows
     written.push(...set.written.map((w) => ({ ...w, framing: framing.name })));
     loadedS += set.loadedS;
   }
+  const hand = await renderHand({ pageDir, model, outDir, height: Math.round(height * HAND_SCALE), browser, software });
+  written.push(hand.written);
+  loadedS += hand.loadedS;
   return { written, loadedS };
+}
+
+/** The hand image's height relative to the strip's: on the phone it spans about a pad and a half. */
+export const HAND_SCALE = 1.2;
+const HAND_ASPECT = 0.75;
+
+/**
+ * The crop for the hand: as wide as the drawn pixels reach from the fingertip either way, so the tip lands at the
+ * horizontal centre, and from the top down to just below the tip. [left, right) are the drawn columns.
+ */
+export function handCrop(width, height, tip, left, right, margin = MARGIN) {
+  const x = Math.round(tip[0]);
+  const half = Math.min(Math.ceil(Math.max(x - left, right - x)) + margin, x, width - x);
+  const bottom = Math.min(Math.round(tip[1]) + margin, height);
+  return { left: x - half, top: 0, width: 2 * half, height: bottom };
+}
+
+export async function renderHand({ pageDir, model, outDir, height, browser, software = false }) {
+  const width = Math.round(height * HAND_ASPECT);
+  const { page, close, loadedS } = await openStillPage({ pageDir, model, width, height, browser, software });
+  try {
+    const { png: url, tip } = await page.evaluate((w, h) => window.rinHand(w, h), width, height);
+    const png = pngOf(url);
+    const { info } = await sharp(png).trim({ threshold: 0 }).toBuffer({ resolveWithObject: true });
+    const drawnLeft = -(info.trimOffsetLeft ?? 0);
+    const crop = handCrop(width, height, tip, drawnLeft, drawnLeft + info.width);
+    fs.mkdirSync(outDir, { recursive: true });
+    const file = path.join(outDir, 'hand.webp');
+    await sharp(png).extract(crop).webp({ quality: 90, alphaQuality: 100, effort: 4 }).toFile(file);
+    return { written: { mood: 'hand', file: 'hand.webp', width: crop.width, height: crop.height, bytes: fs.statSync(file).size, framing: 'hand' }, loadedS };
+  } finally {
+    await close();
+  }
 }
 
 async function renderSet({ pageDir, model, outDir, height, aspect, query, browser, software }) {

@@ -3,11 +3,17 @@ package io.github.earthkodyai.rinalarm.alarm.ring
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
+import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionState
 import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Miss
+import io.github.earthkodyai.rinalarm.mission.Pad
+import io.github.earthkodyai.rinalarm.mission.PadsMission
+import io.github.earthkodyai.rinalarm.mission.PadsPhase
+import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.CodeFormat
 import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
 import io.github.earthkodyai.rinalarm.mission.ScanMission
@@ -51,7 +57,7 @@ class RingViewModelTest {
   @Test
   fun passingTheMission_stopsTheRing_thenClosesAfterTheCelebration() =
     runTest(main.dispatcher) {
-      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.WALK)))
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       val (viewModel, commands) = ringScreen()
       assertEquals(1, mission.starts)
       assertFalse(viewModel.uiState.value.plainDismiss)
@@ -97,7 +103,7 @@ class RingViewModelTest {
   @Test
   fun aBrokenMission_fallsBackToThePlainDismiss() =
     runTest(main.dispatcher) {
-      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.WALK)))
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       val (viewModel, _) = ringScreen()
 
       mission.state.value = MissionProgress(3, 30, MissionState.FAILED)
@@ -110,7 +116,7 @@ class RingViewModelTest {
   @Test
   fun stoppingProgress_makesHerPout_andTheEmergencyHoldSaysSo() =
     runTest(main.dispatcher) {
-      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.WALK)))
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       val (viewModel, commands) = ringScreen()
       mission.state.value = MissionProgress(5, 30)
       runCurrent()
@@ -213,13 +219,59 @@ class RingViewModelTest {
     }
 
   @Test
-  fun walk_hasNoCamera() =
+  fun pads_hasNoCamera() =
     runTest(main.dispatcher) {
-      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.WALK)))
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       val (viewModel, _) = ringScreen()
       viewModel.openCamera()
       assertFalse(viewModel.uiState.value.cameraOpen)
     }
+
+  @Test
+  fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
+    runTest(main.dispatcher) {
+      val pads = FakePadsMission()
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope) { clockMs }
+      val cues = mutableListOf<Gesture>()
+      backgroundScope.launch { viewModel.cues.collect { cues += it } }
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      runCurrent()
+      assertEquals(PadsPhase.READY, viewModel.uiState.value.pads?.phase)
+
+      viewModel.startGame()
+      viewModel.tapPad(Pad.BLUE)
+      assertEquals(listOf("begin", "tap BLUE"), pads.calls)
+
+      pads.game.value = PadsState(PadsPhase.SCOLD, miss = Miss.WRONG)
+      runCurrent()
+      assertEquals(RingMoods.SCOLD_MOOD, viewModel.uiState.value.mood)
+      assertEquals(Gesture.HUFF, cues.last())
+
+      // Back to the game: her mood follows the ring's phase again.
+      pads.game.value = PadsState(PadsPhase.DEMO)
+      runCurrent()
+      assertEquals(RingMoods.mood(viewModel.uiState.value.phase), viewModel.uiState.value.mood)
+      assertEquals(1, cues.count { it == Gesture.HUFF })
+    }
+
+  private class FakePadsMission : PadsMission {
+    override val type = MissionType.PADS
+    override val progress: StateFlow<MissionProgress> = MutableStateFlow(MissionProgress(0, 3))
+    override val game = MutableStateFlow(PadsState())
+    val calls = mutableListOf<String>()
+
+    override fun start() = Unit
+
+    override fun stop() = Unit
+
+    override fun begin() {
+      calls += "begin"
+    }
+
+    override fun tap(pad: Pad) {
+      calls += "tap $pad"
+    }
+  }
 
   private class FakeScanMission : ScanMission {
     override val type = MissionType.QR
@@ -244,7 +296,7 @@ class RingViewModelTest {
   }
 
   private class FakeMission : Mission {
-    override val type = MissionType.WALK
+    override val type = MissionType.PADS
     val state = MutableStateFlow(MissionProgress(0, 30))
     override val progress: StateFlow<MissionProgress> = state
     var starts = 0
