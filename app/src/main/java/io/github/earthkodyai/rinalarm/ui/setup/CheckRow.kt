@@ -55,6 +55,7 @@ private fun fixLabel(check: CheckResult): Int? =
     // Nothing reads these HyperOS settings, so they always offer their page.
     check.id == CheckId.AUTOSTART || check.id == CheckId.LOCK_SCREEN -> R.string.check_open
     check.severity == Severity.OK -> null
+    check.id == CheckId.MICROPHONE -> R.string.mission_allow
     else -> R.string.check_fix
   }
 
@@ -71,6 +72,7 @@ private fun checkTitle(id: CheckId): String =
       CheckId.LOCK_SCREEN -> R.string.check_lock_screen
       CheckId.AUTOSTART -> R.string.check_autostart
       CheckId.MISSIONS -> R.string.check_missions
+      CheckId.MICROPHONE -> R.string.check_microphone
     }
   )
 
@@ -98,5 +100,6 @@ private fun checkText(check: CheckResult, status: DeviceStatus): String {
       } else {
         stringResource(R.string.check_missions_problem)
       }
+    CheckId.MICROPHONE -> stringResource(if (ok) R.string.check_microphone_ok else R.string.check_microphone_info)
   }
 }

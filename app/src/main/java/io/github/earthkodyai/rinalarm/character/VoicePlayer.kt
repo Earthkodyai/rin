@@ -44,27 +44,43 @@ class VoicePlayer(
   private val audio = context.getSystemService(AudioManager::class.java)
   private var player: MediaPlayer? = null
   private var job: Job? = null
+  /** Told once how the line in progress ended: true when it played to the end. */
+  private var onEnd: ((Boolean) -> Unit)? = null
   private val focus =
     AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).setAudioAttributes(attributes).build()
 
-  /** Starts [base] (an asset path without extension, such as `voice/dev/L01`), cutting off any line still playing. */
-  fun play(base: String) {
+  /**
+   * Starts [base] (an asset path without extension, such as `voice/dev/L01`), cutting off any line still playing.
+   * [onEnd] hears once how it ended: true when it played to the end, false when there was no clip or it was cut off.
+   */
+  fun play(base: String, onEnd: ((Boolean) -> Unit)? = null) {
     stop()
+    this.onEnd = onEnd
     job =
       scope.launch {
         val mouth = withContext(Dispatchers.IO) { loadMouth(base) }
         if (mouth == null) {
           Log.w(TAG, "say $base: no clip")
+          end(false)
           return@launch
         }
         // Not cancellable, so a player prepared just as the line is cut off is still released here, not leaked.
-        val mp = withContext(Dispatchers.IO + NonCancellable) { prepare(base) } ?: return@launch
+        val mp = withContext(Dispatchers.IO + NonCancellable) { prepare(base) }
+        if (mp == null) {
+          end(false)
+          return@launch
+        }
         if (!isActive) {
           releaseOffMain(mp)
           return@launch
         }
         player = mp
-        mp.setOnCompletionListener { stop() }
+        mp.setOnCompletionListener {
+          val played = this@VoicePlayer.onEnd
+          this@VoicePlayer.onEnd = null
+          stop()
+          played?.invoke(true)
+        }
         audio.requestAudioFocus(focus)
         val started = System.currentTimeMillis()
         mp.start()
@@ -77,11 +93,18 @@ class VoicePlayer(
   fun stop() {
     job?.cancel()
     job = null
+    end(false)
     val mp = player ?: return
     player = null
     releaseOffMain(mp)
     audio.abandonAudioFocusRequest(focus)
     onSpeaking(null)
+  }
+
+  private fun end(played: Boolean) {
+    val callback = onEnd ?: return
+    onEnd = null
+    callback(played)
   }
 
   /** A player for `<base>.mp3`, prepared; null when the clip cannot be read. Blocks, so never on the main thread. */

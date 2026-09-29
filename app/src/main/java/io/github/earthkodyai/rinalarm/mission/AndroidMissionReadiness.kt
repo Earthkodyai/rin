@@ -16,7 +16,11 @@ fun interface MissionReadiness {
 
 class AndroidMissionReadiness
 @Inject
-constructor(@ApplicationContext private val context: Context, private val stickers: StickerStore) : MissionReadiness {
+constructor(
+  @ApplicationContext private val context: Context,
+  private val stickers: StickerStore,
+  private val vosk: VoskModels,
+) : MissionReadiness {
   override fun check(): Map<MissionType, Readiness> = MissionType.offeredEntries.associateWith(::readiness)
 
   private fun readiness(type: MissionType): Readiness =
@@ -35,6 +39,14 @@ constructor(@ApplicationContext private val context: Context, private val sticke
           context.getSystemService(UserManager::class.java)?.isUserUnlocked == false -> Readiness.BEFORE_UNLOCK
           else -> Readiness.READY
         }
+      // Repeat after Rin (3.5): the mic, and the Vosk model in this build (every build fetches it).
+      MissionType.SPEECH ->
+        when {
+          !context.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE) || !vosk.bundled() -> Readiness.NO_SENSOR
+          ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ->
+            Readiness.NO_PERMISSION
+          else -> Readiness.READY
+        }
     }
 
   companion object {
@@ -47,6 +59,7 @@ constructor(@ApplicationContext private val context: Context, private val sticke
         MissionType.PADS,
         MissionType.CUPS -> null
         MissionType.QR -> Manifest.permission.CAMERA
+        MissionType.SPEECH -> Manifest.permission.RECORD_AUDIO
       }
   }
 }

@@ -24,6 +24,7 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.alarm.notify.AlarmNotifications
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionPlanner
 import io.github.earthkodyai.rinalarm.mission.MissionReadiness
@@ -32,6 +33,7 @@ import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -79,6 +81,12 @@ class RingService : Service() {
     var wakeLock: PowerManager.WakeLock? = null
     /** Lowered for mission progress (RingPolicy.missionQuiet). */
     var quiet = false
+    /** What the game asks for (RingState.hush): quieter while Rin speaks, paused while the mic listens. */
+    var hush = Hush.NONE
+    var hushJob: Job? = null
+    var vibrating = false
+
+    fun gain(): Float = RingPolicy.toneGain(elapsedMillis(), request.options.rampSeconds, quiet || hush != Hush.NONE)
 
     fun elapsedMillis() = SystemClock.elapsedRealtime() - startedAt
   }
@@ -124,7 +132,8 @@ class RingService : Service() {
     s.pausedForCall = inCall()
     tone?.setGain(RingPolicy.toneGain(0, request.options.rampSeconds, quiet = false))
     updateTone(s)
-    if (request.options.vibrate) runCatching { s.vibrator.start() }
+    updateVibration(s)
+    s.hushJob = appScope.launch(Dispatchers.Main.immediate) { ringState.hush.collect { applyHush(s, it) } }
     handler.post(rampTick)
     handler.postDelayed(watchTick, WATCH_TICK_MS)
     handler.postDelayed({ stopRinging(RingEventType.AUTO_STOPPED, "after=${RingPolicy.AUTO_STOP}") }, RingPolicy.AUTO_STOP.toMillis())
@@ -181,9 +190,32 @@ class RingService : Service() {
     val quiet = RingPolicy.missionQuiet(SystemClock.elapsedRealtime(), ringState.lastProgressAt)
     if (quiet == s.quiet) return
     s.quiet = quiet
-    s.tone?.setGain(RingPolicy.toneGain(s.elapsedMillis(), s.request.options.rampSeconds, quiet))
-    if (s.request.options.vibrate) runCatching { if (quiet) s.vibrator.stop() else s.vibrator.start() }
+    s.tone?.setGain(s.gain())
+    updateVibration(s)
     record(if (quiet) RingEventType.TONE_QUIET else RingEventType.TONE_FULL, s, "reason=${if (quiet) "mission" else "idle"}")
+  }
+
+  /**
+   * The game's hush (task 3.5), on top of the rules above: QUIET caps the tone like mission progress so Rin's voice
+   * carries; SILENT pauses the tone and the vibration while the mic listens, so neither ends up in what it hears.
+   */
+  private fun applyHush(s: Session, hush: Hush) {
+    if (session !== s || hush == s.hush) return
+    val before = s.hush
+    s.hush = hush
+    s.tone?.setGain(s.gain())
+    updateTone(s)
+    updateVibration(s)
+    if (hush == Hush.SILENT) record(RingEventType.TONE_PAUSED, s, "reason=mic")
+    else if (before == Hush.SILENT) record(RingEventType.TONE_RESUMED, s, "reason=mic")
+  }
+
+  /** Vibration follows the tone's quiet spells: off while the mission is going well or the game has hushed it. */
+  private fun updateVibration(s: Session) {
+    val on = s.request.options.vibrate && !s.quiet && s.hush == Hush.NONE
+    if (on == s.vibrating) return
+    s.vibrating = on
+    runCatching { if (on) s.vibrator.start() else s.vibrator.stop() }
   }
 
   private fun retryFocus(s: Session) {
@@ -199,9 +231,9 @@ class RingService : Service() {
     record(RingEventType.FOCUS_GRANTED, s, "delayed=$delayed afterMs=${s.elapsedMillis()}")
   }
 
-  /** The tone plays unless a call or a transient focus owner has it paused; vibration is never paused. */
+  /** The tone plays unless a call, a transient focus owner or the open mic has it paused; calls never pause vibration. */
   private fun updateTone(s: Session) {
-    if (s.pausedForFocus || s.pausedForCall) s.tone?.pause() else s.tone?.play()
+    if (s.pausedForFocus || s.pausedForCall || s.hush == Hush.SILENT) s.tone?.pause() else s.tone?.play()
   }
 
   /** Ringing for an incoming call, or in a phone or VoIP call. The two newer modes are plain ints on older SDKs. */
@@ -222,7 +254,7 @@ class RingService : Service() {
       override fun run() {
         val s = session ?: return
         val elapsed = s.elapsedMillis()
-        s.tone?.setGain(RingPolicy.toneGain(elapsed, s.request.options.rampSeconds, s.quiet))
+        s.tone?.setGain(s.gain())
         if (elapsed < s.request.options.rampSeconds * 1000L) handler.postDelayed(this, RAMP_TICK_MS)
       }
     }
@@ -249,6 +281,7 @@ class RingService : Service() {
       return
     }
     session = null
+    s.hushJob?.cancel()
     handler.removeCallbacksAndMessages(null)
     s.tone?.release()
     runCatching { s.vibrator.stop() }

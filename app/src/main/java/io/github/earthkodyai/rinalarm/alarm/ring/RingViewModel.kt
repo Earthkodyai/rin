@@ -8,23 +8,34 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
+import io.github.earthkodyai.rinalarm.character.Speaking
 import io.github.earthkodyai.rinalarm.di.AppScope
 import io.github.earthkodyai.rinalarm.mission.CupsMission
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
+import io.github.earthkodyai.rinalarm.mission.Feedback
+import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
+import io.github.earthkodyai.rinalarm.mission.MissionPlanner
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
+import io.github.earthkodyai.rinalarm.mission.MissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionState
+import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsMission
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
 import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
+import io.github.earthkodyai.rinalarm.mission.Readiness
+import io.github.earthkodyai.rinalarm.mission.RepeatMission
+import io.github.earthkodyai.rinalarm.mission.RepeatPhase
+import io.github.earthkodyai.rinalarm.mission.RepeatState
 import io.github.earthkodyai.rinalarm.mission.ScanMission
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.mission.SeenCode
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
+import io.github.earthkodyai.rinalarm.time.TimeSource
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -55,6 +66,8 @@ constructor(
   private val ringLog: RingLog,
   @AppScope private val appScope: CoroutineScope,
   private val clock: ElapsedClock,
+  private val readiness: MissionReadiness,
+  private val time: TimeSource,
 ) : ViewModel() {
   private val state = MutableStateFlow(RingUiState())
   val uiState: StateFlow<RingUiState> = state.asStateFlow()
@@ -66,10 +79,15 @@ constructor(
   /** Gestures for Rin when the phase changes (RingMoods.cue). */
   val cues: SharedFlow<Gesture> = cueFlow.asSharedFlow()
 
+  private val speakingFlow = MutableStateFlow<Speaking?>(null)
+  /** The game's line Rin is saying (Repeat after Rin), for her mouth. */
+  val speaking: StateFlow<Speaking?> = speakingFlow.asStateFlow()
+
   // Volatile: onScan reads it from the camera's analysis thread.
   @Volatile private var mission: Mission? = null
   private var missionJob: Job? = null
   private var gameJob: Job? = null
+  private var voiceJobs: List<Job> = emptyList()
   private var stallJob: Job? = null
   private var cameraJob: Job? = null
   private var cupsWaitJob: Job? = null
@@ -98,23 +116,77 @@ constructor(
     state.value = RingUiState(ring = ring)
     refreshPhase()
     val plan = ring.mission ?: return
-    val running = runCatching { missions.create(plan.type).also(Mission::start) }.getOrNull()
+    run(ring, plan.type, plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: "")
+  }
+
+  private fun run(ring: ActiveRing, type: MissionType, logExtra: String) {
+    val running = runCatching { missions.create(type).also(Mission::start) }.getOrNull()
     if (running == null) {
       state.update { it.copy(missionFailed = true) }
-      log(RingEventType.MISSION_FAILED, ring, "type=${plan.type.stored} reason=create_failed")
+      log(RingEventType.MISSION_FAILED, ring, "type=${type.stored} reason=create_failed")
       return
     }
     mission = running
+    state.update { it.copy(missionType = type) }
     missionStartedAt = clock.now()
-    log(
-      RingEventType.MISSION_STARTED,
-      ring,
-      "type=${plan.type.stored} target=${running.progress.value.target}" +
-        (plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: ""),
-    )
+    log(RingEventType.MISSION_STARTED, ring, "type=${type.stored} target=${running.progress.value.target}$logExtra")
     missionJob = viewModelScope.launch { running.progress.collect { onProgress(ring, it) } }
     (running as? PadsMission)?.let { pads -> gameJob = viewModelScope.launch { pads.game.collect(::onGame) } }
     (running as? CupsMission)?.let { cups -> gameJob = viewModelScope.launch { cups.game.collect(::onCups) } }
+    (running as? RepeatMission)?.let { repeat ->
+      gameJob = viewModelScope.launch { repeat.game.collect(::onRepeat) }
+      voiceJobs =
+        listOf(
+          viewModelScope.launch { repeat.hush.collect(ringState::setHush) },
+          viewModelScope.launch {
+            repeat.speaking.collect { line ->
+              speakingFlow.value = line
+              state.update { it.copy(rinSpeaking = line != null) }
+            }
+          },
+          viewModelScope.launch { repeat.micLevel.collect { level -> state.update { it.copy(micLevel = level) } } },
+        )
+    }
+  }
+
+  private fun onRepeat(game: RepeatState) {
+    val before = state.value.repeat
+    state.update { it.copy(repeat = game) }
+    // A sentence done: she nods. A miss gets no sulk: an unheard word is as likely the mic's fault as the user's.
+    if (game.phase == RepeatPhase.FEEDBACK && game.feedback == Feedback.RIGHT && before?.phase != RepeatPhase.FEEDBACK) {
+      cueFlow.tryEmit(Gesture.NOD)
+    }
+  }
+
+  fun hearAgain() {
+    (mission as? RepeatMission)?.hearAgain()
+  }
+
+  fun tapWord(chip: Int) {
+    (mission as? RepeatMission)?.tapWord(chip)
+  }
+
+  /**
+   * "Can't talk right now" (plan phase-3 section 3): the ring switches to one of the other games, picked the way Rin
+   * picks, for the rest of this ring. After a snooze the next ring plans afresh.
+   */
+  fun cantTalk() {
+    val ring = state.value.ring ?: return
+    val from = mission as? RepeatMission ?: return
+    if (state.value.passed) return
+    val ready = runCatching { readiness.check() }.getOrDefault(emptyMap())
+    val others = MissionType.offeredEntries.filter { it != MissionType.SPEECH && ready[it] == Readiness.READY }
+    val summary = from.summary()
+    stopMission()
+    if (others.isEmpty()) {
+      state.update { it.copy(missionFailed = true, repeat = null) }
+      log(RingEventType.MISSION_FAILED, ring, "type=speech reason=cant_talk_no_other $summary")
+      return
+    }
+    val to = MissionPlanner.rotate(others, time.now().atZone(time.zone()).toLocalDate())
+    log(RingEventType.MISSION_SWITCHED, ring, "from=speech to=${to.stored} reason=cant_talk $summary")
+    state.update { it.copy(repeat = null, progress = null) }
+    run(ring, to, " switchedFrom=speech")
   }
 
   private fun onCups(game: CupsState) {
@@ -185,6 +257,7 @@ constructor(
 
   /** "Let's play" on the colour pads. */
   fun startGame() {
+    (mission as? RepeatMission)?.begin()
     (mission as? PadsMission)?.begin()
     (mission as? CupsMission)?.let(::startCups)
   }
@@ -329,6 +402,10 @@ constructor(
     cameraJob = null
     cupsWaitJob?.cancel()
     cupsWaitJob = null
+    voiceJobs.forEach(Job::cancel)
+    voiceJobs = emptyList()
+    ringState.setHush(Hush.NONE)
+    speakingFlow.value = null
     mission?.stop()
     mission = null
   }
@@ -362,6 +439,8 @@ constructor(
  * @property cameraOpen the QR mission's camera is on (it opens on a tap).
  * @property scanHint what the camera last saw that was not a pass: the sticker from too far, or another code.
  * @property pads the colour-pads game, when that is the mission.
+ * @property missionType the game being played: the ring's planned one, or the one "Can't talk right now" switched to.
+ * @property repeat Repeat after Rin, when that is the mission; [micLevel] the mic's level while it listens.
  * @property cups the cup shuffle, when that is the mission; [cupsView] what her page shows of it, and [cups2d] that the
  *   native 2D board plays it instead (her page is gone, or did not show the table in time). [cupsStaging]: "Let's
  *   play" was tapped and the table is coming into view; the game starts once it is.
@@ -380,6 +459,10 @@ data class RingUiState(
   val cupsView: CupsView = CupsView.Pending,
   val cups2d: Boolean = false,
   val cupsStaging: Boolean = false,
+  val missionType: MissionType? = null,
+  val repeat: RepeatState? = null,
+  val micLevel: Float = 0f,
+  val rinSpeaking: Boolean = false,
 ) {
   /** Rin's mood: the phase's, except while she scolds a missed round. */
   val mood: Mood

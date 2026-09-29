@@ -21,6 +21,12 @@
     <uses-feature
         android:name="android.hardware.camera.any"
         android:required="false" />
+    <!-- Repeat after Rin (task 3.5, approved in D15): asked when the user picks the game (editor, Diagnostics). The mic
+         is open only while the game listens, with an indicator; audio stays in memory (Vosk, offline). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
 
     <!-- Backup stays off: later phases store data (taught mission objects) that must never leave the phone.
          allowBackup covers Android 10-11; dataExtractionRules covers cloud backup and device transfer on 12+. -->

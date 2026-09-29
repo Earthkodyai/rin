@@ -394,6 +394,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
               MissionType.PADS -> R.string.mission_hint_pads
               MissionType.CUPS -> R.string.mission_hint_cups
               MissionType.QR -> R.string.mission_hint_qr
+              MissionType.SPEECH -> R.string.mission_hint_speech
             }
         }
       ),
@@ -430,7 +431,12 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
     Text(
       stringResource(
         when (readiness) {
-          Readiness.NO_SENSOR -> if (type == MissionType.QR) R.string.mission_no_camera else R.string.mission_no_sensor
+          Readiness.NO_SENSOR ->
+            when (type) {
+              MissionType.QR -> R.string.mission_no_camera
+              MissionType.SPEECH -> R.string.mission_no_mic
+              else -> R.string.mission_no_sensor
+            }
           Readiness.NOT_SET_UP -> R.string.mission_not_set_up
           else -> R.string.mission_needs_permission
         },
@@ -460,6 +466,7 @@ private fun missionChoiceName(choice: MissionChoice): String =
           MissionType.PADS -> R.string.mission_choice_pads
           MissionType.CUPS -> R.string.mission_choice_cups
           MissionType.QR -> R.string.mission_choice_qr
+          MissionType.SPEECH -> R.string.mission_choice_speech
         }
     }
   )

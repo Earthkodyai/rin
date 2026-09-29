@@ -111,7 +111,7 @@ private enum class Phase {
  * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
  * happy for a moment there, and the phone gives a light tick here. She greets the user when the app opens and
  * gestures now and then (GestureDirector), and plays each gesture from [cues] (the ring screen's mission moments).
- * Voice lines play natively (VoicePlayer) and only move her mouth here.
+ * Voice lines play natively (VoicePlayer, here or in a game's [speech]) and only move her mouth here.
  *
  * Before the first unlock after a reboot (a ring can come then) the WebView has no credential-encrypted storage to
  * start in, so she is the still until then.
@@ -125,6 +125,7 @@ fun CharacterView(
   cues: Flow<Gesture>? = null,
   cups: CupsAct? = null,
   onCups: (CupsView) -> Unit = {},
+  speech: Flow<Speaking?>? = null,
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -187,6 +188,8 @@ fun CharacterView(
     }
   }
   LaunchedEffect(host, cues) { cues?.collect { host.gesture(it) } }
+  // A game's lines (Repeat after Rin) play in the game's own VoicePlayer; only her mouth follows them here.
+  LaunchedEffect(host, speech) { speech?.collect(host::speak) }
   LaunchedEffect(host) { CharacterDebug.crashRenderer.collect { host.crashRenderer() } }
   LaunchedEffect(host) { CharacterDebug.gesture.collect { host.gesture(it) } }
   LaunchedEffect(voice) { CharacterDebug.say.collect { voice.play("voice/dev/$it") } }

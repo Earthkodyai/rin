@@ -9,6 +9,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,9 +35,18 @@ class RingState @Inject constructor() {
   @Volatile var lastProgressAt: Long? = null
     private set
 
+  private val hushState = MutableStateFlow(Hush.NONE)
+  /** What the game on screen needs from the tone right now (Repeat after Rin: Rin speaking, the mic open). */
+  val hush: StateFlow<Hush> = hushState.asStateFlow()
+
   internal fun set(ring: ActiveRing?) {
     lastProgressAt = null
+    hushState.value = Hush.NONE
     current.value = ring
+  }
+
+  fun setHush(hush: Hush) {
+    hushState.value = if (current.value == null) Hush.NONE else hush
   }
 
   fun reportProgress(atElapsedMs: Long) {

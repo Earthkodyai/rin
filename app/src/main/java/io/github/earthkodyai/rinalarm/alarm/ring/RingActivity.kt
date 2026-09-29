@@ -65,7 +65,8 @@ import java.time.format.FormatStyle
 
 /**
  * Full-screen ring UI over the lock screen (showWhenLocked + turnScreenOn in the manifest): Rin head to toe, the
- * ring's mission (a game with her since task 3.3: colour pads, and the cup shuffle at her table since 3.4), Snooze, and a 3 s hold to stop in an emergency (task 3.1). It only mirrors RingState and sends
+ * ring's mission (a game with her since task 3.3: colour pads, the cup shuffle at her table since 3.4, and repeat
+ * after Rin since 3.5), Snooze, and a 3 s hold to stop in an emergency (task 3.1). It only mirrors RingState and sends
  * commands to RingService, so the ring keeps going if this screen is closed or never shows (HyperOS full-screen
  * permission off).
  */
@@ -98,6 +99,9 @@ class RingActivity : ComponentActivity() {
           onStartGame = viewModel::startGame,
           onTapPad = viewModel::tapPad,
           onPickCup = viewModel::pickCup,
+          onHearAgain = viewModel::hearAgain,
+          onTapWord = viewModel::tapWord,
+          onCantTalk = viewModel::cantTalk,
           character = { modifier ->
             CharacterView(
               state.mood,
@@ -112,6 +116,7 @@ class RingActivity : ComponentActivity() {
                   else -> state.cups?.act
                 },
               onCups = viewModel::onCupsView,
+              speech = viewModel.speaking,
             )
           },
           hand = { modifier -> RinHand(modifier) },
@@ -146,6 +151,9 @@ internal fun RingScreen(
   onStartGame: () -> Unit = {},
   onTapPad: (Pad) -> Unit = {},
   onPickCup: (Int) -> Unit = {},
+  onHearAgain: () -> Unit = {},
+  onTapWord: (Int) -> Unit = {},
+  onCantTalk: () -> Unit = {},
   // Slots, so previews and UI tests run without a WebView or a camera.
   character: @Composable (Modifier) -> Unit = {},
   scanner: @Composable (Modifier) -> Unit = {},
@@ -169,8 +177,10 @@ internal fun RingScreen(
       if (request.late) {
         Text(stringResource(R.string.ring_late_explained), style = MaterialTheme.typography.bodyMedium)
       }
-      val pads = state.pads.takeIf { ring.mission?.type == MissionType.PADS && !state.plainDismiss && !state.passed }
-      val cups = state.cups.takeIf { ring.mission?.type == MissionType.CUPS && !state.plainDismiss && !state.passed }
+      // The game being played: the planned one, or the one "Can't talk right now" switched to.
+      val game = state.missionType ?: ring.mission?.type
+      val pads = state.pads.takeIf { game == MissionType.PADS && !state.plainDismiss && !state.passed }
+      val cups = state.cups.takeIf { game == MissionType.CUPS && !state.plainDismiss && !state.passed }
       // Rin takes what the controls leave: about half of a phone screen. The colour pads cover her while the game is
       // on (only her hand shows), and step aside when she scolds (D17, the user's pick).
       Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
@@ -191,17 +201,19 @@ internal fun RingScreen(
       when {
         // The cups keep their card (and the space of the controls below) through the pass, so Rin's view keeps its size
         // while she claps behind the table.
-        state.passed && ring.mission?.type != MissionType.CUPS -> Passed()
+        state.passed && game != MissionType.CUPS -> Passed()
         state.plainDismiss -> Unit
-        ring.mission?.type == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
-        ring.mission?.type == MissionType.PADS -> PadsCard(state.pads, onStartGame)
-        ring.mission?.type == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
+        game == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
+        game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
+        game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
+        game == MissionType.SPEECH ->
+          RepeatCard(state.repeat, state.rinSpeaking, state.micLevel, onStartGame, onHearAgain, onTapWord, onCantTalk)
       }
       Spacer(Modifier.height(16.dp))
       // Big, far-apart targets: the user is half asleep.
       if (!state.passed) {
         Controls(state, request, onSnooze, onDismiss, onEmergencyStop)
-      } else if (ring.mission?.type == MissionType.CUPS) {
+      } else if (game == MissionType.CUPS) {
         // Same size, invisible and inert: the ring is over.
         Box(Modifier.alpha(0f).clearAndSetSemantics {}) { Controls(state, request, {}, {}, {}) }
       }

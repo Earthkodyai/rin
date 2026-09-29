@@ -92,6 +92,22 @@
         <item>Eyes open, sleepyhead. Again!</item>
         <item>So close… no, not really. Once more.</item>
     </string-array>
+    <!-- Ring screen: Repeat after Rin (task 3.5). -->
+    <string name="repeat_title">Repeat after Rin</string>
+    <string name="repeat_intro">Rin says a short English sentence. Say it back to her: three sentences. The mic listens only while you speak.</string>
+    <string name="repeat_cant_talk">Can\'t talk right now</string>
+    <string name="repeat_sentence">Sentence %1$d of %2$d</string>
+    <string name="repeat_listen">Listen to Rin…</string>
+    <string name="repeat_read">Read it…</string>
+    <string name="repeat_your_turn">Your turn: say it</string>
+    <string name="repeat_try">Try %1$d of %2$d</string>
+    <string name="repeat_right">Nice!</string>
+    <string name="repeat_missed">Almost. Once more?</string>
+    <string name="repeat_nothing">I didn\'t hear you. Once more?</string>
+    <string name="repeat_to_tap">Let\'s tap it instead.</string>
+    <string name="repeat_tap">Tap the words in order</string>
+    <string name="repeat_hear_again">Hear again</string>
+    <string name="repeat_mic_on">Microphone on</string>
     <!-- Ring screen: QR mission (task 3.2). -->
     <string name="mission_qr_title">Scan your QR sticker</string>
     <string name="mission_qr_walk">Walk to your sticker, then tap below.</string>
@@ -111,13 +127,16 @@
     <string name="mission_choice_pads">Pads</string>
     <string name="mission_choice_qr">QR</string>
     <string name="mission_choice_cups">Cups</string>
+    <string name="mission_choice_speech">Speak</string>
     <string name="mission_choice_none">None</string>
     <string name="mission_hint_rin_picks">Rin picks a different game each day.</string>
     <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
     <string name="mission_hint_pads">Watch Rin\'s hand, then tap the colours in the same order: 3 rounds.</string>
     <string name="mission_hint_qr">Walk to your QR sticker and scan it up close.</string>
+    <string name="mission_hint_speech">Rin says a short English sentence and you say it back: 3 sentences. The mic listens only during the game.</string>
     <string name="mission_hint_cups">Follow the ball as Rin shuffles the cups, then tap its cup: 3 in a row.</string>
     <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm uses another ready mission, or a plain Dismiss.</string>
+    <string name="mission_no_mic">%1$s needs a microphone this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_camera">%1$s needs a camera this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_not_set_up">%1$s needs a sticker first. Until you set one up, this alarm uses another ready mission, or a plain Dismiss.</string>
@@ -202,6 +221,9 @@
     <string name="check_missions">Missions</string>
     <string name="check_missions_ok">Ready: %1$s.</string>
     <string name="check_missions_problem">None ready on this phone. Alarms with a mission stop with a plain Dismiss.</string>
+    <string name="check_microphone">Microphone</string>
+    <string name="check_microphone_ok">Allowed. Rin can pick Repeat after Rin; the mic listens only during that game.</string>
+    <string name="check_microphone_info">Not allowed, so Rin picks only the tap games. Allow it to add Repeat after Rin.</string>
     <string name="check_fix">Fix</string>
     <string name="check_open">Open</string>
     <string name="check_status_ok">OK</string>

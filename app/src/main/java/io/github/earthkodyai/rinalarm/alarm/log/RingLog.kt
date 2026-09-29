@@ -58,6 +58,8 @@ enum class RingEventType {
   /** Tone lowered for mission progress, and back to full after the idle time; detail reason=mission|idle. */
   TONE_QUIET,
   TONE_FULL,
+  /** The ring screen swapped the game ("Can't talk right now" in Repeat after Rin); detail from=, to=, reason=. */
+  MISSION_SWITCHED,
 }
 
 /** Append-only log of alarm events: the evidence for the 14-night reliability run and for Diagnostics. */

@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.ui.diagnostics
 
+import android.Manifest
 import android.content.ClipData
 import android.os.Build
 import android.widget.Toast
@@ -52,6 +53,7 @@ import io.github.earthkodyai.rinalarm.setup.DeviceStatus
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.setup.SetupChecks
 import io.github.earthkodyai.rinalarm.setup.rememberNotificationPermissionAction
+import io.github.earthkodyai.rinalarm.setup.rememberRuntimePermissionAction
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
@@ -81,12 +83,15 @@ fun DiagnosticsScreen(onBack: () -> Unit, viewModel: DiagnosticsViewModel = hilt
   val copied = stringResource(R.string.diagnostics_copied)
   val openFailed = stringResource(R.string.settings_open_failed)
   val notifications = rememberNotificationPermissionAction(state.status.xiaomiFamily, onResult = viewModel::refresh)
+  val microphone = rememberRuntimePermissionAction(Manifest.permission.RECORD_AUDIO, onResult = viewModel::refresh)
   DiagnosticsScreen(
     state = state,
     onBack = onBack,
     onFix = { id ->
       if (id == CheckId.NOTIFICATIONS) {
         notifications.run()
+      } else if (id == CheckId.MICROPHONE) {
+        microphone()
       } else if (!SettingsLinks.open(context, id, state.status.xiaomiFamily)) {
         Toast.makeText(context, openFailed, Toast.LENGTH_LONG).show()
       }

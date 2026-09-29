@@ -12,6 +12,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.earthkodyai.rinalarm.mission.MissionReadiness
+import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
 import javax.inject.Inject
 
@@ -29,6 +30,7 @@ constructor(@ApplicationContext private val context: Context, private val missio
       Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
           PackageManager.PERMISSION_GRANTED
+    val missionReadiness = missions.check()
     return DeviceStatus(
       sdk = Build.VERSION.SDK_INT,
       notificationsAllowed = permission && NotificationManagerCompat.from(context).areNotificationsEnabled(),
@@ -45,7 +47,13 @@ constructor(@ApplicationContext private val context: Context, private val missio
       androidRelease = Build.VERSION.RELEASE,
       appVersion =
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?",
-      readyMissions = missions.check().filterValues { it == Readiness.READY }.keys.map { it.stored },
+      readyMissions = missionReadiness.filterValues { it == Readiness.READY }.keys.map { it.stored },
+      micAllowed =
+        when (missionReadiness[MissionType.SPEECH]) {
+          Readiness.READY -> true
+          Readiness.NO_PERMISSION -> false
+          else -> null // no mic, or no speech model in this build: nothing to allow
+        },
     )
   }
 

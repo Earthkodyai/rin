@@ -5,12 +5,17 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
+import io.github.earthkodyai.rinalarm.character.Speaking
 import io.github.earthkodyai.rinalarm.mission.CupsMission
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
+import io.github.earthkodyai.rinalarm.mission.Feedback
+import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.Mission
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
+import io.github.earthkodyai.rinalarm.mission.MissionReadiness
+import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.mission.MissionState
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Miss
@@ -18,14 +23,21 @@ import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsMission
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
 import io.github.earthkodyai.rinalarm.mission.PadsState
+import io.github.earthkodyai.rinalarm.mission.MissionPlanner
+import io.github.earthkodyai.rinalarm.mission.RepeatMission
+import io.github.earthkodyai.rinalarm.mission.RepeatPhase
+import io.github.earthkodyai.rinalarm.mission.RepeatState
 import io.github.earthkodyai.rinalarm.mission.CodeFormat
 import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
 import io.github.earthkodyai.rinalarm.mission.ScanMission
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.mission.SeenCode
+import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -47,11 +59,13 @@ class RingViewModelTest {
   private val log = RecordingLog()
   private val mission = FakeMission()
   private var clockMs = 1_000L
+  private val readiness = MissionReadiness { MissionType.offeredEntries.associateWith { Readiness.READY } }
+  private val time = FixedTimeSource(Instant.parse("2026-09-29T00:00:00Z"), ZoneOffset.UTC)
   private val request =
     RingRequest(4, LocalTime.of(6, 30), "Work", Instant.parse("2026-09-27T23:30:00Z"), 0, 3, late = false, RingOptions())
 
   private fun TestScope.ringScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
-    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope) { clockMs }
+    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time)
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -142,7 +156,7 @@ class RingViewModelTest {
 
   private fun TestScope.qrRingScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.QR)))
-    val viewModel = RingViewModel(ringState, { scan }, log, backgroundScope) { clockMs }
+    val viewModel = RingViewModel(ringState, { scan }, log, backgroundScope, { clockMs }, readiness, time)
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -235,7 +249,7 @@ class RingViewModelTest {
   fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
     runTest(main.dispatcher) {
       val pads = FakePadsMission()
-      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope) { clockMs }
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time)
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
@@ -259,7 +273,7 @@ class RingViewModelTest {
     }
 
   private fun TestScope.cupsScreen(cups: FakeCupsMission): Pair<RingViewModel, MutableList<Gesture>> {
-    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope) { clockMs }
+    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time)
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
@@ -360,6 +374,79 @@ class RingViewModelTest {
 
     override fun pick(slot: Int) {
       calls += "pick $slot"
+    }
+  }
+
+  @Test
+  fun repeat_forwardsTheHushToTheRing_nodsOnARightSentence_andCantTalkSwitchesGame() =
+    runTest(main.dispatcher) {
+      val repeat = FakeRepeatMission()
+      val pads = FakePadsMission()
+      val viewModel =
+        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time)
+      val cues = mutableListOf<Gesture>()
+      backgroundScope.launch { viewModel.cues.collect { cues += it } }
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.SPEECH)))
+      runCurrent()
+      assertEquals(MissionType.SPEECH, viewModel.uiState.value.missionType)
+
+      viewModel.startGame()
+      viewModel.hearAgain()
+      viewModel.tapWord(2)
+      assertEquals(listOf("begin", "again", "tap 2"), repeat.calls)
+
+      // The mic opens: the ring hears about it at once.
+      repeat.hush.value = Hush.SILENT
+      runCurrent()
+      assertEquals(Hush.SILENT, ringState.hush.value)
+
+      repeat.game.value = RepeatState(RepeatPhase.FEEDBACK, feedback = Feedback.RIGHT)
+      runCurrent()
+      assertEquals(Gesture.NOD, cues.last())
+
+      // "Can't talk right now": another game takes over, the hush is lifted, and both steps are logged.
+      viewModel.cantTalk()
+      runCurrent()
+      assertEquals(Hush.NONE, ringState.hush.value)
+      assertTrue(repeat.stopped)
+      // Picked the way Rin picks, among the games that need no mic.
+      val expected = MissionPlanner.rotate(listOf(MissionType.PADS, MissionType.CUPS), LocalDate.of(2026, 9, 29))
+      assertEquals(expected, viewModel.uiState.value.missionType)
+      assertEquals(null, viewModel.uiState.value.repeat)
+      val switched = log.details[log.types.indexOf(RingEventType.MISSION_SWITCHED)]
+      assertTrue(switched, switched.startsWith("from=speech to=") && "reason=cant_talk" in switched && "game=fake" in switched)
+      assertEquals(RingEventType.MISSION_STARTED, log.types.last())
+      assertTrue(log.details.last(), log.details.last().endsWith("switchedFrom=speech"))
+    }
+
+  private class FakeRepeatMission : RepeatMission {
+    override val type = MissionType.SPEECH
+    override val progress: StateFlow<MissionProgress> = MutableStateFlow(MissionProgress(0, 3))
+    override val game = MutableStateFlow(RepeatState())
+    override val hush = MutableStateFlow(Hush.NONE)
+    override val speaking = MutableStateFlow<Speaking?>(null)
+    override val micLevel = MutableStateFlow(0f)
+    val calls = mutableListOf<String>()
+    var stopped = false
+
+    override fun start() = Unit
+
+    override fun stop() {
+      stopped = true
+    }
+
+    override fun summary() = "game=fake"
+
+    override fun begin() {
+      calls += "begin"
+    }
+
+    override fun hearAgain() {
+      calls += "again"
+    }
+
+    override fun tapWord(chip: Int) {
+      calls += "tap $chip"
     }
   }
 

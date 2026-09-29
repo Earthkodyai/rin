@@ -1,4 +1,7 @@
+import java.net.URI
+import java.security.MessageDigest
 import java.util.Properties
+import java.util.zip.ZipFile
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
@@ -22,6 +25,9 @@ android {
         versionName = "0.1.0"
         // Swaps in HiltTestApplication so receiver tests can replace storage and the ring outputs (androidTest/HiltTestRunner.kt).
         testInstrumentationRunner = "io.github.earthkodyai.rinalarm.HiltTestRunner"
+        // Phones (64- and 32-bit ARM) and CI's x86_64 emulator. Vosk and JNA (task 3.5) also ship x86, armeabi and
+        // mips builds, about 10 MB of APK that no supported device runs.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
     buildTypes {
@@ -255,16 +261,86 @@ abstract class GestureCheck : NodeTask() {
     }
   }
 
+/**
+ * Fetches Vosk's small en-US model (Apache-2.0, ~41 MB zip) for Repeat after Rin (task 3.5, S3's pick O10) and unpacks
+ * it into generated assets at vosk/, so every build, CI's included, can listen offline. The zip is checked against its
+ * SHA-256 and cached under .gradle/vosk (git-ignored), so it downloads once per checkout.
+ */
+abstract class VoskModelFetch : DefaultTask() {
+  @get:Input abstract val url: Property<String>
+
+  @get:Input abstract val sha256: Property<String>
+
+  @get:Internal abstract val cacheDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @TaskAction
+  fun fetch() {
+    val zip = File(cacheDir.get().asFile, url.get().substringAfterLast('/'))
+    if (!zip.isFile || digest(zip) != sha256.get()) {
+      zip.parentFile.mkdirs()
+      val part = File(zip.path + ".part")
+      URI(url.get()).toURL().openStream().use { input -> part.outputStream().use { input.copyTo(it) } }
+      val got = digest(part)
+      if (got != sha256.get()) {
+        part.delete()
+        throw GradleException("Vosk model checksum mismatch: got $got, want ${sha256.get()}")
+      }
+      part.renameTo(zip) || throw GradleException("could not move ${part.name} into place")
+    }
+    val out = File(outputDir.get().asFile, "vosk")
+    out.deleteRecursively()
+    ZipFile(zip).use { z ->
+      z.entries().asSequence().filter { !it.isDirectory }.forEach { entry ->
+        // Drop the zip's top folder (vosk-model-small-en-us-0.15/) and its README.
+        val path = entry.name.substringAfter('/')
+        if (path.isEmpty() || path == "README") return@forEach
+        val target = File(out, path)
+        require(target.canonicalPath.startsWith(out.canonicalPath)) { "zip entry outside the model: ${entry.name}" }
+        target.parentFile.mkdirs()
+        z.getInputStream(entry).use { input -> target.outputStream().use { input.copyTo(it) } }
+      }
+    }
+  }
+
+  private fun digest(file: File): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    file.inputStream().use { input ->
+      val buffer = ByteArray(1 shl 16)
+      while (true) {
+        val n = input.read(buffer)
+        if (n < 0) break
+        md.update(buffer, 0, n)
+      }
+    }
+    return md.digest().joinToString("") { "%02x".format(it) }
+  }
+}
+
+val voskModel =
+  tasks.register<VoskModelFetch>("fetchVoskModel") {
+    url.set("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip")
+    sha256.set("30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498")
+    cacheDir.set(rootProject.layout.projectDirectory.dir(".gradle/vosk"))
+    outputDir.set(layout.buildDirectory.dir("generated/voskModel"))
+  }
+
 // MoodContractTest reads the page's mood table, so a change there must rerun the unit tests.
 tasks.withType<Test>().configureEach {
   inputs.file(rootProject.layout.projectDirectory.file("web/character/src/moods.json"))
     .withPathSensitivity(PathSensitivity.RELATIVE)
     .withPropertyName("pageMoods")
+  // RepeatRescoreTest (task 3.5): -Prepeat.results=<lab replay jsonl>[,...] re-judges a replay; skipped without it.
+  val repeatResults = providers.gradleProperty("repeat.results").orElse("")
+  inputs.property("repeatResults", repeatResults)
+  systemProperty("repeat.results", repeatResults.get())
 }
 
 androidComponents {
   onVariants { variant ->
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)
+    variant.sources.assets?.addGeneratedSourceDirectory(voskModel, VoskModelFetch::outputDir)
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
     if (variant.buildType == "debug") {
@@ -344,6 +420,11 @@ dependencies {
   implementation(libs.androidx.camera.compose)
   implementation(libs.mlkit.barcode.scanning)
   implementation(libs.qrcodegen)
+
+  // Repeat after Rin (task 3.5): Vosk, offline speech recognition limited to each sentence's words (S3, O10). Its
+  // native library comes through JNA's Android build (the aar, as vosk-android's own pom asks).
+  implementation(libs.vosk.android)
+  implementation(libs.jna) { artifact { type = "aar" } }
 
   // Navigation
   implementation(libs.androidx.navigation3.ui)

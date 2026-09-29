@@ -78,4 +78,12 @@ class SetupChecksTest {
     assertFalse(LOCK_SCREEN in severities(good))
     assertFalse(AUTOSTART in severities(good))
   }
+
+  @Test
+  fun microphone_isANoteWhenNotAllowed_andAbsentWhenTheGameCannotRunAnyway() {
+    assertEquals(Severity.INFO, severities(good.copy(micAllowed = false))[CheckId.MICROPHONE])
+    assertEquals(Severity.OK, severities(good.copy(micAllowed = true))[CheckId.MICROPHONE])
+    assertFalse(CheckId.MICROPHONE in severities(good.copy(micAllowed = null)))
+    assertFalse(SetupChecks.hasCritical(SetupChecks.evaluate(good.copy(micAllowed = false))))
+  }
 }

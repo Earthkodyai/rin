@@ -77,7 +77,8 @@ object SettingsLinks {
               .putExtra("extra_pkgname", pkg)
           )
         // Runtime permissions live on the app's info page.
-        CheckId.MISSIONS -> emptyList()
+        CheckId.MISSIONS,
+        CheckId.MICROPHONE -> emptyList()
         CheckId.AUTOSTART ->
           listOf(
             Intent()

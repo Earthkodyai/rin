@@ -26,6 +26,8 @@ data class DeviceStatus(
   val appVersion: String,
   /** Missions that can run now (MissionType.stored), or null when not read (previews). */
   val readyMissions: List<String>? = null,
+  /** RECORD_AUDIO for Repeat after Rin; null when the game cannot run here anyway (no mic) or not read. */
+  val micAllowed: Boolean? = null,
 )
 
 fun interface DeviceStatusSource {
@@ -49,6 +51,11 @@ enum class CheckId {
   AUTOSTART,
   /** At least one mission can run (task 3.1); with none, alarms still ring and stop with a plain Dismiss. */
   MISSIONS,
+  /**
+   * The mic for Repeat after Rin (task 3.5). Asked when the user picks the game; here so Rin picks can include it
+   * without editing an alarm. A note, not a warning: the other games need nothing.
+   */
+  MICROPHONE,
 }
 
 enum class Severity {
@@ -87,6 +94,7 @@ object SetupChecks {
     status.readyMissions?.let {
       add(CheckResult(CheckId.MISSIONS, if (it.isEmpty()) Severity.WARNING else Severity.OK))
     }
+    status.micAllowed?.let { add(CheckResult(CheckId.MICROPHONE, if (it) Severity.OK else Severity.INFO)) }
     // Autostart off blocks BOOT_COMPLETED on HyperOS, but LOCKED_BOOT_COMPLETED still re-arms (S1).
     if (status.xiaomiFamily) {
       add(CheckResult(CheckId.LOCK_SCREEN, Severity.INFO))

@@ -19,9 +19,9 @@ class MissionPlannerTest {
 
   @Test
   fun rinPicks_withNothingReady_isAPlainDismiss_withTheReasons() {
-    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, padsDenied, day))
+    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor speech=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, padsDenied, day))
     // A readiness check that knows nothing about a type counts it as not ready.
-    assertEquals(MissionPlan.Unavailable("pads=no_sensor cups=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, emptyMap(), day))
+    assertEquals(MissionPlan.Unavailable("pads=no_sensor cups=no_sensor speech=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, emptyMap(), day))
   }
 
   @Test
@@ -38,7 +38,7 @@ class MissionPlannerTest {
     val both = padsReady + (MissionType.QR to Readiness.READY)
     val picks = (0L..3L).map { (MissionPlanner.plan(MissionChoice.RinPicks, both, day.plusDays(it)) as MissionPlan.Run).type }
     assertEquals(setOf(MissionType.PADS), picks.toSet())
-    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, padsDenied + (MissionType.QR to Readiness.READY), day))
+    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor speech=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, padsDenied + (MissionType.QR to Readiness.READY), day))
   }
 
   @Test
@@ -59,7 +59,7 @@ class MissionPlannerTest {
   fun only_runsItsMission_orExplainsWhyNot() {
     val pads = MissionChoice.Only(MissionType.PADS)
     assertEquals(MissionPlan.Run(MissionType.PADS), MissionPlanner.plan(pads, padsReady, day))
-    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor"), MissionPlanner.plan(pads, padsDenied, day))
+    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor speech=no_sensor"), MissionPlanner.plan(pads, padsDenied, day))
   }
 
   @Test
