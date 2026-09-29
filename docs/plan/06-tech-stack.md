@@ -10,7 +10,7 @@
 | กล้อง/วิชัน | CameraX + ML Kit Barcode Scanning (ภารกิจ QR) + MediaPipe Image Embedder (ภารกิจรูปของที่สอนเอง, ~15 MB arm64 → ใช้ feature module) | ฟรี ออฟไลน์ และเป็นส่วนตัว (ผล S5) | ฟรี |
 | แปลงเสียงเป็นข้อความ | Android `SpeechRecognizer` (ประมวลผลในเครื่องถ้าเครื่องรองรับ) | ฟรี และไม่ส่งเสียงออก | ฟรี |
 | สังเคราะห์เสียง (ตอน build) | Azure AI Speech หรือ ElevenLabs (คุณเลือกจากการฟังใน S4) | Azure มี viseme ในตัว | Azure มี free tier · ElevenLabs ต้องตรวจเงื่อนไขการใช้งาน |
-| เซนเซอร์ | Step counter, Activity Recognition Transition API, light/accelerometer | ตรวจการลุกและการกลับไปนอน | ฟรี |
+| เซนเซอร์ | accelerometer + gyroscope (`AccelStepDetector`, วัดใน 3.1) | เดิมใช้ตรวจการลุกและการกลับไปนอน ตัดตาม D18 จึงไม่มีงานในแอปแล้ว | ฟรี |
 | Backend (v1.1) | Cloudflare Workers + TypeScript + Anthropic TypeScript SDK | free tier 100k requests/วัน และไม่ต้องผูกบัตร | ฟรีในระดับทดสอบ |
 | CI | GitHub Actions: lint (ktlint/detekt), unit test, build, gitleaks, CodeQL, dependency review | ฟรีสำหรับ repo สาธารณะ | ฟรี |
 

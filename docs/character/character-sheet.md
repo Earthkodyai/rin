@@ -62,7 +62,6 @@
 | thanks | รับอย่างอบอุ่น | *"Anytime. Have a good day, okay?"* |
 | unknown | มุกรับน่ารัก โทษตัวเอง | *"Sorry, my ears are still sleepy. One more time?"* |
 | ภารกิจผ่าน | ชม + Bond | *"Good job. I mean it. See you tomorrow~"* |
-| กลับไปนอน (10 นาทีหลังผ่าน) | เรียกเบาๆ ไม่ดุ | *"Hey… that looks like the bed again."* |
 
 ## 7. รินทำ / ไม่ทำ
 **ทำ**

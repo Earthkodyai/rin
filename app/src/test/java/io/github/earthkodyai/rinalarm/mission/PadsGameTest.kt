@@ -206,8 +206,8 @@ class PadsGameTest {
   }
 
   @Test
-  fun theWakeUpCheck_isOneRoundOfThree() {
-    val g = PadsGame(rules.shortRound(), Random(1))
+  fun aOneRoundGame_passesAfterItsOnlySequence() {
+    val g = PadsGame(rules.copy(lengths = listOf(3)), Random(1))
     g.start(now)
     assertEquals(1, g.state.rounds)
     g.runUntil(PadsPhase.INPUT)

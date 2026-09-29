@@ -1,6 +1,6 @@
 # ADR 0001: Three games with Rin replace the out-of-bed missions
 
-- **Status:** accepted, 2026-09-28 (plan decisions D16, D17)
+- **Status:** accepted, 2026-09-28 (plan decisions D16, D17). The wake-up check and bed-return parts are superseded by [ADR 0002](0002-no-wake-up-check.md) (D18, 2026-09-30).
 - **Supersedes:** the mission list of D15 (walk, QR sticker, speak, photo of your own object)
 
 ## Context

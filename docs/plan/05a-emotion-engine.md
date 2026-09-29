@@ -1,6 +1,6 @@
 # 5.2 Emotion engine (ระบบอารมณ์)
 - **สถานะอารมณ์ (mood):** `sleepy`, `cheerful`, `proud`, `worried`, `pouty`, `sulky`, `relieved`
-- **อินพุต (event):** `alarm_fired`, `user_spoke(intent)`, `snooze`, `mission_started/completed/failed`, `back_to_bed_suspected/confirmed`, `emergency_dismiss` รวมถึง streak, bond และเวลาที่ใช้ตื่น
+- **อินพุต (event):** `alarm_fired`, `user_spoke(intent)`, `snooze`, `mission_started/completed/failed`, `emergency_dismiss` (`back_to_bed_*` ตัดตาม D18) รวมถึง streak, bond และเวลาที่ใช้ตื่น
 - **เอาต์พุตต่อหนึ่งจังหวะ:** `{ emotion, intensity 0–1, gesture, lineId | text }`
 - **การแมปไปยัง VRM:** ใช้ preset `happy/angry/sad/relaxed/surprised` + `blink` + `lookAt` + รูปปาก `aa/ih/ou/ee/oh` ท่า "งอน" คือ `angry` ระดับเบาผสมท่ากอดอก (ตรวจ blendshape เพิ่มเติมที่ VRoid ให้มาในเฟส 2)
 - **ความลื่น:** blend สีหน้าแบบ lerp 150–300 ms, crossfade แอนิเมชัน 200–400 ms, มีการหายใจ กะพริบตา และขยับตาเล็กๆ แบบสุ่มตลอดเวลา

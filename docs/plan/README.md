@@ -28,7 +28,7 @@
 | [05-architecture.md](05-architecture.md) | แผนภาพสถาปัตยกรรม + หลักการที่ห้ามละเมิด |
 | [05a-emotion-engine.md](05a-emotion-engine.md) | ระบบอารมณ์ แอนิเมชัน lip sync และงบประสิทธิภาพ |
 | [05b-alarm-engine.md](05b-alarm-engine.md) | รายละเอียดการปลุกที่มักพลาด |
-| [05c-missions-sensors.md](05c-missions-sensors.md) | ภารกิจ + การตรวจว่ากลับไปนอน |
+| [05c-missions-sensors.md](05c-missions-sensors.md) | ภารกิจ/เกม (การตรวจว่ากลับไปนอนตัดตาม D18) |
 | [05d-voice-dialogue.md](05d-voice-dialogue.md) | คลังเสียง บทสนทนาออฟไลน์ และการคุยสด |
 | [05e-companion-safety.md](05e-companion-safety.md) | ความปลอดภัยของตัวละคร + จริยธรรมของ Bond |
 | [06-tech-stack.md](06-tech-stack.md) | stack + เครื่องมือที่ต้องติดตั้ง |

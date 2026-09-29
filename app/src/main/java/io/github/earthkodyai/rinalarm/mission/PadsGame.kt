@@ -39,9 +39,6 @@ data class PadsRules(
   init {
     require(lengths.isNotEmpty() && lengths.all { it >= 1 })
   }
-
-  /** The wake-up check's answer (D17): one round of 3 (task 3.6). */
-  fun shortRound(): PadsRules = copy(lengths = listOf(lengths.first()))
 }
 
 enum class PadsPhase {
