@@ -535,8 +535,10 @@ async function exposeStills(vrm: VRM, headHalf: number) {
     euler('rightIndexProximal', 0, 0, 0.08);
     euler('rightIndexIntermediate', 0, 0, 0.08);
     euler('rightIndexDistal', 0, 0, 0.05);
-    euler('rightThumbProximal', 0, -0.8, 0.3);
-    euler('rightThumbDistal', 0, -0.7, 0);
+    // The thumb open, angled down toward the pad (3.7, the tester): tucked under the palm it looked hooked, and lying
+    // flat it looked longer than the index, which points down and so shows shorter from above.
+    euler('rightThumbProximal', 0, -0.35, 0.1);
+    euler('rightThumbDistal', 0, -0.2, 0.1);
     vrm.humanoid.update();
     vrm.scene.updateMatrixWorld(true);
     const at = (name: VRMHumanBoneName) => vrm.humanoid.getRawBoneNode(name)!.getWorldPosition(new THREE.Vector3());
