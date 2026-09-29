@@ -42,8 +42,10 @@ data class HeardWord(val word: String, val conf: Float)
  *
  * @property lagMs from the end of the last word to the result, when known (the wait the user feels).
  * @property peakDb the loudest 100 ms of the turn in dBFS, for telling a quiet voice from a miss.
+ * @property unknown how many stretches of speech Vosk put in `[unk]` (not in [words]): a sentence said in full but
+ *   heard as "my [unk] [unk]" (smoke ring 3) is a recognition miss, not a try cut short.
  */
-data class Heard(val words: List<HeardWord>, val lagMs: Long? = null, val peakDb: Float? = null) {
+data class Heard(val words: List<HeardWord>, val lagMs: Long? = null, val peakDb: Float? = null, val unknown: Int = 0) {
   companion object {
     val NOTHING = Heard(emptyList())
   }

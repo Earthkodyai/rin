@@ -142,7 +142,7 @@ class VoskListener(private val context: Context, private val models: VoskModels)
           if (done) break
         }
         decoder.heard().also { h ->
-          Log.d(TAG, "heard ${h.words.joinToString(" ") { "${it.word}:${"%.2f".format(it.conf)}" }} lag=${h.lagMs} peakDb=${h.peakDb}")
+          Log.d(TAG, "heard ${h.words.joinToString(" ") { "${it.word}:${"%.2f".format(it.conf)}" }} unk=${h.unknown} lag=${h.lagMs} peakDb=${h.peakDb}")
         }
       } finally {
         levelState.value = 0f
@@ -176,6 +176,15 @@ class VoskListener(private val context: Context, private val models: VoskModels)
         }
         .getOrDefault(emptyList())
         .filter { it.word != "[unk]" }
+
+    /** How many `[unk]` entries a Vosk result has. */
+    fun unknowns(result: String): Int =
+      runCatching {
+          json.parseToJsonElement(result).jsonObject["result"]?.jsonArray.orEmpty().count {
+            it.jsonObject["word"]?.jsonPrimitive?.content == "[unk]"
+          }
+        }
+        .getOrDefault(0)
 
     fun lastWordEnd(result: String): Double? =
       runCatching {
@@ -217,7 +226,12 @@ class VoskDecoder(model: Model, grammar: List<String>) : AutoCloseable {
     val json = result ?: recognizer.finalResult
     // Audio time of the last word's end, against the samples read: how long the user waited after speaking.
     val lag = VoskListener.lastWordEnd(json)?.let { ((samples.toDouble() / VoskListener.RATE - it) * 1000).toLong().coerceAtLeast(0) }
-    return Heard(VoskListener.words(json), lagMs = lag, peakDb = if (peak == 0) null else (20 * log10(peak / 32768.0)).toFloat())
+    return Heard(
+      VoskListener.words(json),
+      lagMs = lag,
+      peakDb = if (peak == 0) null else (20 * log10(peak / 32768.0)).toFloat(),
+      unknown = VoskListener.unknowns(json),
+    )
   }
 
   override fun close() = recognizer.close()

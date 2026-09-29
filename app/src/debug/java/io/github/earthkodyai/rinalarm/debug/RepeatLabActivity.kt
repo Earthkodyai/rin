@@ -227,6 +227,7 @@ class RepeatLabActivity : ComponentActivity() {
                 put("cond", item.cond)
                 put("decoys", decoys)
                 put("words", buildJsonArray { heard.words.forEach { w -> add(buildJsonObject { put("w", w.word); put("c", w.conf) }) } })
+                put("unk", heard.unknown)
                 heard.peakDb?.let { put("peakDb", it) }
                 put("decodeMs", ms)
               }
