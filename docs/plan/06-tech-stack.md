@@ -11,7 +11,7 @@
 | แปลงเสียงเป็นข้อความ | Android `SpeechRecognizer` (ประมวลผลในเครื่องถ้าเครื่องรองรับ) | ฟรี และไม่ส่งเสียงออก | ฟรี |
 | สังเคราะห์เสียง (ตอน build) | Azure AI Speech หรือ ElevenLabs (คุณเลือกจากการฟังใน S4) | Azure มี viseme ในตัว | Azure มี free tier · ElevenLabs ต้องตรวจเงื่อนไขการใช้งาน |
 | เซนเซอร์ | accelerometer + gyroscope (`AccelStepDetector`, วัดใน 3.1) | เดิมใช้ตรวจการลุกและการกลับไปนอน ตัดตาม D18 จึงไม่มีงานในแอปแล้ว | ฟรี |
-| Backend (v1.1) | Cloudflare Workers + TypeScript + Anthropic TypeScript SDK | free tier 100k requests/วัน และไม่ต้องผูกบัตร | ฟรีในระดับทดสอบ |
+| ~~Backend (v1.1)~~ (ตัด D21) | Cloudflare Workers + TypeScript + Anthropic TypeScript SDK | free tier 100k requests/วัน และไม่ต้องผูกบัตร | ฟรีในระดับทดสอบ |
 | CI | GitHub Actions: lint (ktlint/detekt), unit test, build, gitleaks, CodeQL, dependency review | ฟรีสำหรับ repo สาธารณะ | ฟรี |
 
 **เครื่องมือที่ต้องติดตั้ง (ตรวจเมื่อ 25 ก.ย. 2026)**

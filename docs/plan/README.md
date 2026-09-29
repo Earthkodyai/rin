@@ -14,7 +14,7 @@
 | 4 เสียง + บทสนทนาออฟไลน์ | [phase-4.md](phase-4.md) | 05d |
 | 5 อารมณ์ + Bond | [phase-5.md](phase-5.md) | 05a, 05e |
 | 6 Hardening + v1.0 | [phase-6.md](phase-6.md) | 09, 10 |
-| 7 คุยสดกับ AI (v1.1) | [phase-7.md](phase-7.md) | 05d, 05e, 09, 11, 13 |
+| ~~7 คุยสดกับ AI (v1.1)~~ ยกเลิก (D21) | [phase-7.md](phase-7.md) | — |
 | 8 Google Play (v1.2) | [phase-8.md](phase-8.md) | 10, 09 |
 | 9 จัดพอร์ต | [phase-9.md](phase-9.md) | 01, 02 |
 
@@ -29,7 +29,7 @@
 | [05a-emotion-engine.md](05a-emotion-engine.md) | ระบบอารมณ์ แอนิเมชัน lip sync และงบประสิทธิภาพ |
 | [05b-alarm-engine.md](05b-alarm-engine.md) | รายละเอียดการปลุกที่มักพลาด |
 | [05c-missions-sensors.md](05c-missions-sensors.md) | ภารกิจ/เกม (การตรวจว่ากลับไปนอนตัดตาม D18) |
-| [05d-voice-dialogue.md](05d-voice-dialogue.md) | คลังเสียง บทสนทนาออฟไลน์ และการคุยสด |
+| [05d-voice-dialogue.md](05d-voice-dialogue.md) | คลังเสียง (รินพูดทางเดียว ตาม D21) |
 | [05e-companion-safety.md](05e-companion-safety.md) | ความปลอดภัยของตัวละคร + จริยธรรมของ Bond |
 | [06-tech-stack.md](06-tech-stack.md) | stack + เครื่องมือที่ต้องติดตั้ง |
 | [07-phases.md](07-phases.md) | วิธีอ่านเวลาประมาณการ + เวลารวม |

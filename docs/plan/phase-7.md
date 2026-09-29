@@ -1,4 +1,6 @@
-# เฟส 7 — คุยสดกับ AI → v1.1 (ต้องมีงบ) (≈ 7–10 วัน)
+# ~~เฟส 7 — คุยสดกับ AI → v1.1~~ ยกเลิก (D21, 2026-09-30)
+
+> **ยกเลิกทั้งเฟสตาม D21** ([ADR 0003](../adr/0003-one-way-voice.md)): รินพูดทางเดียว ไม่มี backend ไม่มีคุยสด เนื้อหาด้านล่างเก็บไว้เป็นประวัติเท่านั้น
 
 > อ่านประกอบเมื่อจำเป็น: [05d-voice-dialogue.md](05d-voice-dialogue.md) · [05e-companion-safety.md](05e-companion-safety.md) · [09-security-privacy.md](09-security-privacy.md) · [11-budget.md](11-budget.md) · [13-skills.md](13-skills.md)
 - Backend บน Cloudflare Workers: ลงทะเบียนเครื่องด้วย invite code แล้วออก token อายุสั้น, จำกัดไม่เกิน 20 เครื่อง, โควตาต่อเครื่อง (เช่น 4 จังหวะต่อวัน), ตัวนับงบรวมรายเดือนที่หยุดทันทีเมื่อเกิน, kill switch และ log เฉพาะ metadata (ไม่เก็บบทสนทนา)

@@ -57,15 +57,6 @@ test('a daily pool needs a week of lines, counting the pool it mixes with', () =
   assert.deepEqual(p, ['g: daily pool has 4 lines (min 7)']);
 });
 
-test('every question has one affirm and one deny answer and both chips', () => {
-  const pools = { 'chat.question': { use: 'event' }, 'chat.answer': { use: 'bound' } };
-  const q = line({ id: 'chat.x.01', pool: 'chat.question', replies: { affirm: 'Yes' } });
-  const yes = line({ id: 'chat.x.01.yes', pool: 'chat.answer', reply_to: 'chat.x.01', intent: 'affirm' });
-  const p = check(script([q, yes], pools), env).join('\n');
-  assert.match(p, /no deny chip/);
-  assert.match(p, /exactly 1 deny answer, has 0/);
-});
-
 test('the budget counts the Repeat-after-Rin sentences too', () => {
   const s = script([line()]);
   s.budget.scriptMax = 20;

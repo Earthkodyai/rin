@@ -4,7 +4,7 @@
 
 | Skill | ใช้เมื่อ |
 |---|---|
-| `claude-api` | เฟส 7: เชื่อมต่อ Claude, prompt caching, structured output และ `build-eval` |
+| ~~`claude-api`~~ (ตัด D21) | ~~เฟส 7: เชื่อมต่อ Claude, prompt caching, structured output และ `build-eval`~~ |
 | `security-review`, `code-review` | ก่อนปล่อยทุกเวอร์ชัน |
 | `simplify` | เก็บกวาดโค้ดหลังจบแต่ละเฟส |
 | `run` | สั่ง build และรันแอปเพื่อตรวจผล |

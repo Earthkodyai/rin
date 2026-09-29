@@ -12,7 +12,6 @@ export const MAX_SENTENCES = 3; // short ones: "Phew. You're up. That's what mat
 export const MAX_WORDS = 12; // per sentence
 export const MAX_LINE_WORDS = 16;
 export const DAILY_MIN = 7; // a "daily" pool must last a week without a repeat
-export const INTENTS = ['affirm', 'deny'];
 // Words Rin never says (character sheet §3, §7): pet names, guilt, chat abbreviations.
 export const FORBIDDEN = [/\bdarling\b/i, /\bbabe\b/i, /\bhoney\b/i, /\bmy love\b/i, /\bsweetheart\b/i,
   /\blonely\b/i, /\bmiss you\b/i, /\blol\b/i, /\bu\b/, /\bur\b/i];
@@ -63,18 +62,7 @@ export function check(script, { moods, gestures, repeat = [] }) {
     for (const s of ss) if (words(s) > MAX_WORDS) bad(id, `"${s}" has ${words(s)} words (max ${MAX_WORDS})`);
     const all = words(line.text);
     if (all > MAX_LINE_WORDS) bad(id, `${all} words (max ${MAX_LINE_WORDS} per line)`);
-    if (line.pool === 'chat.question') {
-      for (const intent of INTENTS) if (!line.replies?.[intent]) bad(id, `question has no ${intent} chip`);
-    }
   }
-  const answers = script.lines.filter((l) => l.pool === 'chat.answer');
-  for (const q of byPool.get('chat.question') ?? []) {
-    for (const intent of INTENTS) {
-      const n = answers.filter((a) => a.reply_to === q.id && a.intent === intent).length;
-      if (n !== 1) bad(q.id, `needs exactly 1 ${intent} answer, has ${n}`);
-    }
-  }
-  for (const a of answers) if (!ids.has(a.reply_to)) bad(a.id, `reply_to ${a.reply_to} does not exist`);
   for (const [name, pool] of Object.entries(script.pools)) {
     const own = byPool.get(name)?.length ?? 0;
     if (own === 0) bad(name, 'pool has no lines');
@@ -112,26 +100,16 @@ export function review(script, repeat = []) {
   ];
   const order = Object.keys(script.pools);
   for (const name of order) {
-    const lines = script.lines.filter((l) => l.pool === name && l.pool !== 'chat.answer');
+    const lines = script.lines.filter((l) => l.pool === name);
     if (!lines.length) continue;
     const pool = script.pools[name];
     const mix = pool.mix ? `, mixed with ${pool.mix}` : '';
     out.push(`## ${name} (${pool.use}${mix}, ${lines.length})`, '', pool.when, '');
-    if (name === 'chat.question') {
-      out.push('| id | Rin asks | chip ✅ → Rin | chip ❌ → Rin | mood |', '|---|---|---|---|---|');
-      for (const q of lines) {
-        const ans = (intent) => script.lines.find((a) => a.reply_to === q.id && a.intent === intent);
-        const yes = ans('affirm');
-        const no = ans('deny');
-        out.push(`| ${q.id} | ${cell(q.tag ? q.tag + ' ' : '')}${cell(q.text)} | “${cell(q.replies.affirm)}” → ${cell(yes?.text)} | “${cell(q.replies.deny)}” → ${cell(no?.text)} | ${q.emotion} |`);
-      }
-    } else {
-      out.push('| id | line | tag | mood | gesture | |', '|---|---|---|---|---|---|');
-      for (const l of lines) {
-        const extra = l.src ? l.src : '🆕';
-        const say = l.say ? ` *(says: ${cell(l.say)})*` : '';
-        out.push(`| ${l.id} | ${cell(l.text)}${say} | ${l.tag ?? ''} | ${l.emotion} | ${l.gesture ?? ''} | ${extra} |`);
-      }
+    out.push('| id | line | tag | mood | gesture | |', '|---|---|---|---|---|---|');
+    for (const l of lines) {
+      const extra = l.src ? l.src : '🆕';
+      const say = l.say ? ` *(says: ${cell(l.say)})*` : '';
+      out.push(`| ${l.id} | ${cell(l.text)}${say} | ${l.tag ?? ''} | ${l.emotion} | ${l.gesture ?? ''} | ${extra} |`);
     }
     out.push('');
   }
