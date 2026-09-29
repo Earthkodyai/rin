@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -91,7 +94,9 @@ internal fun RepeatCard(
       Text(stringResource(R.string.repeat_sentence, state.index + 1, state.count), style = MaterialTheme.typography.titleSmall)
       Sentence(state)
       Status(state, rinSpeaking, micLevel)
-      Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+      // Top-aligned and scrollable: a long sentence's chips must never end up out of reach (smoke ring, 2026-09-29:
+      // centred rows taller than this box lost their top row, and the sentence could not be finished).
+      Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
         if (state.phase == RepeatPhase.TAPPING) Chips(state, onTapWord)
       }
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -189,7 +194,8 @@ private fun Status(state: RepeatState, rinSpeaking: Boolean, micLevel: Float) {
       )
     }
   }
-  ListenBar(state)
+  // Only while there is something to listen to: in the chips its row is theirs.
+  if (state.phase != RepeatPhase.TAPPING) ListenBar(state)
 }
 
 /** Drains over the try's time limit while the mic is open. */
@@ -219,15 +225,16 @@ private fun Chips(state: RepeatState, onTapWord: (Int) -> Unit) {
   }
   FlowRow(
     Modifier.fillMaxWidth().graphicsLayer { translationX = shake.value }.testTag(REPEAT_CHIPS_TAG),
-    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+    verticalArrangement = Arrangement.spacedBy(6.dp),
   ) {
     state.chips.forEachIndexed { i, chip ->
       OutlinedButton(
         onClick = { onTapWord(i) },
         enabled = !chip.used,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
         modifier =
-          Modifier.heightIn(min = 52.dp).alpha(if (chip.used) 0f else 1f).then(if (chip.used) Modifier.clearAndSetSemantics {} else Modifier),
+          Modifier.heightIn(min = 44.dp).alpha(if (chip.used) 0f else 1f).then(if (chip.used) Modifier.clearAndSetSemantics {} else Modifier),
       ) {
         Text(chip.text, style = MaterialTheme.typography.titleMedium)
       }
@@ -235,7 +242,8 @@ private fun Chips(state: RepeatState, onTapWord: (Int) -> Unit) {
   }
 }
 
-private val CARD_HEIGHT = 300.dp
+/** Fits two rows of chips under a two-line sentence (8 words at most, RepeatGameTest). */
+private val CARD_HEIGHT = 320.dp
 
 internal const val REPEAT_START_TAG = "ring_repeat_start"
 internal const val REPEAT_AGAIN_TAG = "ring_repeat_again"

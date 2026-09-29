@@ -60,6 +60,8 @@ enum class RingEventType {
   TONE_FULL,
   /** The ring screen swapped the game ("Can't talk right now" in Repeat after Rin); detail from=, to=, reason=. */
   MISSION_SWITCHED,
+  /** The ring ended (snooze, emergency hold, auto-stop) with its mission still running; detail is how far it got. */
+  MISSION_UNFINISHED,
 }
 
 /** Append-only log of alarm events: the evidence for the 14-night reliability run and for Diagnostics. */

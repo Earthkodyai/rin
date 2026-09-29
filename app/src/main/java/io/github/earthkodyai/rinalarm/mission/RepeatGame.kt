@@ -70,27 +70,53 @@ object RepeatMatcher {
   /**
    * Common spoken words and fillers, none of them unusual: with only the sentence's words in the grammar, Vosk would
    * force any sound into them. Frozen with the rules; each must be in the model's vocabulary (the lab logs misses).
+   * No decoy may sound like a pool word ([HOMOPHONES]): smoke ring 2, "two" took the "to" of "ready to start".
    */
   val DECOYS: List<String> =
     listOf(
       "yes", "no", "okay", "what", "where", "when", "why", "how", "who", "this", "that", "it", "is", "are", "was",
       "were", "be", "do", "does", "did", "go", "get", "got", "come", "can", "could", "would", "should", "will", "want",
-      "need", "know", "think", "like", "just", "really", "very", "not", "oh", "um", "uh", "hmm", "hello", "hi", "hey",
+      "need", "think", "like", "just", "really", "very", "not", "oh", "um", "uh", "hmm", "hello", "hi", "hey",
       "right", "yeah", "well", "so", "but", "or", "if", "there", "here", "they", "we", "you", "he", "she", "them",
-      "me", "my", "one", "two", "three", "more", "some", "all", "out", "in", "on", "at", "off", "over", "after",
+      "me", "my", "one", "three", "more", "some", "all", "out", "in", "on", "at", "off", "over", "after",
       "before", "still", "only", "about", "with", "from", "into", "sleep", "five", "minutes",
     )
 
-  /** Vosk's grammar for one sentence: its words, the decoys, and [unk] for anything else. */
-  fun grammar(sentence: Sentence, rules: MatchRules): List<String> =
-    (sentence.words + (if (rules.decoys) DECOYS else emptyList())).distinct() + "[unk]"
+  /** Words that sound alike, checked against the decoys by RepeatGameTest. */
+  val HOMOPHONES: List<Set<String>> =
+    listOf(
+      setOf("to", "two", "too"), setOf("for", "four"), setOf("no", "know"), setOf("one", "won"), setOf("right", "write"),
+      setOf("here", "hear"), setOf("there", "their"), setOf("be", "bee"), setOf("by", "buy", "bye"), setOf("i", "eye"),
+      setOf("some", "sum"), setOf("our", "hour"), setOf("wait", "weight"), setOf("so", "sew"), setOf("in", "inn"),
+      setOf("see", "sea"), setOf("new", "knew"), setOf("hi", "high"), setOf("ate", "eight"), setOf("made", "maid"),
+    )
+
+  /**
+   * Contractions and their long forms count as the same words, both ways: "I am ready" said as "I'm ready" passes
+   * (smoke ring 2: "I'm" was not in the grammar, and Vosk forced it into "are" and "oh").
+   */
+  val CONTRACTIONS: Map<String, List<String>> =
+    mapOf("i'm" to listOf("i", "am"), "let's" to listOf("let", "us"), "don't" to listOf("do", "not"))
+
+  /** [words] with every contraction written out, so either form of a sentence compares word for word. */
+  fun expand(words: List<String>): List<String> = words.flatMap { CONTRACTIONS[it] ?: listOf(it) }
+
+  /** Vosk's grammar for one sentence: its words in both forms, the decoys, and [unk] for anything else. */
+  fun grammar(sentence: Sentence, rules: MatchRules): List<String> {
+    val long = expand(sentence.words)
+    val short = CONTRACTIONS.filter { (_, parts) -> long.windowed(parts.size).contains(parts) }.keys
+    return (sentence.words + long + short + (if (rules.decoys) DECOYS else emptyList())).distinct() + "[unk]"
+  }
 
   fun needed(words: Int, rules: MatchRules): Int = ceil(rules.minCoverage * words - 1e-6).toInt().coerceIn(1, maxOf(words, 1))
 
-  /** The longest in-order run of the sentence's words among the confident heard words (LCS). */
+  /**
+   * The longest in-order run of the sentence's words among the confident heard words (LCS), contractions written
+   * out on both sides.
+   */
   fun match(sentence: Sentence, heard: Heard, rules: MatchRules): Match {
-    val want = sentence.words
-    val got = heard.words.filter { it.conf >= rules.minConf }.map { Sentence.normalize(it.word) }
+    val want = expand(sentence.words)
+    val got = expand(heard.words.filter { it.conf >= rules.minConf }.map { Sentence.normalize(it.word) })
     val lcs = Array(want.size + 1) { IntArray(got.size + 1) }
     for (i in want.indices) {
       for (j in got.indices) {

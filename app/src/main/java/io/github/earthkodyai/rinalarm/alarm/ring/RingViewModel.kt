@@ -363,6 +363,11 @@ constructor(
   }
 
   private fun onRingEnded() {
+    // How far the game got, for a ring that stopped some other way: a miss the user gave up on is still data.
+    val ring = state.value.ring
+    if (ring != null && mission != null && !state.value.passed && !state.value.missionFailed) {
+      log(RingEventType.MISSION_UNFINISHED, ring, "type=${mission?.type?.stored} tookMs=${clock.now() - missionStartedAt}" + summary())
+    }
     stopMission()
     if (state.value.ring == null) return
     if (!state.value.passed) {

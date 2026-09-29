@@ -49,7 +49,30 @@ class RepeatGameTest {
     assertEquals(listOf("let's", "check", "the", "weather", "outside"), g.take(5))
     assertEquals("[unk]", g.last())
     assertEquals(g.size, g.toSet().size)
-    assertEquals(listOf("let's", "check", "the", "weather", "outside", "[unk]"), RepeatMatcher.grammar(s, MatchRules(decoys = false)))
+    // Both forms of a contraction, so "let us check" is heard too.
+    assertEquals(
+      listOf("let's", "check", "the", "weather", "outside", "let", "us", "[unk]"),
+      RepeatMatcher.grammar(s, MatchRules(decoys = false)),
+    )
+    assertEquals(
+      listOf("i", "am", "ready", "i'm", "[unk]"),
+      RepeatMatcher.grammar(Sentence("Y", "I am ready."), MatchRules(decoys = false)),
+    )
+  }
+
+  @Test
+  fun contractions_matchTheirLongForms_bothWays() {
+    val m = MatchRules(minConf = 0.6f, minCoverage = 1f)
+    assertTrue(RepeatMatcher.match(Sentence("A", "I am ready to start the day."), said("i'm", "ready", "to", "start", "the", "day"), m).accepted)
+    assertTrue(RepeatMatcher.match(Sentence("B", "I'm getting out of bed now."), said("i", "am", "getting", "out", "of", "bed", "now"), m).accepted)
+  }
+
+  @Test
+  fun noDecoy_soundsLikeAPoolWord() {
+    val poolWords = pool.flatMap { RepeatMatcher.expand(it.words) }.toSet()
+    val clashes =
+      poolWords.flatMap { w -> RepeatMatcher.HOMOPHONES.filter { w in it }.flatMap { it - w } }.filter { it in RepeatMatcher.DECOYS }
+    assertEquals(emptyList<String>(), clashes)
   }
 
   @Test

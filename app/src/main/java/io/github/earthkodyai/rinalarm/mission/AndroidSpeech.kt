@@ -141,7 +141,9 @@ class VoskListener(private val context: Context, private val models: VoskModels)
           levelState.value = levelOf(decoder.lastPeak)
           if (done) break
         }
-        decoder.heard()
+        decoder.heard().also { h ->
+          Log.d(TAG, "heard ${h.words.joinToString(" ") { "${it.word}:${"%.2f".format(it.conf)}" }} lag=${h.lagMs} peakDb=${h.peakDb}")
+        }
       } finally {
         levelState.value = 0f
         runCatching { record.stop() }
@@ -156,6 +158,7 @@ class VoskListener(private val context: Context, private val models: VoskModels)
   }
 
   companion object {
+    private const val TAG = "RinSpeech"
     const val RATE = 16_000
     private val json = Json { ignoreUnknownKeys = true }
 
