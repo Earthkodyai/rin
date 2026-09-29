@@ -1,9 +1,9 @@
-# STATUS — 2026-09-30 (Phase 1: 14-night run pending · Phase 2: done on the VRoid sample · **Phase 3: done** (3.7 simulated run 10/10) · next: Phase 4)
+# STATUS — 2026-09-30 (Phase 1: 14-night run pending · Phase 2: done on the VRoid sample · **Phase 3: done** (3.7 simulated run 10/10) · **Phase 4 planned (D20), 4.1 next**)
 
 Phase 1: tasks done; **14-night run** pending (Diagnostics card, Strict daily; set one alarm repeating every day — none enabled). Ends at 14/14 + green CI (needs the remote; 0.4 accounts on the user).
 Phase 2 **done 2026-09-28** on the VRoid sample. **Your model still pending** (`rin.model=<path>` in local.properties; ❓ edits in `docs/character/character-sheet.md`); when it lands: `./gradlew checkGestures -PwriteBody` → build → `./gradlew checkGestures` → `tools/character/phase-exit.sh`, re-check hands (`npm run dev`), gaze (`aimCamera`, 3.7 finding 1) and the pads hand still (thumb, finding 2).
 ## Next
-- **Phase 4** (voice + offline dialogue): docs/plan/phase-4.md. Needs the paid ElevenLabs month (Rin soft) — ask before paying.
+- **Phase 4 (D20), next = 4.1:** script bible + ~300 lines (I draft, the user reviews; count characters against 30,000 credits). Then 4.2 offline dialogue with subtitles, **4.3 the paid month (the user buys and cancels ElevenLabs Starter ~$6 themselves)**, 4.4 exit. Rin talks: a short greeting at ring start, then 1–2 turns after the game on the celebration screen (skippable). docs/plan/phase-4.md.
 - **Open from Phase 3 (recorded limits, D19):** 4 remaining held-out cup rings (6/6 so far, bar 9/10); dark rings for cups and Repeat after Rin; no real-morning data. 3.5: 2–3 other people should record the held-out protocol (`RepeatLabActivity --es set heldout`, scored by `tools/stt/pc_replay.py`).
 - **Résumé gaps:** GitHub account (0.4) so the repo gets a remote and CI goes green; start the 14-night run.
 ## Done
