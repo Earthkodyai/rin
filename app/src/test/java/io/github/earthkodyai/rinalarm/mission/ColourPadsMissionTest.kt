@@ -62,7 +62,7 @@ class ColourPadsMissionTest {
     assertEquals(MissionState.PASSED, m.progress.value.state)
     assertEquals(3, m.progress.value.done)
     assertEquals(1 + 3 + 4 + 5, m.progress.value.activity)
-    assertTrue(m.summary(), m.summary().startsWith("game=colour_pads rounds=3/3 mistakes=0 timeouts=0 rightTaps=12 seed=5"))
+    assertTrue(m.summary(), m.summary().startsWith("game=colour_pads rounds=3/3 mistakes=0 timeouts=0 rightTaps=12 earlyTaps=0 seed=5"))
   }
 
   @Test

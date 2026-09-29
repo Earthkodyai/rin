@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,10 +37,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -87,7 +94,8 @@ internal fun PadsBoard(
 ) {
   val rules = remember { PadsRules() }
   BoxWithConstraints(
-    modifier.clipToBounds().background(MaterialTheme.colorScheme.surface).testTag(PADS_BOARD_TAG),
+    // The ring screen's own colour, no panel: the pads sit on the page like the card below (the user's pick).
+    modifier.clipToBounds().background(MaterialTheme.colorScheme.primaryContainer).testTag(PADS_BOARD_TAG),
     contentAlignment = Alignment.Center,
   ) {
     val side = minOf(maxWidth, maxHeight)
@@ -114,28 +122,39 @@ internal fun PadsBoard(
     val x by animateDpAsState(tipX - handWidth / 2, move, label = "handX")
     val y by animateDpAsState(tipY - handHeight, if (state.pressing) tween(90) else move, label = "handY")
     val scale by animateFloatAsState(if (state.pressing) 0.95f else 1f, tween(90), label = "handPress")
-    hand(
-      Modifier.align(Alignment.TopStart)
-        .offset { IntOffset(x.roundToPx(), y.roundToPx()) }
-        .size(handWidth, handHeight)
-        .graphicsLayer {
-          scaleX = scale
-          scaleY = scale
-          transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+    // Her forearm fades in over the top fifth instead of being cut by an edge nobody can see.
+    Box(
+      Modifier.fillMaxSize()
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+          drawContent()
+          drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.2f to Color.Black), blendMode = BlendMode.DstIn)
         }
-    )
+    ) {
+      hand(
+        Modifier.align(Alignment.TopStart)
+          .offset { IntOffset(x.roundToPx(), y.roundToPx()) }
+          .size(handWidth, handHeight)
+          .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            transformOrigin = TransformOrigin(0.5f, 1f)
+          }
+      )
+    }
   }
 }
 
 @Composable
 private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Unit, modifier: Modifier) {
   val colour = PAD_COLOURS.getValue(pad)
-  val alpha by animateFloatAsState(if (lit) 1f else 0.38f, tween(if (lit) 40 else 180), label = "padLit")
+  // Unlit pads are a solid darker shade (not see-through), so the screen's blue never tints them.
+  val dim by animateFloatAsState(if (lit) 0f else 0.55f, tween(if (lit) 40 else 180), label = "padLit")
   val name = stringResource(PAD_NAMES.getValue(pad))
   val shape = RoundedCornerShape(24.dp)
   Box(
     modifier
-      .background(colour.copy(alpha = alpha), shape)
+      .background(lerp(colour, Color.Black, dim), shape)
       .then(if (lit) Modifier.border(4.dp, Color.White, shape) else Modifier)
       .pointerInput(enabled) { if (enabled) detectTapGestures(onPress = { onTap(pad) }) }
       .semantics {
@@ -232,16 +251,32 @@ internal fun RinHand(modifier: Modifier) {
     DrawnHand(modifier)
   } else {
     Box(modifier) {
+      // Sized to the image itself, so the fade starts at the image's own top edge wherever the hand is.
       Image(
         bitmap,
         contentDescription = null,
-        contentScale = ContentScale.FillWidth,
-        alignment = Alignment.BottomCenter,
-        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.FillBounds,
+        modifier =
+          Modifier.align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .aspectRatio(bitmap.width.toFloat() / bitmap.height)
+            .fadeTop(),
       )
     }
   }
 }
+
+/**
+ * The top [fraction] of what this draws fades in from transparent: the rendered arm ends at the image's top edge,
+ * which on the lower pads sits in the middle of the screen, so without it the cut shows as a hard line (the user's
+ * report, dev-2).
+ */
+internal fun Modifier.fadeTop(fraction: Float = 0.45f): Modifier =
+  graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+      drawContent()
+      drawRect(Brush.verticalGradient(0f to Color.Transparent, fraction to Color.Black), blendMode = BlendMode.DstIn)
+    }
 
 /**
  * A plain drawn hand for builds without a model: her right hand from above, palm down, pointing at the user. The
@@ -250,7 +285,7 @@ internal fun RinHand(modifier: Modifier) {
  */
 @Composable
 internal fun DrawnHand(modifier: Modifier) {
-  Canvas(modifier) {
+  Canvas(modifier.fadeTop(0.3f)) {
     val w = size.width
     val skin = Color(0xFFF2CBB0)
     val line = Color(0xFF8A6552)

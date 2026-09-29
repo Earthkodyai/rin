@@ -105,6 +105,7 @@ class ColourPadsMission(
     val s = play.state
     val rounds = if (s.phase == PadsPhase.PASSED) s.rounds else s.round
     return "game=colour_pads rounds=$rounds/${s.rounds} mistakes=${s.mistakes} timeouts=${s.timeouts} " +
-      "rightTaps=$rightTaps seed=$seed"
+      "rightTaps=$rightTaps earlyTaps=${s.earlyTaps} seed=$seed" +
+      play.missTrace().let { if (it.isEmpty()) "" else " misses=$it" }
   }
 }

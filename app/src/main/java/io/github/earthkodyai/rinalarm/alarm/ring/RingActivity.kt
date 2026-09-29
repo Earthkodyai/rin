@@ -100,6 +100,17 @@ class RingActivity : ComponentActivity() {
       }
     }
   }
+
+  // A plain startService: the service is already in the foreground while it rings; after the ring it ignores these.
+  override fun onStart() {
+    super.onStart()
+    runCatching { startService(RingService.screenIntent(this, shown = true)) }
+  }
+
+  override fun onStop() {
+    runCatching { startService(RingService.screenIntent(this, shown = false)) }
+    super.onStop()
+  }
 }
 
 @Composable

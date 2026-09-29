@@ -43,6 +43,16 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
           lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
     )
+    // The same ring while its page is on screen: no heads-up over the game (task 3.3 found HyperOS keeping the
+    // full-screen heads-up over the top pads for the whole ring when the screen was already on).
+    manager.createNotificationChannel(
+      NotificationChannel(CHANNEL_RING_SCREEN, context.getString(R.string.channel_ring_screen), NotificationManager.IMPORTANCE_LOW)
+        .apply {
+          setSound(null, null)
+          enableVibration(false)
+          lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        }
+    )
     manager.createNotificationChannel(
       NotificationChannel(CHANNEL_MISSED, context.getString(R.string.channel_missed), NotificationManager.IMPORTANCE_DEFAULT)
     )
@@ -52,8 +62,11 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
    * The ring service's foreground notification. Its full-screen intent opens RingActivity over the lock screen. If
    * the full-screen permission is off (HyperOS turns it off for sideloaded apps, S1) Android shows it as a heads-up
    * notification instead; the sound never depends on it.
+   *
+   * [onScreen]: the ring page is showing, so the same notification is reposted quietly, without a full-screen intent
+   * or a heads-up to cover the page.
    */
-  fun ringing(ring: ActiveRing): Notification {
+  fun ringing(ring: ActiveRing, onScreen: Boolean = false): Notification {
     val request = ring.request
     val fullScreen =
       PendingIntent.getActivity(
@@ -64,18 +77,19 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
     val builder =
-      NotificationCompat.Builder(context, CHANNEL_RINGING)
+      NotificationCompat.Builder(context, if (onScreen) CHANNEL_RING_SCREEN else CHANNEL_RINGING)
         .setSmallIcon(R.drawable.ic_stat_alarm)
         .setContentTitle(request.label.ifBlank { context.getString(R.string.ring_default_label) })
         .setContentText(
           request.time.format(timeFormat) + if (request.late) " · " + context.getString(R.string.ring_late) else ""
         )
         .setCategory(NotificationCompat.CATEGORY_ALARM)
-        .setPriority(NotificationCompat.PRIORITY_MAX)
+        .setPriority(if (onScreen) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_MAX)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setOngoing(true)
-        .setFullScreenIntent(fullScreen, true)
+        .setOnlyAlertOnce(onScreen)
         .setContentIntent(fullScreen)
+    if (!onScreen) builder.setFullScreenIntent(fullScreen, true)
     if (request.snoozesLeft > 0) {
       builder.addAction(0, context.getString(R.string.ring_snooze), serviceAction(RingService.snoozeIntent(context), 1))
     }
@@ -119,6 +133,7 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
 
   companion object {
     const val CHANNEL_RINGING = "ringing"
+    const val CHANNEL_RING_SCREEN = "ring_screen"
     const val CHANNEL_MISSED = "missed"
     const val RINGING_ID = 1
     private const val MISSED_ID_BASE = 1000

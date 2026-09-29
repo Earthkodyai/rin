@@ -22,7 +22,8 @@ enum class Pad {
  *
  * @property moveMs Rin's hand gliding onto the next pad (from above the grid for the first one).
  * @property pressMs the pad lit and its note playing under her finger.
- * @property exitMs her hand leaving the grid after the last press; the user's first 3 s start after it.
+ * @property exitMs her hand leaving the grid after the last press. The user may already answer while it leaves (dev-3:
+ *   taps in that gap were ignored, so the next right tap read as wrong); it is added to their first tap's time.
  * @property scoldMs how long the screen stays on Rin after a miss before a new sequence.
  */
 data class PadsRules(
@@ -88,6 +89,8 @@ data class PadsState(
   val flash: Int = 0,
   /** PadsRules.tapTimeoutMs, for the ring screen's countdown bar. */
   val tapTimeoutMs: Long = 3_000,
+  /** Taps while Rin was still showing the sequence (ignored, logged). */
+  val earlyTaps: Int = 0,
 )
 
 /**
@@ -96,7 +99,8 @@ data class PadsState(
  * it: [tick] at [PadsState.nextAt], [tap] on a pad.
  *
  * A demo, for a sequence of n: step i glides for [PadsRules.moveMs] and then presses for [PadsRules.pressMs]; after
- * the last step the hand leaves for [PadsRules.exitMs]. Then the user has [PadsRules.tapTimeoutMs] for each tap.
+ * the last press the user may answer: the first tap gets [PadsRules.exitMs] (her hand leaving) plus
+ * [PadsRules.tapTimeoutMs], each later tap [PadsRules.tapTimeoutMs]. Taps during the demo are ignored and counted.
  */
 class PadsGame(
   private val rules: PadsRules = PadsRules(),
@@ -111,6 +115,15 @@ class PadsGame(
   private var flashUntil: Long? = null
   private var inputDeadline = 0L
   private val lastLine = mutableMapOf<Miss, Int>()
+  /** When the user's current wait began: the answer window opening, or their last right tap. */
+  private var waitFrom = 0L
+  private val misses = mutableListOf<String>()
+
+  /**
+   * Every miss so far, for the log: `W2.3:RED/BLUE+850` is a wrong tap in round 2 on the 3rd pad, RED tapped where
+   * BLUE was due, 850 ms into the wait; `S1.1` a timeout on round 1's first pad. Lets a "that was right!" be checked.
+   */
+  fun missTrace(): String = misses.joinToString(",")
 
   /** "Let's play": the first demo starts. Ignored once the game is under way. */
   fun start(now: Long): PadsState {
@@ -120,12 +133,15 @@ class PadsGame(
 
   fun tap(pad: Pad, now: Long): PadsState {
     val s = state
+    if (s.phase == PadsPhase.DEMO) return set(s.copy(earlyTaps = s.earlyTaps + 1))
     if (s.phase != PadsPhase.INPUT) return s
     // A tap after the deadline is a timeout that tick() has not caught yet (the timer runs late under load).
     if (now >= inputDeadline) return tick(now)
     if (pad != s.sequence[s.entered]) {
+      misses += "W${s.round + 1}.${s.entered + 1}:$pad/${s.sequence[s.entered]}+${now - waitFrom}"
       return set(scold(s, Miss.WRONG, now))
     }
+    waitFrom = now
     val entered = s.entered + 1
     if (entered < s.sequence.size) {
       inputDeadline = now + rules.tapTimeoutMs
@@ -148,7 +164,10 @@ class PadsGame(
       PadsPhase.DEMO -> set(demoAt(s, now))
       PadsPhase.INPUT ->
         when {
-          now >= inputDeadline -> set(scold(s, Miss.SLOW, now))
+          now >= inputDeadline -> {
+            misses += "S${s.round + 1}.${s.entered + 1}"
+            set(scold(s, Miss.SLOW, now))
+          }
           else -> {
             val flashing = flashUntil?.let { now < it } == true
             if (!flashing) flashUntil = null
@@ -184,9 +203,10 @@ class PadsGame(
     val t = now - demoStart
     val i = (t / step).toInt()
     if (i >= s.sequence.size) {
+      // Her turn is over as her last press ends: the hand leaves while the user may already answer.
       val end = demoStart + s.sequence.size * step
-      if (now < end + rules.exitMs) return s.copy(hand = null, pressing = false, lit = null, nextAt = end + rules.exitMs)
-      inputDeadline = now + rules.tapTimeoutMs
+      waitFrom = end
+      inputDeadline = end + rules.exitMs + rules.tapTimeoutMs
       return s.copy(phase = PadsPhase.INPUT, hand = null, pressing = false, lit = null, nextAt = inputDeadline)
     }
     val stepStart = demoStart + i * step

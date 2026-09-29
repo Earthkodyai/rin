@@ -56,17 +56,31 @@ class PadsGameTest {
     assertEquals(sequence, lit)
     assertNull(g.state.hand)
     assertNull(g.state.lit)
-    val demoMs = 3 * (rules.moveMs + rules.pressMs) + rules.exitMs
+    // Her turn ends with her last press; her hand's exit is added to the user's first tap.
+    val demoMs = 3 * (rules.moveMs + rules.pressMs)
     assertEquals(10_000L + demoMs, now)
+    assertEquals(now + rules.exitMs + rules.tapTimeoutMs, g.state.nextAt)
   }
 
   @Test
-  fun tapsDuringTheDemo_areIgnored() {
+  fun aTapAsHerHandLeaves_counts() {
+    // dev-3: the user answered while her hand was still leaving; that tap was dropped and the next right one read as
+    // wrong.
+    val g = game()
+    g.start(now)
+    g.runUntil(PadsPhase.INPUT)
+    g.tap(g.state.sequence[0], now + 50)
+    assertEquals(1, g.state.entered)
+    assertEquals(0, g.state.mistakes)
+  }
+
+  @Test
+  fun tapsDuringTheDemo_areIgnored_andCounted() {
     val g = game()
     g.start(now)
     val before = g.state
     g.tap(g.state.sequence.first(), now + 100)
-    assertEquals(before, g.state)
+    assertEquals(before.copy(earlyTaps = 1), g.state)
   }
 
   @Test
@@ -95,6 +109,7 @@ class PadsGameTest {
     val wrong = Pad.entries.first { it != first[0] }
 
     g.tap(wrong, now + 200)
+    assertEquals("W2.1:$wrong/${first[0]}+200", g.missTrace())
 
     assertEquals(PadsPhase.SCOLD, g.state.phase)
     assertEquals(Miss.WRONG, g.state.miss)
@@ -112,7 +127,7 @@ class PadsGameTest {
     val g = game()
     g.start(now)
     g.runUntil(PadsPhase.INPUT)
-    val handedOver = now
+    val handedOver = now + rules.exitMs // her hand gone: the plain 3 s from here
     assertEquals(handedOver + rules.tapTimeoutMs, g.state.nextAt)
 
     now = handedOver + 2_900
@@ -125,6 +140,7 @@ class PadsGameTest {
     assertEquals(Miss.SLOW, g.state.miss)
     assertEquals(1, g.state.timeouts)
     assertEquals(0, g.state.mistakes)
+    assertEquals("S1.2", g.missTrace())
   }
 
   @Test
@@ -132,7 +148,7 @@ class PadsGameTest {
     val g = game()
     g.start(now)
     g.runUntil(PadsPhase.INPUT)
-    g.tap(g.state.sequence[0], now + rules.tapTimeoutMs)
+    g.tap(g.state.sequence[0], now + rules.exitMs + rules.tapTimeoutMs)
     assertEquals(Miss.SLOW, g.state.miss)
   }
 

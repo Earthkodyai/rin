@@ -43,6 +43,7 @@
     <string name="repeat_weekdays">Weekdays</string>
     <string name="repeat_weekend">Weekends</string>
     <string name="channel_ringing">Ringing alarm</string>
+    <string name="channel_ring_screen">Ringing alarm (page open)</string>
     <string name="channel_missed">Missed alarms</string>
     <string name="ring_default_label">Alarm</string>
     <string name="ring_late">late</string>

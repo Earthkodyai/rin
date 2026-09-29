@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
 import android.annotation.SuppressLint
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -89,6 +90,7 @@ class RingService : Service() {
       ACTION_RING -> startRinging(RingRequest.from(intent))
       ACTION_SNOOZE -> snooze()
       ACTION_DISMISS -> dismiss(intent.getStringExtra(EXTRA_SOURCE).orEmpty())
+      ACTION_SCREEN -> onScreen(intent.getBooleanExtra(EXTRA_SHOWN, false))
       else -> if (session == null) stopSelf()
     }
     return START_NOT_STICKY
@@ -265,6 +267,15 @@ class RingService : Service() {
     super.onDestroy()
   }
 
+  /** The ring page came up or went away: the notification stops or starts alerting over it. */
+  private fun onScreen(shown: Boolean) {
+    val ring = ringState.active.value
+    if (session == null || ring == null) return
+    runCatching {
+      getSystemService(NotificationManager::class.java).notify(AlarmNotifications.RINGING_ID, notifications.ringing(ring, shown))
+    }
+  }
+
   private fun startForegroundWith(ring: ActiveRing) {
     val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
@@ -342,6 +353,8 @@ class RingService : Service() {
     private const val ACTION_SNOOZE = "io.github.earthkodyai.rinalarm.action.SNOOZE"
     private const val ACTION_DISMISS = "io.github.earthkodyai.rinalarm.action.DISMISS"
     private const val EXTRA_SOURCE = "source"
+    private const val ACTION_SCREEN = "io.github.earthkodyai.rinalarm.action.SCREEN"
+    private const val EXTRA_SHOWN = "shown"
     /** Dismiss sources that RingActivity sends: the mission passed, the emergency hold, or the plain button. */
     const val SOURCE_MISSION = "mission"
     const val SOURCE_EMERGENCY = "emergency"
@@ -352,6 +365,9 @@ class RingService : Service() {
 
     fun ringIntent(context: Context, request: RingRequest): Intent =
       request.putInto(Intent(context, RingService::class.java).setAction(ACTION_RING))
+
+    fun screenIntent(context: Context, shown: Boolean): Intent =
+      Intent(context, RingService::class.java).setAction(ACTION_SCREEN).putExtra(EXTRA_SHOWN, shown)
 
     fun snoozeIntent(context: Context): Intent = Intent(context, RingService::class.java).setAction(ACTION_SNOOZE)
 
