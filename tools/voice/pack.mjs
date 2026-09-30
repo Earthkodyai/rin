@@ -8,7 +8,7 @@
 //                                             retaken up to --retakes times and the best one is kept
 //   node pack.mjs redo <id,id...>             one more take for clips the user marked on the listening page
 //   node pack.mjs pick <id> <take>            keep an earlier take instead
-//   node pack.mjs build                       chosen takes -> trim, -16 LUFS / -2 dBTP, 10 ms fades, MP3 96 kb/s mono,
+//   node pack.mjs build                       chosen takes -> trim, gain to -16 LUFS + limiter, 10 ms fades, MP3 96 kb/s mono,
 //                                             mouth track; then writes qa.json for the listening page (qa.html)
 //   node pack.mjs import <dir>                dry run: use <dir>/<id>.mp3 as take 1 (no API, no credits)
 // Options: --pack <dir> (default tools/voice/pack, git-ignored). Key: ELEVENLABS_API_KEY or spikes/s4-voice/.env;
@@ -29,7 +29,7 @@ export const MODEL = 'eleven_v3';
 const FORMAT = 'mp3_44100_128';
 /** Same read as the 3.5 debug clips: the user repeats it word for word. */
 const REPEAT_TAG = '[warmly]';
-export const LOUDNESS = { I: -16, TP: -2, LRA: 11 };
+export const LOUDNESS = { I: -16, TP: -2 };
 /** What a built clip must measure: loudness within 1 LU of -16, true peak (after MP3) at or under -1 dBTP. */
 export const BAR = { lu: 1, tp: -1 };
 
@@ -72,9 +72,6 @@ function ffmpeg(bin, argv) {
   return r.stderr;
 }
 
-/** The last {...} block ffmpeg's loudnorm prints. */
-const loudnormJson = (log) => JSON.parse(log.slice(log.lastIndexOf('{'), log.lastIndexOf('}') + 1));
-
 class Pack {
   constructor(dir) {
     this.dir = dir;
@@ -110,7 +107,7 @@ class Pack {
   }
 }
 
-class Eleven {
+export class Eleven {
   constructor(maxCredits) {
     this.key = secret('ELEVENLABS_API_KEY', join(S4, '.env'), (s) =>
       s.split(/\r?\n/).find((l) => l.startsWith('ELEVENLABS_API_KEY='))?.split('=')[1].trim());
@@ -164,6 +161,21 @@ async function gen(pack, list, { retakes, maxCredits, redo }) {
   console.log(`credits this run: ${api.spent}`);
 }
 
+/** Integrated loudness (LUFS) and true peak (dBTP) by ffmpeg's EBU R128 meter, the same meter for input and output. */
+function meter(bin, file) {
+  const v = ffmpeg(bin, ['-i', file, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
+  const summary = v.slice(v.lastIndexOf('Summary:'));
+  return {
+    lufs: Number(summary.match(/I:\s+(-?[\d.]+) LUFS/)[1]),
+    tp: Number(summary.match(/Peak:\s+(-?[\d.]+|-inf) dBFS/)[1]),
+  };
+}
+
+// Plain gain to -16 LUFS, then a look-ahead limiter only for the peaks that gain pushes past the ceiling. The first
+// build used loudnorm, which left 3 clips 1.3-2.2 LU quiet and fell back to its dynamic mode (a pumping compressor)
+// on 13 (2026-09-30).
+const LIMIT_DB = LOUDNESS.TP - 0.5;
+
 function build(pack, list) {
   const bin = ffmpegPath();
   const out = join(pack.dir, 'out');
@@ -172,7 +184,7 @@ function build(pack, list) {
   mkdirSync(tmp, { recursive: true });
   const trim = 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.08,areverse,' +
     'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.15,areverse';
-  const target = `I=${LOUDNESS.I}:TP=${LOUDNESS.TP}:LRA=${LOUDNESS.LRA}`;
+  const limit = 10 ** (LIMIT_DB / 20);
   const results = [];
   for (const c of list) {
     const e = pack.state[c.id];
@@ -181,29 +193,35 @@ function build(pack, list) {
     const wav = join(tmp, `${c.id}.wav`);
     ffmpeg(bin, ['-i', join(pack.dir, take.file), '-af', trim, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', wav]);
     const dur = (readFileSync(wav).length - 44) / 2 / 44100;
-    const m = loudnormJson(ffmpeg(bin, ['-i', wav, '-af', `loudnorm=${target}:print_format=json`, '-f', 'null', '-']));
-    const measured = `measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:` +
-      `measured_thresh=${m.input_thresh}:offset=${m.target_offset}`;
+    const input = meter(bin, wav);
     const mp3 = join(out, `${outPath(c)}.mp3`);
-    const n = loudnormJson(ffmpeg(bin, ['-i', wav, '-af',
-      `loudnorm=${target}:${measured}:linear=true:print_format=json,` +
-      `afade=t=in:d=0.01,afade=t=out:st=${Math.max(0, dur - 0.01).toFixed(3)}:d=0.01`,
-      '-ar', '44100', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '96k', mp3]));
-    const v = ffmpeg(bin, ['-i', mp3, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
-    const summary = v.slice(v.lastIndexOf('Summary:'));
-    const lufs = Number(summary.match(/I:\s+(-?[\d.]+) LUFS/)[1]);
-    const tp = Number(summary.match(/Peak:\s+(-?[\d.]+|-inf) dBFS/)[1]);
-    const ok = Math.abs(lufs - LOUDNESS.I) <= BAR.lu && tp <= BAR.tp;
-    results.push({ c, take, dur: +dur.toFixed(2), lufs, tp, mode: n.normalization_type, ok });
+    let gain = LOUDNESS.I - input.lufs;
+    let m;
+    // The limiter takes a little loudness off the loudest clips, so a second pass tops the gain up.
+    for (let pass = 0; pass < 3; pass++) {
+      ffmpeg(bin, ['-i', wav, '-af',
+        `volume=${gain.toFixed(2)}dB,alimiter=limit=${limit.toFixed(4)}:level=0:attack=5:release=50:latency=1,` +
+        `afade=t=in:d=0.01,afade=t=out:st=${Math.max(0, dur - 0.01).toFixed(3)}:d=0.01`,
+        '-ar', '44100', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '96k', mp3]);
+      m = meter(bin, mp3);
+      if (Math.abs(m.lufs - LOUDNESS.I) <= 0.3) break;
+      gain += LOUDNESS.I - m.lufs;
+    }
+    const limited = input.tp + gain > LIMIT_DB;
+    const ok = Math.abs(m.lufs - LOUDNESS.I) <= BAR.lu && m.tp <= BAR.tp;
+    results.push({ c, take, dur: +dur.toFixed(2), lufs: m.lufs, tp: m.tp, gain: +gain.toFixed(2), mode: limited ? 'limited' : 'gain', ok });
   }
   return results;
 }
+
+/** Vowel shapes are on for Rin's own voice: 18/20 held-out words (bar 60%), eval/results-test-rin.json. */
+export const SHAPES_ON = true;
 
 async function mouths(pack, results) {
   for (const r of results) {
     const base = join(pack.dir, 'out', outPath(r.c));
     const { samples, rate } = await readAudio(`${base}.mp3`);
-    writeFileSync(`${base}.mouth.json`, JSON.stringify(mouthTrack(samples, rate)) + '\n');
+    writeFileSync(`${base}.mouth.json`, JSON.stringify(mouthTrack(samples, rate, { shapes: SHAPES_ON })) + '\n');
   }
 }
 
@@ -267,8 +285,8 @@ async function main() {
     const flagged = rows.filter((r) => r.flags.length && r.take);
     console.log(`built ${results.length}/${all.length}; loudness off the bar: ${off.map((r) => `${r.c.id} (${r.lufs} LUFS, ${r.tp} dBTP)`).join(', ') || 'none'}`);
     console.log(`still flagged after retakes: ${flagged.map((r) => `${r.id} ${r.flags}`).join('; ') || 'none'}`);
-    const dyn = results.filter((r) => r.mode !== 'linear');
-    if (dyn.length) console.log(`loudnorm fell back to dynamic on: ${dyn.map((r) => r.c.id).join(', ')}`);
+    const lim = results.filter((r) => r.mode === 'limited');
+    console.log(`limiter touched peaks on ${lim.length}: ${lim.map((r) => r.c.id).join(', ')}`);
   } else {
     throw new Error('usage: node pack.mjs plan|gen|redo|pick|build|import (see the header)');
   }

@@ -2,6 +2,8 @@
 //   node eval.mjs dev    accuracy on the dev words/voice with the current centroids, plus per-shape formant medians
 //   node eval.mjs fit    writes centroids.json from the dev medians (then frozen)
 //   node eval.mjs test   held-out words and voices, run once after fitting; writes eval/results-test.json
+//   --spec rin           task 4.3: eval/vowels-rin.json on Rin's own voice (clips from make-vowels-rin.mjs, .mp3),
+//                        results in eval/results-test-rin.json
 // A word counts as right when the most common shape over its nucleus (voiced frames with LPC formants, at least half
 // open) is its label. Clips come from eval/make_vowels.py (Kokoro, local; git-ignored).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -9,7 +11,9 @@ import { analyse, classify, SHAPES } from './mouth.mjs';
 import { readAudio } from './audio.mjs';
 
 const here = (p) => new URL(p, import.meta.url);
-const spec = JSON.parse(readFileSync(here('eval/vowels.json'), 'utf8'));
+const specAt = process.argv.indexOf('--spec');
+const suffix = specAt >= 0 ? `-${process.argv.splice(specAt, 2)[1]}` : '';
+const spec = JSON.parse(readFileSync(here(`eval/vowels${suffix}.json`), 'utf8'));
 const mode = process.argv[2];
 if (!['dev', 'fit', 'test'].includes(mode)) throw new Error('usage: node eval.mjs dev|fit|test');
 const split = mode === 'test' ? 'test' : 'dev';
@@ -26,7 +30,8 @@ for (const voice of spec[split].voices) {
   for (const [viseme, list] of Object.entries(spec[split].words)) {
     const label = SHAPE_OF[viseme];
     for (const word of list) {
-      const path = here(`eval/clips/${voice}/${viseme}-${word}.wav`);
+      const path = ['wav', 'mp3'].map((ext) => here(`eval/clips/${voice}/${viseme}-${word}.${ext}`)).find(existsSync) ??
+        here(`eval/clips/${voice}/${viseme}-${word}.wav`);
       if (!existsSync(path)) throw new Error(`missing ${path.pathname}: run eval/make_vowels.py`);
       const { samples, rate } = await readAudio(path.pathname.replace(/^\/([A-Z]:)/, '$1'));
       const nucleus = analyse(samples, rate).filter((f) => f.formants && f.open >= 0.5);
@@ -67,5 +72,5 @@ if (mode === 'fit') {
 }
 if (mode === 'test') {
   const result = { date: new Date().toISOString(), right, total: words.length, confusion, misses, passBar: spec.passBar };
-  writeFileSync(here('eval/results-test.json'), JSON.stringify(result, null, 2) + '\n');
+  writeFileSync(here(`eval/results-test${suffix}.json`), JSON.stringify(result, null, 2) + '\n');
 }

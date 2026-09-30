@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-30T08:30:17.003Z",
+  "right": 18,
+  "total": 20,
+  "confusion": {
+    "a": {
+      "a": 4,
+      "i": 0,
+      "u": 0,
+      "e": 0,
+      "o": 0,
+      "-": 0
+    },
+    "i": {
+      "a": 0,
+      "i": 3,
+      "u": 1,
+      "e": 0,
+      "o": 0,
+      "-": 0
+    },
+    "u": {
+      "a": 0,
+      "i": 0,
+      "u": 3,
+      "e": 1,
+      "o": 0,
+      "-": 0
+    },
+    "e": {
+      "a": 0,
+      "i": 0,
+      "u": 0,
+      "e": 4,
+      "o": 0,
+      "-": 0
+    },
+    "o": {
+      "a": 0,
+      "i": 0,
+      "u": 0,
+      "e": 0,
+      "o": 4,
+      "-": 0
+    }
+  },
+  "misses": [
+    "rin-soft/she i->u",
+    "rin-soft/new u->e"
+  ],
+  "passBar": "held-out word accuracy >= 60% (12/20; chance 20%): a word counts when the most common shape over its loud voiced frames is its label. Pass -> shapes: true in the pack's mouth tracks; fail -> loudness only (as now)."
+}

@@ -170,6 +170,41 @@ val rinModel =
   }
 
 /**
+ * Copies Rin's voice pack (task 4.3, tools/voice/pack.mjs build) into generated assets at voice/rin: `<line id>.mp3`
+ * and `repeat/<id>.mp3`, each with its `.mouth.json`. Like the model, the pack never enters the public repo:
+ * `rin.voice` in local.properties points at the built folder on this PC. Builds without it (CI, clones) have no clips,
+ * and Rin's lines show as subtitles alone.
+ */
+abstract class RinVoiceCopy : DefaultTask() {
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val pack: ConfigurableFileCollection
+
+  @get:Internal abstract val packDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:Inject abstract val fs: FileSystemOperations
+
+  @TaskAction
+  fun copy() {
+    fs.sync {
+      from(packDir) { include("*.mp3", "*.mouth.json", "repeat/*.mp3", "repeat/*.mouth.json") }
+      into(outputDir.dir("voice/rin"))
+    }
+  }
+}
+
+val rinVoice =
+  localProperties.getProperty("rin.voice")?.let { path ->
+    val dir = File(path)
+    require(dir.isDirectory) { "rin.voice in local.properties points at $path, which is not a folder" }
+    tasks.register<RinVoiceCopy>("copyRinVoice") {
+      packDir.set(dir)
+      pack.from(fileTree(dir) { include("*.mp3", "*.mouth.json", "repeat/*.mp3", "repeat/*.mouth.json") })
+      outputDir.set(layout.buildDirectory.dir("generated/rinVoice"))
+    }
+  }
+
+/**
  * Renders the still images (task 2.5): one transparent WebP per mood at character/stills/, drawn by the built page
  * itself in a headless Chrome or Edge (tools/character/render-stills.mjs), so a still matches the live strip. The app
  * shows them while Rin loads and whenever the 3D page cannot run. Like the model, they never enter the repo.
@@ -342,6 +377,7 @@ androidComponents {
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)
     variant.sources.assets?.addGeneratedSourceDirectory(voskModel, VoskModelFetch::outputDir)
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
+    rinVoice?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinVoiceCopy::outputDir) }
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
     if (variant.buildType == "debug") {
       devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }

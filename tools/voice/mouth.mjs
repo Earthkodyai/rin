@@ -4,7 +4,9 @@
 //
 // Mouth *shapes* (VRM visemes aa ih ou ee oh from LPC formants, `shapes: true`) are off by default: on held-out TTS
 // voices they were right for 22/60 words (37%, bar 60%; eval.mjs, 2026-09-28), because one set of vowel centroids
-// does not carry across voices. Phase 4 calibrates them on Rin's own voice and re-tests on a fresh held-out set.
+// does not carry across voices. Task 4.3 fitted centroids.json on Rin's own voice (ElevenLabs Rin soft, dev 20 words)
+// and a fresh held-out set got 18/20 (90%, eval/vowels-rin.json, 2026-09-30), so Rin's voice pack turns them on
+// (pack.mjs SHAPES_ON). Other voices keep loudness only.
 //
 // Output format v1 (web/character/src/mouth.ts): { v: 1, fps, f } where f holds two characters per frame: the shape
 // (a i u e o, or - for closed) and the opening 0..9.

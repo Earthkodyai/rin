@@ -307,10 +307,10 @@ private class VoskRecognizing(model: Model, grammar: List<String>) : Recognizing
 
 /**
  * Rin's sentences through [VoicePlayer] on the alarm stream: at wake-up the media volume may be at zero, and the alarm
- * stream is the one RingService has raised to its floor. The clips are the debug build's (ElevenLabs free plan, S4)
- * until Phase 4's voice pack; a release build has none and shows the sentence to read instead.
+ * stream is the one RingService has raised to its floor. The clips come from Rin's voice pack (task 4.3,
+ * `voice/rin/repeat/<id>.mp3`); without a clip the game shows the sentence to read instead.
  */
-class AndroidRinVoice(context: Context, private val pack: String = DEV_PACK) : RinVoice {
+class AndroidRinVoice(context: Context, private val pack: String = PACK) : RinVoice {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val speakingState = MutableStateFlow<Speaking?>(null)
   override val speaking: StateFlow<Speaking?> = speakingState.asStateFlow()
@@ -332,6 +332,6 @@ class AndroidRinVoice(context: Context, private val pack: String = DEV_PACK) : R
   }
 
   companion object {
-    const val DEV_PACK = "voice/dev/repeat"
+    const val PACK = "voice/rin/repeat"
   }
 }
