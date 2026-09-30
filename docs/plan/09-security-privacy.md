@@ -12,7 +12,7 @@
 | Prompt injection / jailbreak | บุคลิกหลุด หรือเกิดเนื้อหาไม่เหมาะสม | กติกาใน system prompt + schema ที่จำกัดรูปแบบ + จำกัดความยาว + ตัวกรองขาออก + รับมือ refusal + ปุ่ม report + ชุด red-team eval |
 | WebView | XSS หรือใช้ JS bridge ในทางที่ผิด | โหลดเฉพาะ asset ในแอปผ่าน `WebViewAssetLoader` ปิด file access ไม่โหลด URL ภายนอก ตั้ง CSP (`script-src 'self' 'unsafe-eval'` ตั้งแต่ 2.3 เพราะ KTX2 transcoder ใช้ `new Function` ใน blob worker; ยอมรับได้เพราะไม่มีสคริปต์หรือข้อมูลจากนอก APK เข้าหน้าเว็บได้ และ bridge รับแค่ JSON ที่ตรวจ type) จำกัด origin ของ message listener และปิด debugging ใน release |
 | Dependencies และ skills | supply chain | ล็อกเวอร์ชัน ใช้ Dependabot ใช้ Android skills ทางการเป็นหลัก และ **อ่าน skill ของชุมชนทุกครั้งก่อนติดตั้ง** (skill คือชุดคำสั่งที่ Claude จะทำตาม) |
-| Signing key | หายหรือถูกขโมย | เก็บนอก repo ใน password manager พร้อมสำรองแบบเข้ารหัส และใช้ Play App Signing ในเฟส 8 |
+| Signing key | หายหรือถูกขโมย | ~~เก็บนอก repo ใน password manager พร้อมสำรองแบบเข้ารหัส~~ **ปรับ (คุณ, 2026-10-01):** เก็บนอก repo ที่ `D:\RinAlarm-keys\` และสำรองเป็น zip ไม่เข้ารหัสใน Google Drive ของคุณ (ไม่ใช้ password manager) เพราะเป็นโปรเจกต์เล็กที่ไม่แสวงหากำไร · ความเสี่ยงที่ยอมรับ: ใครเข้า Drive ได้ก็เซ็นแอปแทนคุณได้ · ใช้ Play App Signing ในเฟส 8 (key ที่ Play ถือไว้ ถ้า upload key รั่วก็ขอเปลี่ยนได้) |
 | Repo สาธารณะ | secrets รั่ว | gitleaks pre-commit + GitHub secret scanning และ push protection ไม่ commit `.env` และตรวจ history ก่อนเปิดเป็นสาธารณะ |
 | บัญชีต่างๆ | ถูกยึด | เปิด 2FA หรือ passkey ใน Google, GitHub, Cloudflare, Anthropic และ Azure |
 | Asset | ลิขสิทธิ์และภาพลักษณ์ | ใช้เฉพาะ asset ที่สร้างใหม่สำหรับโปรเจกต์นี้ โมเดล เสียง และแอนิเมชันต้องมีไลเซนส์ชัดเจน และไม่นำ asset จากโปรเจกต์อื่นมาใช้ |
