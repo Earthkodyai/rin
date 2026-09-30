@@ -1,11 +1,13 @@
-# STATUS — 2026-09-30 (Phase 1: 14-night run pending · Phase 2: done on the VRoid sample · **Phase 3: done** · **Phase 4: 4.1–4.3 done, 4.4 next (phase exit)**)
+# STATUS — 2026-09-30 (Phase 1: 14-night run pending · Phase 2: done on the VRoid sample · **Phase 3: done** · **Phase 4: done 2026-09-30** · **Phase 5: 5.1 next (D25)**)
 
 Phase 1: tasks done; **14-night run** pending (Diagnostics card, Strict daily; set one alarm repeating every day — none enabled). Ends at 14/14 + green CI (needs the remote; 0.4 accounts on the user).
 Phase 2 **done 2026-09-28** on the VRoid sample. **Your model still pending** (`rin.model=<path>` in local.properties; ❓ edits in `docs/character/character-sheet.md`); when it lands: `./gradlew checkGestures -PwriteBody` → build → `./gradlew checkGestures` → `tools/character/phase-exit.sh`, re-check hands (`npm run dev`), gaze (`aimCamera`; the cup table now uses `CupScene.attend`) and the pads hand (thumb).
 ## Deadline plan (D25, 2026-09-30 22:30): finish by 2026-10-01
 Finish line = app on the user's phone + 60–90 s demo video + public repo with an English README. **Order and cut list: `docs/plan/07-phases.md` top section.** Tonight: 4.4 (short) → 5.1 (rest/sick buttons + settings). Tomorrow: 5.2 device → 0.4 GitHub (user) → 6.1 reviews → 6.2 release build (own phone only; never distribute the VRoid sample) → 9.1 README + ADR 0005 → 9.2 video. Everything else is a README limit, not a task.
 ## Next
-- **4.4 phase exit ($0):** airplane mode through a whole morning (greeting → game → won → closing), no line repeated within 7 days on a simulated clock, mouth vs voice by eye plus the 2.4 numbers. Also redo the Phase 2 checks once the user's own model lands.
+- **5.1 (tonight):** confirm the rest/sick button meaning (phase-5.md draft), then build buttons + settings + tests.
+- **4.4 done 2026-09-30:** no-network morning passed (5/5 lines with clips), LinePickerTest 8/8, mouth in sync by eye on the home strip.
+- Redo the Phase 2 checks once the user's own model lands.
 - **Voice pack backup: done 2026-09-30.** `D:\RinAlarm-backup\rin-voice-pack-2026-09-30.zip` (77 MB, all takes + out + log, no key) is on the user's Google Drive; the pack itself lives only in `tools/voice/pack/` (`rin.voice`, never in the repo). The paid plan ends **2026-10-30** (renewal cancelled): any retake after that needs another paid month. If the pack changes, zip and upload it again.
 - **Voice pack tools:** `node tools/voice/pack.mjs plan|gen|regen|redo|pick|recheck|build`; listening page `qa.html` via the launch entry `rin-voice-qa` (port 8766). The key `rin-s4` has a 13,000-credit cap (~11.5k used).
 - **Phase 5 note:** rest day and sick day are one-tap buttons on the home screen (the user, 2026-09-30); draft meaning in phase-5.md.
