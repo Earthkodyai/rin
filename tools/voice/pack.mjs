@@ -216,13 +216,13 @@ const LIMIT_DB = LOUDNESS.TP - 0.5;
 const TRIM = 'silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.08,areverse,' +
   'silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.15,areverse';
 
-/** Clean-up filters before loudness (none until the air test decides; see exp2). */
+/** Clean-up filters after the gain, before the limiter (none until the air test decides; exp4-air.mjs). */
 export let POLISH = '';
 
 /** One take (any format ffmpeg reads) -> trimmed, -16 LUFS, peak-limited, faded MP3 at `kbps`. */
 export function master(bin, input, mp3, { kbps = 96, tmp = dirname(mp3), polish = POLISH } = {}) {
   const wav = join(tmp, `_${process.pid}_${Math.random().toString(36).slice(2)}.wav`);
-  ffmpeg(bin, ['-i', input, '-af', polish ? `${TRIM},${polish}` : TRIM, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', wav]);
+  ffmpeg(bin, ['-i', input, '-af', TRIM, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', wav]);
   const dur = (readFileSync(wav).length - 44) / 2 / 44100;
   const before = meter(bin, wav);
   const limit = 10 ** (LIMIT_DB / 20);
@@ -231,7 +231,8 @@ export function master(bin, input, mp3, { kbps = 96, tmp = dirname(mp3), polish 
   // The limiter takes a little loudness off the loudest clips, so a second pass tops the gain up.
   for (let pass = 0; pass < 3; pass++) {
     ffmpeg(bin, ['-i', wav, '-af',
-      `volume=${gain.toFixed(2)}dB,alimiter=limit=${limit.toFixed(4)}:level=0:attack=5:release=50:latency=1,` +
+      // Clean-up runs after the gain, so its thresholds sit at the same place on every clip (-16 LUFS speech).
+      `volume=${gain.toFixed(2)}dB,${polish ? `${polish},` : ''}alimiter=limit=${limit.toFixed(4)}:level=0:attack=5:release=50:latency=1,` +
       `afade=t=in:d=0.01,afade=t=out:st=${Math.max(0, dur - 0.01).toFixed(3)}:d=0.01`,
       '-ar', '44100', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', `${kbps}k`, mp3]);
     m = meter(bin, mp3);
