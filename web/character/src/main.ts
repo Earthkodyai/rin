@@ -350,7 +350,8 @@ async function main() {
     const first = last < 0;
     const dt = first ? 0 : Math.min((now - last) / 1000, 0.1);
     last = now;
-    life.aimCamera = 1 - smooth(table.shown); // at her table she watches the cups, not the user
+    // At her table she watches the cups while her hands move them, and the user the rest of the time (CupScene.attend).
+    life.aimCamera = 1 - smooth(table.shown) * (1 - smooth(table.attend));
     const blended = life.update(dt);
     if (table.active || table.shown > 0) {
       life.follow(table.update(cupsFrozenAt === null ? Date.now() : table.actStart + cupsFrozenAt, dt));

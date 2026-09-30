@@ -3,7 +3,6 @@ package io.github.earthkodyai.rinalarm.mission
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -12,6 +11,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.earthkodyai.rinalarm.character.Speaking
+import io.github.earthkodyai.rinalarm.character.RinMouth
 import io.github.earthkodyai.rinalarm.character.VoicePlayer
 import java.io.File
 import javax.inject.Inject
@@ -314,13 +314,16 @@ class AndroidRinVoice(context: Context, private val pack: String = DEV_PACK) : R
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val speakingState = MutableStateFlow<Speaking?>(null)
   override val speaking: StateFlow<Speaking?> = speakingState.asStateFlow()
-  private val player = VoicePlayer(context, scope, ALARM_SPEECH) { speakingState.value = it }
+  private val player = VoicePlayer(context, scope, VoicePlayer.ALARM_SPEECH) { speakingState.value = it }
 
+  // Waits for a line of hers still playing (her feedback on the last try), so the mic never opens over it.
   override suspend fun say(sentence: Sentence): Boolean =
-    suspendCancellableCoroutine { cont ->
-      player.play("$pack/${sentence.id}") { played -> if (cont.isActive) cont.resume(played) }
-      // Cut off ("Hear again", the ring ended): stop her on the main thread, where the player lives.
-      cont.invokeOnCancellation { scope.launch { player.stop() } }
+    RinMouth.turn.withLock {
+      suspendCancellableCoroutine { cont ->
+        player.play("$pack/${sentence.id}") { played -> if (cont.isActive) cont.resume(played) }
+        // Cut off ("Hear again", the ring ended): stop her on the main thread, where the player lives.
+        cont.invokeOnCancellation { scope.launch { player.stop() } }
+      }
     }
 
   override fun release() {
@@ -330,7 +333,5 @@ class AndroidRinVoice(context: Context, private val pack: String = DEV_PACK) : R
 
   companion object {
     const val DEV_PACK = "voice/dev/repeat"
-    private val ALARM_SPEECH: AudioAttributes =
-      AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
   }
 }

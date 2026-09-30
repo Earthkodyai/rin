@@ -10,6 +10,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionType
@@ -42,6 +43,7 @@ constructor(
   private val writer: AlarmWriter,
   private val time: TimeSource,
   private val missionReadiness: MissionReadiness,
+  private val moments: HomeMoments,
 ) : ViewModel() {
   private val session = MutableStateFlow<Session>(Session.Loading)
   private val readiness = MutableStateFlow(readMissions())
@@ -93,6 +95,8 @@ constructor(
       session.value =
         try {
           writer.save(alarm)
+          // Rin says so on the home screen (task 4.2).
+          moments.alarmSaved.trySend(Unit)
           Session.Saved(ringsIn(alarm))
         } catch (e: CancellationException) {
           throw e

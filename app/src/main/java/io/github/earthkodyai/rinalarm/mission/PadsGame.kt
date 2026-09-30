@@ -66,7 +66,7 @@ enum class Miss {
  * @property lit the pad that is lit (Rin pressing it, or the user's tap).
  * @property entered how many of [sequence] the user has repeated in this attempt.
  * @property nextAt elapsed-clock time the game must be [PadsGame.tick]ed at, or null when only a tap moves it.
- * @property miss why the last attempt ended (SCOLD only), and [line] which of Rin's lines for it she says.
+ * @property miss why the last attempt ended (SCOLD only); Rin's line for it comes from her script (task 4.2).
  */
 data class PadsState(
   val phase: PadsPhase = PadsPhase.READY,
@@ -79,7 +79,6 @@ data class PadsState(
   val entered: Int = 0,
   val nextAt: Long? = null,
   val miss: Miss? = null,
-  val line: Int = 0,
   val mistakes: Int = 0,
   val timeouts: Int = 0,
   /** Bumps each time a pad lights, so the same pad lit twice in a row still counts as two notes. */
@@ -99,19 +98,13 @@ data class PadsState(
  * the last press the user may answer: the first tap gets [PadsRules.exitMs] (her hand leaving) plus
  * [PadsRules.tapTimeoutMs], each later tap [PadsRules.tapTimeoutMs]. Taps during the demo are ignored and counted.
  */
-class PadsGame(
-  private val rules: PadsRules = PadsRules(),
-  private val random: Random,
-  private val slowLines: Int = SLOW_LINES,
-  private val wrongLines: Int = WRONG_LINES,
-) {
+class PadsGame(private val rules: PadsRules = PadsRules(), private val random: Random) {
   var state = PadsState(rounds = rules.lengths.size, tapTimeoutMs = rules.tapTimeoutMs)
     private set
 
   private var demoStart = 0L
   private var flashUntil: Long? = null
   private var inputDeadline = 0L
-  private val lastLine = mutableMapOf<Miss, Int>()
   /** When the user's current wait began: the answer window opening, or their last right tap. */
   private var waitFrom = 0L
   private val misses = mutableListOf<String>()
@@ -220,11 +213,6 @@ class PadsGame(
   }
 
   private fun scold(s: PadsState, miss: Miss, now: Long): PadsState {
-    val count = if (miss == Miss.SLOW) slowLines else wrongLines
-    // Never the same line twice in a row for the same kind of miss.
-    var line = random.nextInt(count)
-    if (count > 1 && line == lastLine[miss]) line = (line + 1 + random.nextInt(count - 1)) % count
-    lastLine[miss] = line
     flashUntil = null
     return s.copy(
       phase = PadsPhase.SCOLD,
@@ -232,7 +220,6 @@ class PadsGame(
       pressing = false,
       lit = null,
       miss = miss,
-      line = line,
       mistakes = s.mistakes + if (miss == Miss.WRONG) 1 else 0,
       timeouts = s.timeouts + if (miss == Miss.SLOW) 1 else 0,
       nextAt = now + rules.scoldMs,
@@ -252,11 +239,5 @@ class PadsGame(
   private fun set(next: PadsState): PadsState {
     state = next
     return next
-  }
-
-  companion object {
-    /** Rin's lines per miss (res/values/strings.xml pads_scold_slow / pads_scold_wrong; the user's pick, set A). */
-    const val SLOW_LINES = 3
-    const val WRONG_LINES = 3
   }
 }

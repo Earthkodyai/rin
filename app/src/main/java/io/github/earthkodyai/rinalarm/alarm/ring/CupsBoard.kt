@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -192,13 +191,6 @@ internal fun CupsCard(state: CupsState?, staging: Boolean, passed: Boolean, onSt
   }
 }
 
-/** Rin's line after a wrong pick, over her head so it never hides the cups. */
-@Composable
-internal fun CupsScoldLine(state: CupsState, modifier: Modifier = Modifier) {
-  val lines = stringArrayResource(R.array.cups_scold_wrong)
-  RinLine(lines[state.line % lines.size], modifier, Modifier.testTag(CUPS_SCOLD_TAG))
-}
-
 /**
  * A dark walnut table, so the red cups stand out by brightness and not only by hue (3.7, the tester: on the lighter
  * wood they blended in; the two were almost equally bright, 1.07:1). CupsBoardColoursTest keeps them at least 3:1 apart.
@@ -211,6 +203,5 @@ private val BALL = Color(0xFFFFD54A)
 
 internal const val CUPS_LAYER_TAG = "cups_layer"
 internal const val CUPS_START_TAG = "cups_start"
-internal const val CUPS_SCOLD_TAG = "cups_scold"
 
 internal fun cupTag(slot: Int) = "cup_$slot"

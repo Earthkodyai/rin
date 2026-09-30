@@ -94,7 +94,6 @@ enum class CupsPhase {
 /**
  * @property streak right picks in a row; [target] wins.
  * @property right after a pick: whether it found the ball (REVEAL and PASSED).
- * @property line which of Rin's lines for a wrong pick she says.
  * @property nextAt elapsed-clock time the game must be [CupsGame.tick]ed at, or null when only a pick moves it.
  */
 data class CupsState(
@@ -104,7 +103,6 @@ data class CupsState(
   val act: CupsAct? = null,
   val picked: Int? = null,
   val right: Boolean? = null,
-  val line: Int = 0,
   val picks: Int = 0,
   val mistakes: Int = 0,
   /** Taps while the cups were still moving (ignored, logged). */
@@ -118,11 +116,7 @@ data class CupsState(
  * Three right in a row wins (1 in 27 by guessing); a wrong pick resets the count and the next shuffle starts from
  * where the ball really is.
  */
-class CupsGame(
-  private val rules: CupsRules = CupsRules(),
-  private val random: Random,
-  private val wrongLines: Int = WRONG_LINES,
-) {
+class CupsGame(private val rules: CupsRules = CupsRules(), private val random: Random) {
   var state = CupsState(target = rules.streak)
     private set
 
@@ -130,7 +124,6 @@ class CupsGame(
   private var ball = 0
   private var shuffles = 0
   private var pickFrom = 0L
-  private var lastLine: Int? = null
   private val trace = mutableListOf<String>()
 
   /**
@@ -174,7 +167,6 @@ class CupsGame(
         act = act,
         picked = slot,
         right = false,
-        line = nextLine(),
         picks = s.picks + 1,
         mistakes = s.mistakes + 1,
         nextAt = liftEnd(act),
@@ -216,22 +208,12 @@ class CupsGame(
 
   private fun liftEnd(act: CupsAct.Lift): Long = act.at + act.leadMs + act.upMs + (act.holdMs ?: 0) + act.downMs
 
-  /** Never the same line twice in a row. */
-  private fun nextLine(): Int {
-    var line = random.nextInt(wrongLines)
-    if (wrongLines > 1 && line == lastLine) line = (line + 1 + random.nextInt(wrongLines - 1)) % wrongLines
-    lastLine = line
-    return line
-  }
-
   private fun set(next: CupsState): CupsState {
     state = next
     return next
   }
 
   companion object {
-    /** Rin's lines for a wrong pick (res/values/strings.xml cups_scold_wrong; the user's pick, set A). */
-    const val WRONG_LINES = 3
     private val PAIRS = listOf(0 to 1, 1 to 2, 0 to 2)
   }
 }

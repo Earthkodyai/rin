@@ -20,6 +20,17 @@ enum class Gesture(val wire: String) {
   /** Head-only sulk for the home strip (task 2.5): turns away with a small shrug, eyes shut a beat, glances back. */
   HUFF("huff");
 
+  /**
+   * This gesture as the home strip (head and shoulders) plays it: pout's folded arms fall below the frame, so a sulk is
+   * a huff, and a clap is a joy (the user's picks in 2.5; script-bible §3).
+   */
+  fun onStrip(): Gesture =
+    when (this) {
+      POUT -> HUFF
+      CLAP -> JOY
+      else -> this
+    }
+
   companion object {
     fun fromWire(wire: String): Gesture? = entries.firstOrNull { it.wire == wire }
   }

@@ -54,7 +54,8 @@ export class Behaviour {
    * How much of the way to the camera (the user) her head turns, 0..1 (task 3.7). At 1 she meets the user's eyes: the
    * eyes alone cannot, as VRoid's turn only a ninth of what is asked (10° for 90°), and following a third of the way
    * left her gazing 6° over the user in the full-body view, 12° with the proud mood's raised chin (the tester saw it
-   * as she clapped). The cup table lowers it while in view (main.ts): there she watches her hands and the cups.
+   * as she clapped). The cup table lowers it while her hands move the cups (main.ts, CupScene.attend): she watches
+   * them then, and the user again once her hands are free.
    */
   aimCamera = 1;
 

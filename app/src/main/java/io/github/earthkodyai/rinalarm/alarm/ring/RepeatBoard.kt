@@ -155,13 +155,8 @@ private fun Status(state: RepeatState, rinSpeaking: Boolean, micLevel: Float) {
     when (state.phase) {
       RepeatPhase.SPEAKING -> if (rinSpeaking) R.string.repeat_listen else R.string.repeat_read
       RepeatPhase.LISTENING -> R.string.repeat_your_turn
-      RepeatPhase.FEEDBACK ->
-        when {
-          state.feedback == Feedback.RIGHT -> R.string.repeat_right
-          state.tries >= state.maxTries -> R.string.repeat_to_tap
-          state.feedback == Feedback.NOTHING -> R.string.repeat_nothing
-          else -> R.string.repeat_missed
-        }
+      // Her feedback on the try is her own line, in the subtitle over her (task 4.2).
+      RepeatPhase.FEEDBACK -> null
       RepeatPhase.TAPPING -> R.string.repeat_tap
       else -> null
     }

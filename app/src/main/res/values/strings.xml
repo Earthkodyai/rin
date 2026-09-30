@@ -56,6 +56,7 @@
     <string name="ring_dismiss">Dismiss</string>
     <string name="ring_hold_to_stop">Emergency: hold 3 s to stop</string>
     <string name="mission_passed">Nice work! Alarm off.</string>
+    <string name="ring_tap_to_close">Tap anywhere to close</string>
     <!-- Ring screen: colour pads (task 3.3). -->
     <string name="pads_title">Copy Rin\'s colours</string>
     <string name="pads_intro">Watch her hand, then tap the same colours in order. Three rounds.</string>
@@ -67,17 +68,6 @@
     <string name="pad_blue">Blue</string>
     <string name="pad_yellow">Yellow</string>
     <string name="pad_green">Green</string>
-    <!-- Rin's lines when a round is missed (the user's pick, set A). Keep in step with PadsGame.SLOW_LINES / WRONG_LINES. -->
-    <string-array name="pads_scold_slow">
-        <item>Too slow~ Is the blanket helping you?</item>
-        <item>Hello? My hand got tired waiting.</item>
-        <item>Still dreaming? Let\'s try a new one.</item>
-    </string-array>
-    <string-array name="pads_scold_wrong">
-        <item>Hmm, not that one. Watch my hand again.</item>
-        <item>Close! The blanket made you miss it.</item>
-        <item>Oops. Okay, a fresh one. Eyes open~</item>
-    </string-array>
     <!-- Ring screen: cup shuffle (task 3.4). -->
     <string name="cups_title">Find the ball</string>
     <string name="cups_intro">Rin hides a ball under a cup and shuffles. Tap the cup with the ball, three times in a row.</string>
@@ -86,12 +76,6 @@
     <string name="cups_right">Found it!</string>
     <string name="cups_streak">%1$d of %2$d in a row</string>
     <string name="cups_cup">Cup %1$d</string>
-    <!-- Rin's lines for a wrong pick (the user's pick, set A). Keep in step with CupsGame.WRONG_LINES. -->
-    <string-array name="cups_scold_wrong">
-        <item>Hmm? It was right here the whole time.</item>
-        <item>Eyes open, sleepyhead. Again!</item>
-        <item>So close… no, not really. Once more.</item>
-    </string-array>
     <!-- Ring screen: Repeat after Rin (task 3.5). -->
     <string name="repeat_title">Repeat after Rin</string>
     <string name="repeat_intro">Rin says a short English sentence. Say it back to her: three sentences. The mic listens only while you speak.</string>
@@ -101,10 +85,6 @@
     <string name="repeat_read">Read it…</string>
     <string name="repeat_your_turn">Your turn: say it</string>
     <string name="repeat_try">Try %1$d of %2$d</string>
-    <string name="repeat_right">Nice!</string>
-    <string name="repeat_missed">Almost. Once more?</string>
-    <string name="repeat_nothing">I didn\'t hear you. Once more?</string>
-    <string name="repeat_to_tap">Let\'s tap it instead.</string>
     <string name="repeat_tap">Tap the words in order</string>
     <string name="repeat_hear_again">Hear again</string>
     <string name="repeat_mic_on">Microphone on</string>

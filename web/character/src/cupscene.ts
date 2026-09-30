@@ -91,6 +91,12 @@ export class CupScene {
   shown = 0;
   private target = 0;
   /**
+   * How much she turns to the user rather than the cups (task 4.2): 0 while her hands work the cups, 1 while they are
+   * free (the user picking, her praise, the win). At 1 she sits up out of her lean, and main.ts turns her head fully
+   * to the user: she talks and waves at the table now, and the tester saw her gaze and wave fall short of them.
+   */
+  attend = 1;
+  /**
    * How her hand holds a cup: the wrist `back` behind the top's centre and `up` above it (in arms), the hand tipped
    * down by `pitch` (radians), fingers curled by `curl` (0 flat .. 1 fist). On a cup passing behind, the wrist sits
    * `backShift` further back at the height of the pass, so her fingers stay off the cup passing in front.
@@ -189,9 +195,11 @@ export class CupScene {
     this.shown += Math.sign(this.target - this.shown) * Math.min(Math.abs(this.target - this.shown), dt / VIEW_S);
     this.group.visible = this.shown > 0;
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
-    if (spine && this.shown > 0) spine.quaternion.premultiply(this.rig(new THREE.Quaternion().setFromAxisAngle(X, this.layout.lean * smooth(this.shown))));
+    const lean = this.layout.lean * smooth(this.shown) * (1 - smooth(this.attend));
+    if (spine && this.shown > 0) spine.quaternion.premultiply(this.rig(new THREE.Quaternion().setFromAxisAngle(X, lean)));
     if (!this.act) {
       this.last.left = this.last.right = null;
+      this.turnTo(1, dt);
       return null;
     }
     const frame = frameAt(this.act, now);
@@ -218,7 +226,13 @@ export class CupScene {
         this.clearing[s] = null;
       }
     }
+    this.turnTo(look ? 0 : 1, dt);
     return look;
+  }
+
+  /** Eases [attend] toward `want`, over ATTEND_S: quicker than a hand's lead-in, so she leans in before it lands. */
+  private turnTo(want: number, dt: number): void {
+    this.attend += Math.sign(want - this.attend) * Math.min(Math.abs(want - this.attend), dt / ATTEND_S);
   }
 
   private place(frame: CupsFrame): void {
@@ -316,6 +330,7 @@ export class CupScene {
    */
   probe(now: number): Record<string, { depth: number; gap: number | null; slip: number }> {
     this.shown = 1;
+    this.attend = 0; // hands at work: she leans in
     const spine = this.vrm.humanoid.getNormalizedBoneNode('spine');
     const saved = spine?.quaternion.clone();
     spine?.quaternion.identity(); // Behaviour resets it every frame; here only the lean goes on
@@ -379,3 +394,5 @@ const CLEAR_S = 0.05;
 
 /** Seconds for the camera to move between her usual framing and the table. */
 export const VIEW_S = 0.6;
+/** Seconds for her to turn from the cups to the user or back (task 4.2); under CupsRules' 300 ms lead-in. */
+export const ATTEND_S = 0.25;

@@ -54,7 +54,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -63,15 +62,12 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.character.CharacterAssets
-import io.github.earthkodyai.rinalarm.mission.Miss
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
 import io.github.earthkodyai.rinalarm.mission.PadsRules
@@ -213,36 +209,6 @@ private fun Countdown(state: PadsState) {
   )
 }
 
-/** Rin's line over her while she scolds (subtitles until her voice lines arrive in Phase 4). */
-@Composable
-internal fun ScoldLine(state: PadsState, modifier: Modifier = Modifier) {
-  val lines = stringArrayResource(if (state.miss == Miss.SLOW) R.array.pads_scold_slow else R.array.pads_scold_wrong)
-  RinLine(lines[state.line % lines.size], modifier, Modifier.testTag(PADS_SCOLD_TAG))
-}
-
-/**
- * One of Rin's lines floating over her (the games' scolds): bold white text with a soft dark shadow, no box, so it
- * reads over her hair, the table and the screen's colour alike. The box it had covered too much of her (the tester,
- * dev-1 of task 3.4).
- */
-@Composable
-internal fun RinLine(text: String, modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
-  Text(
-    text,
-    style =
-      MaterialTheme.typography.titleLarge.copy(
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        shadow = Shadow(Color.Black.copy(alpha = 0.85f), offset = Offset(0f, 2f), blurRadius = 10f),
-      ),
-    textAlign = TextAlign.Center,
-    modifier =
-      modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().then(textModifier).semantics {
-        liveRegion = LiveRegionMode.Polite
-      },
-  )
-}
-
 /**
  * Her hand as rendered from the build's model (tools/character/render-stills.mjs, `hand.webp`: seen from above,
  * fingertip at the bottom centre), or [DrawnHand] in builds without a model.
@@ -329,6 +295,5 @@ private val PAD_NAMES = mapOf(Pad.RED to R.string.pad_red, Pad.BLUE to R.string.
 
 internal const val PADS_BOARD_TAG = "pads_board"
 internal const val PADS_START_TAG = "pads_start"
-internal const val PADS_SCOLD_TAG = "pads_scold"
 
 internal fun padTag(pad: Pad) = "pad_${pad.name.lowercase()}"

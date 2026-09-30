@@ -111,6 +111,7 @@ private enum class Phase {
  * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
  * happy for a moment there, and the phone gives a light tick here. She greets the user when the app opens and
  * gestures now and then (GestureDirector), and plays each gesture from [cues] (the ring screen's mission moments).
+ * [onHeadTap] hears each tap on her head, for the screen's own answer (her line on the home screen).
  * Voice lines play natively (VoicePlayer, here or in a game's [speech]) and only move her mouth here.
  *
  * Before the first unlock after a reboot (a ring can come then) the WebView has no credential-encrypted storage to
@@ -126,6 +127,7 @@ fun CharacterView(
   cups: CupsAct? = null,
   onCups: (CupsView) -> Unit = {},
   speech: Flow<Speaking?>? = null,
+  onHeadTap: () -> Unit = {},
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -146,6 +148,8 @@ fun CharacterView(
     host.onCups = { currentOnCups(it) }
     host.setCups(cups)
   }
+  val currentOnHeadTap by rememberUpdatedState(onHeadTap)
+  SideEffect { host.onHeadTap = { currentOnHeadTap() } }
   val director = remember { GestureDirector() }
   val currentMood by rememberUpdatedState(shown.first)
   SideEffect { host.onShown = { away -> director.greetOnShow(currentMood, away)?.let(host::gesture) } }
@@ -279,6 +283,8 @@ private class CharacterHost {
   private var cups: CupsAct? = null
   private var cupsSent = false
   var onCups: (CupsView) -> Unit = {}
+  /** The user tapped her head; the page has already reacted (task 2.2), the screen may add a line (4.2). */
+  var onHeadTap: () -> Unit = {}
 
   @SuppressLint("SetJavaScriptEnabled") // our own page from APK assets; nothing else can load (see the client)
   fun create(
@@ -338,6 +344,7 @@ private class CharacterHost {
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")
           webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+          if (parsed.part == "head") onHeadTap()
         }
         is CharacterMessage.Error -> {
           Log.w(TAG, "page error: ${parsed.message}")

@@ -35,10 +35,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.character.CharacterView
 import io.github.earthkodyai.rinalarm.character.rememberDefaultMood
+import io.github.earthkodyai.rinalarm.ui.common.RinLine
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
@@ -56,12 +58,17 @@ fun MainScreen(
   onEdit: (Long) -> Unit,
   onDiagnostics: () -> Unit,
   viewModel: MainScreenViewModel = hiltViewModel(),
+  rin: HomeRinViewModel = hiltViewModel(),
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val setupIssue by viewModel.setupIssue.collectAsStateWithLifecycle()
   LifecycleResumeEffect(viewModel) {
     viewModel.refreshSetup()
     onPauseOrDispose {}
+  }
+  LifecycleStartEffect(rin) {
+    rin.onShown()
+    onStopOrDispose { rin.onHidden() }
   }
   MainScreen(
     state = state,
@@ -70,7 +77,20 @@ fun MainScreen(
     onToggle = viewModel::setEnabled,
     setupIssue = setupIssue,
     onDiagnostics = onDiagnostics,
-    character = { CharacterView(rememberDefaultMood(), Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) },
+    character = {
+      val line by rin.line.collectAsStateWithLifecycle()
+      val mood = rememberDefaultMood()
+      Box(Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) {
+        CharacterView(
+          line?.emotion ?: mood,
+          Modifier.fillMaxSize(),
+          cues = rin.cues,
+          speech = rin.speaking,
+          onHeadTap = rin::onHeadTap,
+        )
+        line?.let { RinLine(it.text, Modifier.align(Alignment.BottomCenter)) }
+      }
+    },
   )
 }
 

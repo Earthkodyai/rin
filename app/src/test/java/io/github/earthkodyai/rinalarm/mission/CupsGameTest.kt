@@ -116,19 +116,6 @@ class CupsGameTest {
   }
 
   @Test
-  fun rinsLines_neverRepeatBackToBack() {
-    val game = CupsGame(rules, Random(6))
-    var now = game.untilPick(0L.also { game.start(it) })
-    var last = -1
-    repeat(20) {
-      game.pick((game.ballNow() + 1) % 3, now)
-      assertTrue(game.state.line != last)
-      last = game.state.line
-      now = game.untilPick(game.state.nextAt!!.also { game.tick(it) })
-    }
-  }
-
-  @Test
   fun theTimeline_movesCupsAsTheActSays() {
     val act = CupsAct.Shuffle(ball = 0, at = 1_000, swaps = listOf(0 to 1, 1 to 2), leadMs = 300, swapMs = 400, gapMs = 100, exitMs = 200)
     val start = CupsTimeline.frameAt(act, 1_000)

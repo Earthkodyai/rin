@@ -10,6 +10,11 @@ import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
 import io.github.earthkodyai.rinalarm.character.Speaking
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.dialogue.Line
+import io.github.earthkodyai.rinalarm.dialogue.LineBook
+import io.github.earthkodyai.rinalarm.dialogue.LineVoiceFactory
+import io.github.earthkodyai.rinalarm.dialogue.Pools
+import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.mission.CupsMission
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
@@ -22,6 +27,7 @@ import io.github.earthkodyai.rinalarm.mission.MissionProgress
 import io.github.earthkodyai.rinalarm.mission.MissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionState
 import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.Miss
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsMission
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
@@ -36,6 +42,7 @@ import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.mission.SeenCode
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import io.github.earthkodyai.rinalarm.time.TimeSource
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -54,8 +61,13 @@ import kotlinx.coroutines.launch
  * [RingState] (the service quiets the tone), and asks the service to stop once the mission passes. It never stops
  * the ring by itself otherwise: the service owns the ring, and this screen may never show (08-error-handling).
  *
- * [commands] carries what the activity must send to RingService (it holds the Context); the ring screen stays on for
- * [CELEBRATE_MS] after a pass so Rin can clap, then [RingUiState.finished] closes it.
+ * [commands] carries what the activity must send to RingService (it holds the Context).
+ *
+ * Rin speaks through the ring (task 4.2): a first line as it rings, an intro on "Let's play" (the game starts once she
+ * is done), during the game only after a mistake (D23: a scold, or what to do after a missed try), then after a pass a
+ * won line and one closing remark before [RingUiState.finished] closes the screen (a tap closes it sooner). A snooze or the emergency stop gets
+ * a line too, and the screen stays up until she has said it. [RingUiState.line] is the subtitle; the tone steps back
+ * only while one of her clips plays. With no script, she stays quiet and the screen closes [CELEBRATE_MS] after a pass.
  */
 @HiltViewModel
 class RingViewModel
@@ -68,6 +80,8 @@ constructor(
   private val clock: ElapsedClock,
   private val readiness: MissionReadiness,
   private val time: TimeSource,
+  private val lines: LineBook,
+  voices: LineVoiceFactory,
 ) : ViewModel() {
   private val state = MutableStateFlow(RingUiState())
   val uiState: StateFlow<RingUiState> = state.asStateFlow()
@@ -80,8 +94,24 @@ constructor(
   val cues: SharedFlow<Gesture> = cueFlow.asSharedFlow()
 
   private val speakingFlow = MutableStateFlow<Speaking?>(null)
-  /** The game's line Rin is saying (Repeat after Rin), for her mouth. */
+  /** The clip Rin is saying (one of her lines, or a game's sentence in Repeat after Rin), for her mouth. */
   val speaking: StateFlow<Speaking?> = speakingFlow.asStateFlow()
+
+  private val speaker = RinSpeaker(voices.create(alarm = true), viewModelScope)
+  private var gameSpeaking: Speaking? = null
+  /** What the game asks of the tone (Repeat after Rin); the ring gets the stronger of it and her lines' hush. */
+  private var gameHush = Hush.NONE
+  private var ringDay: LocalDate? = null
+  /** Keys the session pools: one morning of one alarm, across its snoozes. */
+  private var morning: Any = Unit
+  /** "Let's play" was tapped for the game on screen, and her intro for it is over. */
+  private var started = false
+  private var introDone = false
+  private var introJob: Job? = null
+  /** A miss, a slow round or a wrong try in this ring: the win is a hard one. */
+  private var trouble = false
+  /** Her line after a snooze or the emergency stop; the screen closes once it is over. */
+  private var farewell: Job? = null
 
   // Volatile: onScan reads it from the camera's analysis thread.
   @Volatile private var mission: Mission? = null
@@ -102,7 +132,30 @@ constructor(
         if (ring == null) onRingEnded() else onRing(ring)
       }
     }
+    viewModelScope.launch { speaker.line.collect { line -> state.update { it.copy(line = line) } } }
+    viewModelScope.launch { speaker.hush.collect { pushHush() } }
+    viewModelScope.launch { speaker.speaking.collect { publishSpeaking() } }
   }
+
+  private fun pushHush() = ringState.setHush(maxOf(gameHush, speaker.hush.value))
+
+  private fun publishSpeaking() {
+    speakingFlow.value = speaker.speaking.value ?: gameSpeaking
+  }
+
+  /**
+   * Picks a line from [pool] and says it; the job ends when she is done (at once when there is no line). [cut] stops
+   * her line in progress, otherwise this one waits for it. [gesture]: she plays the line's gesture as she starts.
+   */
+  private fun say(pool: String, cut: Boolean = true, gesture: Boolean = true): Job =
+    viewModelScope.launch {
+      val line = lines.pick(pool, ringDay ?: today(), morning) ?: return@launch
+      if (!cut) speaker.finish()
+      if (gesture) line.gesture?.let(cueFlow::tryEmit)
+      speaker.say(line).join()
+    }
+
+  private fun today(): LocalDate = time.now().atZone(time.zone()).toLocalDate()
 
   private fun onRing(ring: ActiveRing) {
     val key = ring.request.let { Triple(it.alarmId, it.scheduledAt, it.snoozeCount) }
@@ -113,8 +166,13 @@ constructor(
     ringKey = key
     stopMission()
     cups2dReason = null
+    trouble = false
     state.value = RingUiState(ring = ring)
     refreshPhase()
+    val now = time.now().atZone(time.zone())
+    ringDay = now.toLocalDate()
+    morning = ring.request.alarmId to ringDay
+    ring.request.let { say(Pools.opening(it.snoozeCount, it.snoozesLeft, it.late, now.dayOfWeek, it.time)) }
     val plan = ring.mission ?: return
     run(ring, plan.type, plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: "")
   }
@@ -127,6 +185,8 @@ constructor(
       return
     }
     mission = running
+    started = false
+    introDone = false
     state.update { it.copy(missionType = type) }
     missionStartedAt = clock.now()
     log(RingEventType.MISSION_STARTED, ring, "type=${type.stored} target=${running.progress.value.target}$logExtra")
@@ -137,10 +197,16 @@ constructor(
       gameJob = viewModelScope.launch { repeat.game.collect(::onRepeat) }
       voiceJobs =
         listOf(
-          viewModelScope.launch { repeat.hush.collect(ringState::setHush) },
+          viewModelScope.launch {
+            repeat.hush.collect {
+              gameHush = it
+              pushHush()
+            }
+          },
           viewModelScope.launch {
             repeat.speaking.collect { line ->
-              speakingFlow.value = line
+              gameSpeaking = line
+              publishSpeaking()
               state.update { it.copy(rinSpeaking = line != null) }
             }
           },
@@ -152,10 +218,12 @@ constructor(
   private fun onRepeat(game: RepeatState) {
     val before = state.value.repeat
     state.update { it.copy(repeat = game) }
+    if (game.phase == RepeatPhase.TAPPING) trouble = true
+    if (game.phase != RepeatPhase.FEEDBACK || before?.phase == RepeatPhase.FEEDBACK) return
+    val feedback = game.feedback ?: return
     // A sentence done: she nods. A miss gets no sulk: an unheard word is as likely the mic's fault as the user's.
-    if (game.phase == RepeatPhase.FEEDBACK && game.feedback == Feedback.RIGHT && before?.phase != RepeatPhase.FEEDBACK) {
-      cueFlow.tryEmit(Gesture.NOD)
-    }
+    if (feedback == Feedback.RIGHT) cueFlow.tryEmit(Gesture.NOD) else trouble = true
+    if (feedback != Feedback.RIGHT) say(Pools.speechMiss(feedback, outOfTries = game.tries >= game.maxTries), gesture = false)
   }
 
   fun hearAgain() {
@@ -192,8 +260,12 @@ constructor(
   private fun onCups(game: CupsState) {
     val before = state.value.cups
     state.update { it.copy(cups = game) }
-    // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
-    if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) cueFlow.tryEmit(Gesture.HUFF)
+    if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) {
+      // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
+      cueFlow.tryEmit(Gesture.HUFF)
+      trouble = true
+      say(Pools.CUPS_SCOLD, gesture = false)
+    }
   }
 
   /**
@@ -215,6 +287,7 @@ constructor(
   }
 
   private fun beginCups() {
+    if (!introDone) return
     val cups = mission as? CupsMission ?: return
     if (cups.game.value.phase != CupsPhase.READY) return
     cups.begin()
@@ -251,15 +324,31 @@ constructor(
   private fun onGame(game: PadsState) {
     val before = state.value.pads
     state.update { it.copy(pads = game) }
-    // The cut to Rin (D17): she sulks with a huff for the length of the scold.
-    if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) cueFlow.tryEmit(Gesture.HUFF)
+    if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) {
+      // The cut to Rin (D17): she sulks with a huff for the length of the scold.
+      cueFlow.tryEmit(Gesture.HUFF)
+      trouble = true
+      say(Pools.padsScold(game.miss ?: Miss.WRONG), gesture = false)
+    }
   }
 
-  /** "Let's play" on the colour pads. */
+  /**
+   * "Let's play": Rin's intro for the game, then the game (the cup table comes into view meanwhile). Taps after the
+   * first are ignored.
+   */
   fun startGame() {
-    (mission as? RepeatMission)?.begin()
-    (mission as? PadsMission)?.begin()
-    (mission as? CupsMission)?.let(::startCups)
+    val running = mission ?: return
+    if (started || state.value.passed) return
+    started = true
+    (running as? CupsMission)?.let(::startCups)
+    introJob =
+      viewModelScope.launch {
+        say(Pools.intro(running.type)).join()
+        introDone = true
+        (mission as? RepeatMission)?.begin()
+        (mission as? PadsMission)?.begin()
+        if (state.value.cupsView is CupsView.Shown || state.value.cups2d) beginCups()
+      }
   }
 
   fun tapPad(pad: Pad) {
@@ -296,6 +385,7 @@ constructor(
         stopMission()
         refreshPhase()
         commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_MISSION))
+        celebrate(ring)
       }
       MissionState.FAILED -> {
         state.update { it.copy(missionFailed = true) }
@@ -362,6 +452,21 @@ constructor(
     stopMission()
   }
 
+  /** Her won line (her gesture for it, or a clap), then one closing remark; then the screen closes. */
+  private fun celebrate(ring: ActiveRing) {
+    viewModelScope.launch {
+      val won = lines.pick(Pools.won(clean = !trouble), ringDay ?: today(), morning)
+      cueFlow.tryEmit(won?.gesture ?: Gesture.CLAP)
+      if (won == null) {
+        delay(CELEBRATE_MS)
+      } else {
+        speaker.say(won).join()
+        say(Pools.closing(ring.request.time)).join()
+      }
+      state.update { it.copy(finished = true) }
+    }
+  }
+
   private fun onRingEnded() {
     // How far the game got, for a ring that stopped some other way: a miss the user gave up on is still data.
     val ring = state.value.ring
@@ -369,15 +474,22 @@ constructor(
       log(RingEventType.MISSION_UNFINISHED, ring, "type=${mission?.type?.stored} tookMs=${clock.now() - missionStartedAt}" + summary())
     }
     stopMission()
-    if (state.value.ring == null) return
-    if (!state.value.passed) {
+    // After a pass the celebration closes the screen.
+    if (state.value.ring == null || state.value.passed) return
+    val leaving = farewell
+    if (leaving == null || !leaving.isActive) {
       state.update { it.copy(finished = true) }
       return
     }
     viewModelScope.launch {
-      delay(CELEBRATE_MS)
+      leaving.join()
       state.update { it.copy(finished = true) }
     }
+  }
+
+  /** A tap on the screen once the ring is over (after a pass, a snooze or the emergency stop): it closes now. */
+  fun close() {
+    if (state.value.passed || state.value.leaving) state.update { it.copy(finished = true) }
   }
 
   private fun refreshPhase() {
@@ -386,15 +498,32 @@ constructor(
     val phase = RingMoods.phase(current.passed, clock.now(), ringState.lastProgressAt)
     if (phase == current.phase) return
     state.update { it.copy(phase = phase) }
-    cueFlow.tryEmit(RingMoods.cue(phase))
+    // A pass brings her won line's own gesture (celebrate).
+    if (phase != RingPhase.PASSED) cueFlow.tryEmit(RingMoods.cue(phase))
   }
 
-  fun snooze() = commandFlow.tryEmit(RingCommand.Snooze)
+  fun snooze() {
+    val request = state.value.ring?.request ?: return
+    leave(Pools.snooze(request.snoozeCount, request.snoozesLeft))
+    commandFlow.tryEmit(RingCommand.Snooze)
+  }
 
   /** The plain Dismiss: only offered when there is no mission, or it failed. */
-  fun dismiss() = commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_SCREEN))
+  fun dismiss() {
+    commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_SCREEN))
+  }
 
-  fun emergencyStop() = commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_EMERGENCY))
+  fun emergencyStop() {
+    leave(Pools.EMERGENCY)
+    commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_EMERGENCY))
+  }
+
+  /** Her line as the ring stops without a pass; the screen shows nothing else and waits for it (a tap closes it). */
+  private fun leave(pool: String) {
+    if (state.value.ring == null || state.value.passed || state.value.leaving) return
+    state.update { it.copy(leaving = true) }
+    farewell = say(pool)
+  }
 
   private fun stopMission() {
     missionJob?.cancel()
@@ -409,14 +538,19 @@ constructor(
     cupsWaitJob = null
     voiceJobs.forEach(Job::cancel)
     voiceJobs = emptyList()
-    ringState.setHush(Hush.NONE)
-    speakingFlow.value = null
+    introJob?.cancel()
+    introJob = null
+    gameHush = Hush.NONE
+    pushHush()
+    gameSpeaking = null
+    publishSpeaking()
     mission?.stop()
     mission = null
   }
 
   override fun onCleared() {
     stopMission()
+    speaker.release()
   }
 
   private fun log(type: RingEventType, ring: ActiveRing, detail: String) {
@@ -425,7 +559,7 @@ constructor(
   }
 
   companion object {
-    /** How long Rin claps after a pass before the ring screen closes. */
+    /** How long Rin claps after a pass before the ring screen closes, when she has no lines to say. */
     const val CELEBRATE_MS = 2_500L
 
     /**
@@ -448,7 +582,9 @@ constructor(
  * @property repeat Repeat after Rin, when that is the mission; [micLevel] the mic's level while it listens.
  * @property cups the cup shuffle, when that is the mission; [cupsView] what her page shows of it, and [cups2d] that the
  *   native 2D board plays it instead (her page is gone, or did not show the table in time). [cupsStaging]: "Let's
- *   play" was tapped and the table is coming into view; the game starts once it is.
+ *   play" was tapped and the table is coming into view; the game starts once it is (and her intro is over).
+ * @property line Rin's line on screen (the subtitle), or null.
+ * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -468,10 +604,13 @@ data class RingUiState(
   val repeat: RepeatState? = null,
   val micLevel: Float = 0f,
   val rinSpeaking: Boolean = false,
+  val line: Line? = null,
+  val leaving: Boolean = false,
 ) {
-  /** Rin's mood: the phase's, except while she scolds a missed round. */
+  /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood
-    get() = if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+    get() =
+      line?.emotion ?: if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
 
   /** A wrong cup is up: Rin sulks and says one of her lines. */
   val cupsScold: Boolean

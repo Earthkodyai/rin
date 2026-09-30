@@ -20,6 +20,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 
 /** A line being spoken: the page moves the mouth along [mouth] from [at], the epoch ms its first sample played. */
@@ -156,16 +157,33 @@ class VoicePlayer(
     return MouthTrack.fromLoudness(pcm.first, pcm.second) to "loudness"
   }
 
-  private companion object {
-    const val TAG = "RinVoice"
-    const val POLL_MS = 10L
-    const val TIMESTAMP_WAIT_MS = 500L
+  companion object {
+    private const val TAG = "RinVoice"
+    private const val POLL_MS = 10L
+    private const val TIMESTAMP_WAIT_MS = 500L
+
+    /** Her voice in the app: the media stream, at the user's media volume. */
     val SPEECH: AudioAttributes =
       AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
+
+    /**
+     * Her voice while the alarm rings: the alarm stream, which RingService has raised to its floor (at wake-up the media
+     * volume may be at zero).
+     */
+    val ALARM_SPEECH: AudioAttributes =
+      AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
   }
+}
+
+/**
+ * Rin has one voice (task 4.2): a line (RinSpeaker) and a game's sentence (Repeat after Rin) never play over each other.
+ * Whoever speaks holds [turn]; the other waits for it.
+ */
+object RinMouth {
+  val turn = Mutex()
 }
 
 /** Decodes a short clip to mono 16-bit PCM with MediaCodec; returns the samples and their rate. */

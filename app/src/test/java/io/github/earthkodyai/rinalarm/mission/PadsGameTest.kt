@@ -189,23 +189,6 @@ class PadsGameTest {
   }
 
   @Test
-  fun rinsLines_neverRepeatBackToBack_forTheSameKindOfMiss() {
-    val g = game(3)
-    g.start(now)
-    val lines = mutableListOf<Int>()
-    repeat(40) {
-      g.runUntil(PadsPhase.INPUT)
-      g.runUntil(PadsPhase.SCOLD) // too slow each time
-      lines += g.state.line
-      g.runUntil(PadsPhase.DEMO)
-    }
-    assertTrue(lines.zipWithNext().none { (a, b) -> a == b })
-    assertEquals(setOf(0, 1, 2), lines.toSet())
-    assertEquals(40, g.state.timeouts)
-    assertEquals(0, g.state.round)
-  }
-
-  @Test
   fun aOneRoundGame_passesAfterItsOnlySequence() {
     val g = PadsGame(rules.copy(lengths = listOf(3)), Random(1))
     g.start(now)

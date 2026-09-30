@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,8 @@ import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.character.CharacterView
 import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Framing
+import io.github.earthkodyai.rinalarm.character.Mood
+import io.github.earthkodyai.rinalarm.dialogue.Line
 import io.github.earthkodyai.rinalarm.mission.CupsAct
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
@@ -59,6 +62,7 @@ import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.QrScanner
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.ui.common.RinLine
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -102,6 +106,7 @@ class RingActivity : ComponentActivity() {
           onHearAgain = viewModel::hearAgain,
           onTapWord = viewModel::tapWord,
           onCantTalk = viewModel::cantTalk,
+          onClose = viewModel::close,
           character = { modifier ->
             CharacterView(
               state.mood,
@@ -154,6 +159,7 @@ internal fun RingScreen(
   onHearAgain: () -> Unit = {},
   onTapWord: (Int) -> Unit = {},
   onCantTalk: () -> Unit = {},
+  onClose: () -> Unit = {},
   // Slots, so previews and UI tests run without a WebView or a camera.
   character: @Composable (Modifier) -> Unit = {},
   scanner: @Composable (Modifier) -> Unit = {},
@@ -161,7 +167,15 @@ internal fun RingScreen(
 ) {
   val ring = state.ring ?: return
   val request = ring.request
-  Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.primaryContainer) {
+  // Once the ring is over (a pass, a snooze, the emergency stop) a tap anywhere closes the screen, cutting her short.
+  val closable = state.passed || state.leaving
+  Surface(
+    modifier
+      .fillMaxSize()
+      .clickable(enabled = closable, interactionSource = null, indication = null, onClick = onClose)
+      .testTag(RING_SCREEN_TAG),
+    color = MaterialTheme.colorScheme.primaryContainer,
+  ) {
     Column(
       Modifier.safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
@@ -179,8 +193,9 @@ internal fun RingScreen(
       }
       // The game being played: the planned one, or the one "Can't talk right now" switched to.
       val game = state.missionType ?: ring.mission?.type
-      val pads = state.pads.takeIf { game == MissionType.PADS && !state.plainDismiss && !state.passed }
-      val cups = state.cups.takeIf { game == MissionType.CUPS && !state.plainDismiss && !state.passed }
+      val playing = !state.plainDismiss && !state.passed && !state.leaving
+      val pads = state.pads.takeIf { game == MissionType.PADS && playing }
+      val cups = state.cups.takeIf { game == MissionType.CUPS && playing }
       // Rin takes what the controls leave: about half of a phone screen. The colour pads cover her while the game is
       // on (only her hand shows), and step aside when she scolds (D17, the user's pick).
       Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp)) {
@@ -188,21 +203,24 @@ internal fun RingScreen(
         when (pads?.phase) {
           PadsPhase.DEMO,
           PadsPhase.INPUT -> PadsBoard(pads, onTapPad, Modifier.fillMaxSize(), hand)
-          PadsPhase.SCOLD -> ScoldLine(pads, Modifier.align(Alignment.BottomCenter))
           else -> Unit
         }
         if (cups != null && cups.phase != CupsPhase.READY) {
           // Her page's cups once it shows them; until then (or if it never does) the native board.
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d }
           if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
-          if (state.cupsScold) CupsScoldLine(cups, Modifier.align(Alignment.TopCenter))
+        }
+        // Her line: over her head while the cup table is in view (the cups are below her), otherwise at her feet.
+        state.line?.let { line ->
+          val table = game == MissionType.CUPS && (state.cupsStaging || (state.cups?.phase ?: CupsPhase.READY) != CupsPhase.READY)
+          RinLine(line.text, Modifier.align(if (table) Alignment.TopCenter else Alignment.BottomCenter), Modifier.testTag(RIN_LINE_TAG))
         }
       }
       when {
         // The cups keep their card (and the space of the controls below) through the pass, so Rin's view keeps its size
         // while she claps behind the table.
         state.passed && game != MissionType.CUPS -> Passed()
-        state.plainDismiss -> Unit
+        state.plainDismiss || state.leaving -> Unit
         game == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
         game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
         game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
@@ -211,7 +229,9 @@ internal fun RingScreen(
       }
       Spacer(Modifier.height(16.dp))
       // Big, far-apart targets: the user is half asleep.
-      if (!state.passed) {
+      if (state.leaving) {
+        Unit
+      } else if (!state.passed) {
         Controls(state, request, onSnooze, onDismiss, onEmergencyStop)
       } else if (game == MissionType.CUPS) {
         // Same size, invisible and inert: the ring is over.
@@ -294,13 +314,19 @@ internal const val QR_SCANNER_TAG = "ring_qr_scanner"
 
 @Composable
 private fun Passed() {
-  Text(
-    stringResource(R.string.mission_passed),
-    style = MaterialTheme.typography.headlineSmall,
-    textAlign = TextAlign.Center,
-    modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-  )
+  Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Text(
+      stringResource(R.string.mission_passed),
+      style = MaterialTheme.typography.headlineSmall,
+      textAlign = TextAlign.Center,
+      modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+    )
+    Text(stringResource(R.string.ring_tap_to_close), style = MaterialTheme.typography.bodyMedium)
+  }
 }
+
+internal const val RING_SCREEN_TAG = "ring_screen"
+internal const val RIN_LINE_TAG = "rin_line"
 
 private val PREVIEW_RING =
   ActiveRing(
@@ -325,8 +351,9 @@ private fun RingScreenPadsDemoPreview() {
 @Preview
 @Composable
 private fun RingScreenPadsScoldPreview() {
-  val pads = PadsState(PadsPhase.SCOLD, round = 0, sequence = listOf(Pad.RED, Pad.GREEN, Pad.BLUE), miss = Miss.SLOW, line = 0)
-  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(0, 3), pads = pads), {}, {}, {}) }
+  val pads = PadsState(PadsPhase.SCOLD, round = 0, sequence = listOf(Pad.RED, Pad.GREEN, Pad.BLUE), miss = Miss.SLOW)
+  val line = Line("pads.slow.01", "pads.slow", "Too slow~ Is the blanket helping you?", Mood.POUTY, null)
+  RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING, MissionProgress(0, 3), pads = pads, line = line), {}, {}, {}) }
 }
 
 @Preview

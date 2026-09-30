@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.ui.editor
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
@@ -37,7 +38,9 @@ class AlarmEditorViewModelTest {
 
   private var missions = mapOf(MissionType.PADS to Readiness.NO_PERMISSION)
 
-  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time) { missions }
+  private val moments = HomeMoments()
+
+  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments)
 
   // --- mission (task 3.1) ---
 
@@ -187,6 +190,8 @@ class AlarmEditorViewModelTest {
 
     assertEquals(AlarmEditorUiState.Saved(Duration.ofMinutes(30)), viewModel.finished())
     assertEquals(listOf(work.copy(enabled = true)), alarms.saves)
+    // Rin says so on the home screen (task 4.2).
+    assertTrue(moments.alarmSaved.tryReceive().isSuccess)
   }
 
   @Test
@@ -226,6 +231,7 @@ class AlarmEditorViewModelTest {
     val state = viewModel.uiState.first { it is AlarmEditorUiState.Editing && it.failed } as AlarmEditorUiState.Editing
     assertFalse(state.busy)
     assertEquals(LocalTime.of(5, 0), state.draft.time)
+    assertTrue(moments.alarmSaved.tryReceive().isFailure) // nothing saved: Rin says nothing
 
     // The next edit clears the message; a retry that works then closes the editor.
     alarms.failure = null
