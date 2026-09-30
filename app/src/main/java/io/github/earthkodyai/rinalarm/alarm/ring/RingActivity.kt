@@ -122,6 +122,7 @@ class RingActivity : ComponentActivity() {
                 },
               onCups = viewModel::onCupsView,
               speech = viewModel.speaking,
+              onVisible = viewModel::onCharacterVisible,
             )
           },
           hand = { modifier -> RinHand(modifier) },
@@ -210,32 +211,32 @@ internal fun RingScreen(
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d }
           if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
         }
-        // Her line: over her head while the cup table is in view (the cups are below her), otherwise at her feet.
-        state.line?.let { line ->
-          val table = game == MissionType.CUPS && (state.cupsStaging || (state.cups?.phase ?: CupsPhase.READY) != CupsPhase.READY)
-          RinLine(line.text, Modifier.align(if (table) Alignment.TopCenter else Alignment.BottomCenter), Modifier.testTag(RIN_LINE_TAG))
-        }
       }
-      when {
-        // The cups keep their card (and the space of the controls below) through the pass, so Rin's view keeps its size
-        // while she claps behind the table.
-        state.passed && game != MissionType.CUPS -> Passed()
-        state.plainDismiss || state.leaving -> Unit
-        game == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
-        game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
-        game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
-        game == MissionType.SPEECH ->
-          RepeatCard(state.repeat, state.rinSpeaking, state.micLevel, onStartGame, onHearAgain, onTapWord, onCantTalk)
+      // Her line in its own band under her (4.3): it covers neither her, the cup table nor the pads.
+      RinLine(state.line?.text, textModifier = Modifier.testTag(RIN_LINE_TAG))
+      // After a pass, a snooze or the emergency stop, the game card and the controls stay as invisible, inert space, so
+      // Rin's view keeps its size while she claps or says her last line: when they went, her view grew ~250 dp in one
+      // frame and her page reframed, which the user saw as a shake at the end (4.3; the cups had this since 3.4).
+      val over = state.passed || state.leaving
+      val inert = Modifier.alpha(0f).clearAndSetSemantics {}
+      Box(contentAlignment = Alignment.Center) {
+        Box(if (over && game != MissionType.CUPS) inert else Modifier) {
+          when {
+            state.plainDismiss -> Unit
+            game == MissionType.QR -> QrCard(state, onOpenCamera, scanner)
+            game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
+            // The cups keep their card visible through the pass: she claps behind the table.
+            game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
+            game == MissionType.SPEECH ->
+              RepeatCard(state.repeat, state.rinSpeaking, state.micLevel, onStartGame, onHearAgain, onTapWord, onCantTalk)
+          }
+        }
+        if (state.passed && game != MissionType.CUPS) Passed()
       }
       Spacer(Modifier.height(16.dp))
-      // Big, far-apart targets: the user is half asleep.
-      if (state.leaving) {
-        Unit
-      } else if (!state.passed) {
-        Controls(state, request, onSnooze, onDismiss, onEmergencyStop)
-      } else if (game == MissionType.CUPS) {
-        // Same size, invisible and inert: the ring is over.
-        Box(Modifier.alpha(0f).clearAndSetSemantics {}) { Controls(state, request, {}, {}, {}) }
+      // Big, far-apart targets: the user is half asleep. Same size, invisible and inert once the ring is over.
+      Box(if (over) inert else Modifier) {
+        Controls(state, request, if (over) ({}) else onSnooze, if (over) ({}) else onDismiss, if (over) ({}) else onEmergencyStop)
       }
     }
   }

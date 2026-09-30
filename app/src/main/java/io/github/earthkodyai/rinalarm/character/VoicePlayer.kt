@@ -21,7 +21,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** A line being spoken: the page moves the mouth along [mouth] from [at], the epoch ms its first sample played. */
 data class Speaking(val line: String, val mouth: MouthTrack, val at: Long)
@@ -184,6 +186,14 @@ class VoicePlayer(
  */
 object RinMouth {
   val turn = Mutex()
+
+  /**
+   * Waits until no line of hers is playing (at most [maxMs]): a game's next round waits for her scold to end (D23 as
+   * amended in task 4.3; her voice clips run 2.6-5.4 s against the games' 2.5 s pause).
+   */
+  suspend fun awaitQuiet(maxMs: Long = 10_000) {
+    withTimeoutOrNull(maxMs) { turn.withLock {} }
+  }
 }
 
 /** Decodes a short clip to mono 16-bit PCM with MediaCodec; returns the samples and their rate. */

@@ -50,7 +50,8 @@ try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
 // A verdict belongs to one take, or to one set of candidate takes: new takes of the clip start undecided.
 const round = (c) => (c.candidates ? "c" + c.candidates.map((x) => x.n).join("-") : c.take);
-const verdict = (c) => { const v = state[c.id]; return v && v.take === round(c) ? v : null; };
+// A picked candidate stays decided once pack.mjs pick has made it the chosen take.
+const verdict = (c) => { const v = state[c.id]; return v && (v.take === round(c) || (String(v.take).startsWith("c") && v.choose === c.take)) ? v : null; };
 let clips = [];
 let batch = null; // the newest regen batch: shown with the candidates under "เฉพาะรอบนี้"
 let auto = false, onlyTodo = false, onlyRound = false;

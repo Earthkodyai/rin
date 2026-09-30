@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.mission
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -24,8 +25,15 @@ class ColourPadsMissionTest {
       }
     }
 
-  private fun TestScope.mission() =
-    ColourPadsMission(PadsRules(), seed = 5, notes = notes, clock = { testScheduler.currentTime }, context = StandardTestDispatcher(testScheduler))
+  private fun TestScope.mission(quiet: suspend () -> Unit = {}) =
+    ColourPadsMission(
+      PadsRules(),
+      seed = 5,
+      notes = notes,
+      clock = { testScheduler.currentTime },
+      context = StandardTestDispatcher(testScheduler),
+      quiet = quiet,
+    )
 
   /** Lets the demo play out on the timer until it is the user's turn. */
   private fun TestScope.untilYourTurn(m: ColourPadsMission) {
@@ -80,6 +88,30 @@ class ColourPadsMissionTest {
     runCurrent()
     assertEquals(PadsPhase.DEMO, m.game.value.phase)
     assertTrue(m.summary().contains("mistakes=1"))
+    m.stop()
+  }
+
+  @Test
+  fun afterAMiss_theNewDemoWaitsForRinsScoldToEnd_thenRunsOnItsOwnTimer() = runTest {
+    val lineOver = CompletableDeferred<Unit>()
+    val m = mission(quiet = { lineOver.await() })
+    m.start()
+    m.begin()
+    untilYourTurn(m)
+    m.tap(Pad.entries.first { it != m.game.value.sequence[0] })
+
+    // Her scold (4.3: her clips run 2.6-5.4 s) outlasts the 2.5 s pause: the game holds on her.
+    testScheduler.advanceTimeBy(PadsRules().scoldMs + 3_000)
+    runCurrent()
+    assertEquals(PadsPhase.SCOLD, m.game.value.phase)
+
+    lineOver.complete(Unit)
+    runCurrent()
+    assertEquals(PadsPhase.DEMO, m.game.value.phase)
+    // The demo is timed from when she finished, so none of it was skipped while she talked.
+    val playedBefore = notes.played.size
+    untilYourTurn(m)
+    assertEquals(m.game.value.sequence.size, notes.played.size - playedBefore)
     m.stop()
   }
 

@@ -35,6 +35,8 @@ class ColourPadsMission(
   private val notes: PadNotes,
   private val clock: ElapsedClock,
   private val context: CoroutineContext = Dispatchers.Main.immediate,
+  /** Suspends until Rin's line is over; a new sequence after a miss waits for her scold (D23 amended in 4.3). */
+  private val quiet: suspend () -> Unit = {},
 ) : PadsMission {
   override val type = MissionType.PADS
   private val play = PadsGame(rules, Random(seed))
@@ -95,6 +97,8 @@ class ColourPadsMission(
       at?.let {
         scope?.launch {
           delay((it - clock.now()).coerceAtLeast(0))
+          // Only the gap before the next sequence grows: the new round is timed from this tick, as in the held-out.
+          if (play.state.phase == PadsPhase.SCOLD) quiet()
           timer = null
           apply(play.tick(clock.now()), activity = false)
         }

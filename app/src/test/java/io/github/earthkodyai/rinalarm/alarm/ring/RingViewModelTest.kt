@@ -449,9 +449,11 @@ class RingViewModelTest {
   private fun TestScope.talkingScreen(
     missions: MissionFactory,
     ring: ActiveRing,
+    faceUp: Boolean = true,
   ): Triple<RingViewModel, MutableList<RingCommand>, MutableList<Gesture>> {
     book = realLineBook()
     val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+    if (faceUp) viewModel.onCharacterVisible()
     val commands = mutableListOf<RingCommand>()
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
@@ -473,6 +475,31 @@ class RingViewModelTest {
       untilSaid(viewModel)
       assertNull(viewModel.line)
       assertEquals(RingMoods.mood(RingPhase.WAKING), viewModel.uiState.value.mood)
+    }
+
+  @Test
+  fun herOpeningLine_waitsForHerFace_thenAMomentForItsFirstFrames() =
+    runTest(main.dispatcher) {
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)), faceUp = false)
+      advanceTimeBy(2_000)
+      runCurrent()
+      assertNull("her page is still loading", viewModel.line)
+
+      viewModel.onCharacterVisible()
+      runCurrent()
+      assertNull(viewModel.line)
+      advanceTimeBy(RingViewModel.OPENING_SETTLE_MS + 1)
+      runCurrent()
+      assertEquals("ring.cheerful", checkNotNull(viewModel.line).pool)
+    }
+
+  @Test
+  fun herOpeningLine_stillComes_whenHerPageNeverLoads() =
+    runTest(main.dispatcher) {
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)), faceUp = false)
+      advanceTimeBy(RingViewModel.OPENING_WAIT_MS + 1)
+      runCurrent()
+      assertEquals("ring.cheerful", checkNotNull(viewModel.line).pool)
     }
 
   @Test

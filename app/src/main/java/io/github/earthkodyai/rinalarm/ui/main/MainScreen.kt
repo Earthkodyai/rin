@@ -80,15 +80,16 @@ fun MainScreen(
     character = {
       val line by rin.line.collectAsStateWithLifecycle()
       val mood = rememberDefaultMood()
-      Box(Modifier.fillMaxWidth().height(CHARACTER_HEIGHT)) {
+      Column(Modifier.fillMaxWidth()) {
         CharacterView(
           line?.emotion ?: mood,
-          Modifier.fillMaxSize(),
+          Modifier.fillMaxWidth().height(CHARACTER_HEIGHT),
           cues = rin.cues,
           speech = rin.speaking,
           onHeadTap = rin::onHeadTap,
         )
-        line?.let { RinLine(it.text, Modifier.align(Alignment.BottomCenter)) }
+        // Under her strip only while she speaks (4.3): home lines are rare, so no empty band sits over the alarms.
+        RinLine(line?.text, reserve = false)
       }
     },
   )

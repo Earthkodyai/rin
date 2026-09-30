@@ -1,14 +1,15 @@
 package io.github.earthkodyai.rinalarm.ui.common
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -17,24 +18,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
- * One of Rin's lines floating over her, her subtitle wherever she speaks (task 4.2; the games' scolds before it): bold
- * white text with a soft dark shadow, no box, so it reads over her hair, the table and the screen's colour alike. The
- * box it had covered too much of her (the tester, dev-1 of task 3.4); the user kept this look for every line.
+ * Rin's subtitle, in its own band under her wherever she speaks (task 4.3, the user's pick), so it never covers her or
+ * the game. Before it the line floated over her in large bold white (4.2), which the user found too big once she had
+ * a voice. With [reserve] the band keeps two lines' height while she is quiet, so nothing below it moves when she
+ * speaks (the ring screen); without it the band is only there while she has a line (the home strip). Larger font
+ * scales may take more lines rather than cut her line short.
  */
 @Composable
-fun RinLine(text: String, modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
-  Text(
-    text,
-    style =
-      MaterialTheme.typography.titleLarge.copy(
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        shadow = Shadow(Color.Black.copy(alpha = 0.85f), offset = Offset(0f, 2f), blurRadius = 10f),
-      ),
-    textAlign = TextAlign.Center,
-    modifier =
-      modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().then(textModifier).semantics {
-        liveRegion = LiveRegionMode.Polite
-      },
-  )
+fun RinLine(text: String?, modifier: Modifier = Modifier, textModifier: Modifier = Modifier, reserve: Boolean = true) {
+  if (text == null && !reserve) return
+  val style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+  val band = with(LocalDensity.current) { (style.lineHeight * LINES).toDp() } + 8.dp
+  Box(modifier.fillMaxWidth().heightIn(min = band).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+    if (text != null) {
+      Text(
+        text,
+        style = style,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        modifier = textModifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+      )
+    }
+  }
 }
+
+private const val LINES = 2

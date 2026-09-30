@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.mission
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -9,8 +10,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CupShuffleMissionTest {
-  private fun TestScope.mission() =
-    CupShuffleMission(CupsRules(), seed = 7, clock = { testScheduler.currentTime }, context = StandardTestDispatcher(testScheduler))
+  private fun TestScope.mission(quiet: suspend () -> Unit = {}) =
+    CupShuffleMission(
+      CupsRules(),
+      seed = 7,
+      clock = { testScheduler.currentTime },
+      context = StandardTestDispatcher(testScheduler),
+      quiet = quiet,
+    )
 
   private fun TestScope.untilPick(m: CupShuffleMission) {
     while (m.game.value.phase != CupsPhase.PICK) {
@@ -57,6 +64,27 @@ class CupShuffleMissionTest {
     runCurrent()
     assertEquals(0, m.progress.value.done)
     assertEquals(activity, m.progress.value.activity)
+    m.stop()
+  }
+
+  @Test
+  fun afterAWrongPick_theNextShuffleWaitsForRinsScoldToEnd() = runTest {
+    val lineOver = CompletableDeferred<Unit>()
+    val m = mission(quiet = { lineOver.await() })
+    m.start()
+    m.begin()
+    untilPick(m)
+    m.pick((m.ball() + 1) % 3)
+    runCurrent()
+    assertEquals(CupsPhase.REVEAL, m.game.value.phase)
+
+    testScheduler.advanceTimeBy(CupsRules().scoldMs + 5_000)
+    runCurrent()
+    assertEquals(CupsPhase.REVEAL, m.game.value.phase)
+
+    lineOver.complete(Unit)
+    runCurrent()
+    assertEquals(CupsPhase.SHUFFLE, m.game.value.phase)
     m.stop()
   }
 

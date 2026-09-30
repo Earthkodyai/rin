@@ -45,6 +45,7 @@ import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -55,6 +56,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The ring screen's side of a ring (task 3.1): runs the mission RingService planned, reports each bit of progress to
@@ -93,6 +95,9 @@ constructor(
   /** Gestures for Rin when the phase changes (RingMoods.cue). */
   val cues: SharedFlow<Gesture> = cueFlow.asSharedFlow()
 
+  private val characterVisible = CompletableDeferred<Unit>()
+  /** Her opening line, while it waits for her face (cancelled by any other line). */
+  private var opening: Job? = null
   private val speakingFlow = MutableStateFlow<Speaking?>(null)
   /** The clip Rin is saying (one of her lines, or a game's sentence in Repeat after Rin), for her mouth. */
   val speaking: StateFlow<Speaking?> = speakingFlow.asStateFlow()
@@ -147,13 +152,21 @@ constructor(
    * Picks a line from [pool] and says it; the job ends when she is done (at once when there is no line). [cut] stops
    * her line in progress, otherwise this one waits for it. [gesture]: she plays the line's gesture as she starts.
    */
-  private fun say(pool: String, cut: Boolean = true, gesture: Boolean = true): Job =
-    viewModelScope.launch {
+  private fun say(pool: String, cut: Boolean = true, gesture: Boolean = true): Job {
+    // Any other line means the moment for her opening one has passed (the user tapped Let's play before her face came).
+    opening?.cancel()
+    return viewModelScope.launch {
       val line = lines.pick(pool, ringDay ?: today(), morning) ?: return@launch
       if (!cut) speaker.finish()
       if (gesture) line.gesture?.let(cueFlow::tryEmit)
       speaker.say(line).join()
     }
+  }
+
+  /** Her face is on screen (or never will be: the still image). Called by the ring screen's CharacterView. */
+  fun onCharacterVisible() {
+    characterVisible.complete(Unit)
+  }
 
   private fun today(): LocalDate = time.now().atZone(time.zone()).toLocalDate()
 
@@ -172,7 +185,22 @@ constructor(
     val now = time.now().atZone(time.zone())
     ringDay = now.toLocalDate()
     morning = ring.request.alarmId to ringDay
-    ring.request.let { say(Pools.opening(it.snoozeCount, it.snoozesLeft, it.late, now.dayOfWeek, it.time)) }
+    // Her first line waits for her face (4.3): a line that starts while her page still loads plays to the still image,
+    // and the user saw her mouth miss it. A page that never loads costs at most OPENING_WAIT_MS.
+    val pool = ring.request.let { Pools.opening(it.snoozeCount, it.snoozesLeft, it.late, now.dayOfWeek, it.time) }
+    val waiting =
+      viewModelScope.launch {
+        // Her face was already up (a ring after a snooze on the same screen): no wait at all.
+        val loading = !characterVisible.isCompleted
+        val shown = withTimeoutOrNull(OPENING_WAIT_MS) { characterVisible.await() } != null
+        if (shown && loading) delay(OPENING_SETTLE_MS)
+        opening = null
+        // Her face just came up with its greeting by mood (a wave, or a yawn when sleepy): the line's own gesture
+        // 0.3 s later took over the greeting mid-way and her hand jerked (4.3), so one gesture is enough. The user
+        // chose a greeting every time over the line's gesture, which 16 of 39 opening lines lack.
+        say(pool, gesture = !(shown && loading))
+      }
+    opening = waiting
     val plan = ring.mission ?: return
     run(ring, plan.type, plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: "")
   }
@@ -559,6 +587,12 @@ constructor(
   }
 
   companion object {
+    /** The longest her opening line waits for her page (its first frame came 1.8 s after the screen opened on the 14T). */
+    const val OPENING_WAIT_MS = 5_000L
+
+    /** After her page is ready, a moment for its first frames before she speaks. */
+    const val OPENING_SETTLE_MS = 300L
+
     /** How long Rin claps after a pass before the ring screen closes, when she has no lines to say. */
     const val CELEBRATE_MS = 2_500L
 

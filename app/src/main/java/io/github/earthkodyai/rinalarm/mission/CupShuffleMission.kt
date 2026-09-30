@@ -33,6 +33,8 @@ class CupShuffleMission(
   private val seed: Long,
   private val clock: ElapsedClock,
   private val context: CoroutineContext = Dispatchers.Main.immediate,
+  /** Suspends until Rin's line is over; a new shuffle after a wrong pick waits for her scold (D23 amended in 4.3). */
+  private val quiet: suspend () -> Unit = {},
 ) : CupsMission {
   override val type = MissionType.CUPS
   private val play = CupsGame(rules, Random(seed))
@@ -86,6 +88,8 @@ class CupShuffleMission(
       at?.let {
         scope?.launch {
           delay((it - clock.now()).coerceAtLeast(0))
+          // A right pick has no line (D23), so this only waits after a wrong one; the shuffle is timed from this tick.
+          if (play.state.phase == CupsPhase.REVEAL) quiet()
           timer = null
           apply(play.tick(clock.now()), activity = false)
         }

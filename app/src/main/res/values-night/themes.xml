@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode: the window shows before Compose draws its first frame, and the light theme's white flashed for
+         ~0.5 s before the dark ring screen at every ring (the user saw it as a white screen, task 4.3). -->
+    <style name="Theme.RinAlarm" parent="android:Theme.Material.NoActionBar" />
+</resources>

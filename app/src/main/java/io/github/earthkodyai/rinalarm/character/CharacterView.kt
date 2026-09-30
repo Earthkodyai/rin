@@ -128,6 +128,8 @@ fun CharacterView(
   onCups: (CupsView) -> Unit = {},
   speech: Flow<Speaking?>? = null,
   onHeadTap: () -> Unit = {},
+  onVisible: () -> Unit = {},
+  greetOnShow: Boolean = true,
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -152,7 +154,11 @@ fun CharacterView(
   SideEffect { host.onHeadTap = { currentOnHeadTap() } }
   val director = remember { GestureDirector() }
   val currentMood by rememberUpdatedState(shown.first)
-  SideEffect { host.onShown = { away -> director.greetOnShow(currentMood, away)?.let(host::gesture) } }
+  // A screen can turn the greeting off; the ring screen keeps it and drops its first line's gesture instead (4.3).
+  SideEffect { host.onShown = { away -> if (greetOnShow) director.greetOnShow(currentMood, away)?.let(host::gesture) } }
+  // Her face is up (the page is ready) or the still image is here to stay: a screen may wait for this to speak (4.3).
+  val currentOnVisible by rememberUpdatedState(onVisible)
+  LaunchedEffect(phase) { if (phase != Phase.LOADING) currentOnVisible() }
   val scope = rememberCoroutineScope()
   val voice = remember { VoicePlayer(context, scope, onSpeaking = host::speak) }
   DisposableEffect(voice) { onDispose { voice.stop() } }
