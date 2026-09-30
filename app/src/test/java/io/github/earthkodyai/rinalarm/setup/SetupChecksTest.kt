@@ -46,10 +46,19 @@ class SetupChecksTest {
   }
 
   @Test
-  fun fullScreenOff_isOnlyAWarning_theSoundStillPlays() {
+  fun fullScreenOff_isCritical_soTheBannerShows() {
+    // 2026-10-01: HyperOS turned it off on an app update and the ring hid behind the lock screen.
     val results = SetupChecks.evaluate(good.copy(fullScreenAllowed = false))
-    assertEquals(Severity.WARNING, results.first { it.id == FULL_SCREEN }.severity)
-    assertFalse(SetupChecks.hasCritical(results))
+    assertEquals(Severity.CRITICAL, results.first { it.id == FULL_SCREEN }.severity)
+    assertTrue(SetupChecks.hasCritical(results))
+  }
+
+  @Test
+  fun afterAnUpdate_aLostFullScreenGrant_getsANotice_onlyWhenANotificationCanReachTheUser() {
+    assertTrue(fullScreenLostNotice(fullScreenAllowed = false, canNotify = true))
+    assertFalse(fullScreenLostNotice(fullScreenAllowed = false, canNotify = false))
+    assertFalse(fullScreenLostNotice(fullScreenAllowed = true, canNotify = true))
+    assertFalse("below Android 14 there is nothing to lose", fullScreenLostNotice(fullScreenAllowed = null, canNotify = true))
   }
 
   @Test

@@ -45,6 +45,9 @@
     <string name="channel_ringing">Ringing alarm</string>
     <string name="channel_ring_screen">Ringing alarm (page open)</string>
     <string name="channel_missed">Missed alarms</string>
+    <string name="channel_setup">Setup problems</string>
+    <string name="fsi_lost_title">Your alarm can\'t show on the lock screen</string>
+    <string name="fsi_lost_text">After the update, Android turned off full-screen alarms for RinAlarm. The next alarm will only make a sound until you turn it back on. Tap to fix.</string>
     <string name="ring_default_label">Alarm</string>
     <string name="ring_late">late</string>
     <string name="ring_late_explained">Ringing late: your phone was off or asleep.</string>
@@ -180,8 +183,8 @@
     <string name="check_notifications_problem">Off. You\'ll hear alarms, but the ring screen can\'t appear. To stop one, open RinAlarm.</string>
     <string name="check_full_screen">Full-screen alarms</string>
     <string name="check_full_screen_ok">Allowed.</string>
-    <string name="check_full_screen_problem">Not allowed. Alarms show as a notification instead of filling the lock screen. The sound is the same.</string>
-    <string name="check_full_screen_xiaomi">On Xiaomi phones this switch sometimes turns itself off. The alarm still rings.</string>
+    <string name="check_full_screen_problem">Not allowed. Alarms show as a notification instead of filling the lock screen, and you have to unlock the phone to reach Rin and the game. The sound is the same.</string>
+    <string name="check_full_screen_xiaomi">On Xiaomi phones this switch sometimes turns itself off, for example after an app update. The alarm still rings.</string>
     <string name="check_exact">Exact alarm timing</string>
     <string name="check_exact_ok">Allowed.</string>
     <string name="check_exact_problem">Not allowed. Alarms may ring several minutes late.</string>

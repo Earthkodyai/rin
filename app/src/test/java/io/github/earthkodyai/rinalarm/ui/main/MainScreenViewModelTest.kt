@@ -132,8 +132,13 @@ class MainScreenViewModelTest {
     viewModel.refreshSetup()
     assertTrue(viewModel.setupIssue.value)
 
-    // A warning (full-screen off) alone is not worth a permanent banner.
+    // Full-screen off hides the ring behind the lock screen: a banner too (2026-10-01, was a warning in 1.4).
     device.status = FakeDeviceStatus.ALL_GOOD.copy(fullScreenAllowed = false)
+    viewModel.refreshSetup()
+    assertTrue(viewModel.setupIssue.value)
+
+    // A warning alone (no game can run; alarms still ring and show) is not worth a permanent banner.
+    device.status = FakeDeviceStatus.ALL_GOOD.copy(readyMissions = emptyList())
     viewModel.refreshSetup()
     assertFalse(viewModel.setupIssue.value)
   }

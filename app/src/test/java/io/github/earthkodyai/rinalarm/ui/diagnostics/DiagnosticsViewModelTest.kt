@@ -83,7 +83,7 @@ class DiagnosticsViewModelTest {
     val report = vm.report()
 
     assertTrue(report, report.startsWith("RinAlarm 0.1.0 diagnostics, 2026-09-28 06:00:00 (Asia/Bangkok)"))
-    assertTrue(report, "- FULL_SCREEN: WARNING" in report)
+    assertTrue(report, "- FULL_SCREEN: CRITICAL" in report)
     assertTrue(report, "Now: screen=off dnd=off" in report)
     assertTrue(report, "- 2026-09-28 06:00:00 alarm=3 DISMISSED late=52ms toSound=900ms test" in report)
     assertTrue(report, "Reliability run: 0/14 days" in report.lines())

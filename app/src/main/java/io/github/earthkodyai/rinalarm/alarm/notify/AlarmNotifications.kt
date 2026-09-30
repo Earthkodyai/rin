@@ -20,6 +20,7 @@ import io.github.earthkodyai.rinalarm.alarm.engine.MissedAlarmNotifier
 import io.github.earthkodyai.rinalarm.alarm.ring.ActiveRing
 import io.github.earthkodyai.rinalarm.alarm.ring.RingActivity
 import io.github.earthkodyai.rinalarm.alarm.ring.RingService
+import io.github.earthkodyai.rinalarm.setup.fullScreenLostNotice
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -56,6 +57,39 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
     manager.createNotificationChannel(
       NotificationChannel(CHANNEL_MISSED, context.getString(R.string.channel_missed), NotificationManager.IMPORTANCE_DEFAULT)
     )
+    manager.createNotificationChannel(
+      NotificationChannel(CHANNEL_SETUP, context.getString(R.string.channel_setup), NotificationManager.IMPORTANCE_DEFAULT)
+    )
+  }
+
+  /**
+   * After an app update (RescheduleReceiver): if Android turned full-screen alarms off (HyperOS did on 2026-10-01),
+   * one notification says so before the next ring hides behind the lock screen. It opens the app, whose banner leads
+   * to the setting.
+   */
+  fun notifyIfFullScreenLost() {
+    val allowed =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+      } else {
+        null
+      }
+    if (!fullScreenLostNotice(allowed, canNotify())) return
+    val open =
+      PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+    val notification =
+      NotificationCompat.Builder(context, CHANNEL_SETUP)
+        .setSmallIcon(R.drawable.ic_stat_alarm)
+        .setContentTitle(context.getString(R.string.fsi_lost_title))
+        .setContentText(context.getString(R.string.fsi_lost_text))
+        .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.fsi_lost_text)))
+        .setCategory(NotificationCompat.CATEGORY_ERROR)
+        .setContentIntent(open)
+        .setAutoCancel(true)
+        .build()
+    // canNotify() checked POST_NOTIFICATIONS; lint cannot see through the helper.
+    @Suppress("MissingPermission")
+    NotificationManagerCompat.from(context).notify(FULL_SCREEN_LOST_ID, notification)
   }
 
   /**
@@ -135,7 +169,9 @@ class AlarmNotifications @Inject constructor(@ApplicationContext private val con
     const val CHANNEL_RINGING = "ringing"
     const val CHANNEL_RING_SCREEN = "ring_screen"
     const val CHANNEL_MISSED = "missed"
+    const val CHANNEL_SETUP = "setup"
     const val RINGING_ID = 1
+    private const val FULL_SCREEN_LOST_ID = 2
     private const val MISSED_ID_BASE = 1000
   }
 }

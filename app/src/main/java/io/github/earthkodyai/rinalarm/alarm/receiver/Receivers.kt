@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
+import io.github.earthkodyai.rinalarm.alarm.notify.AlarmNotifications
 import io.github.earthkodyai.rinalarm.di.AppScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -41,6 +42,10 @@ class RescheduleReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val action = intent.action ?: return
     if (action !in ACTIONS) return
+    // HyperOS can turn full-screen alarms off on an update (2026-10-01); say so before the next ring hides.
+    if (action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+      runCatching { entryPoint(context).notifications().notifyIfFullScreenLost() }
+    }
     goAsync(context) { reconcile(action.substringAfterLast('.')) }
   }
 
@@ -63,12 +68,17 @@ class RescheduleReceiver : BroadcastReceiver() {
 internal interface ReceiverEntryPoint {
   fun engine(): AlarmEngine
 
+  fun notifications(): AlarmNotifications
+
   @AppScope fun scope(): CoroutineScope
 }
 
+private fun entryPoint(context: Context): ReceiverEntryPoint =
+  EntryPointAccessors.fromApplication(context.applicationContext, ReceiverEntryPoint::class.java)
+
 /** Runs [block] off the main thread while keeping the broadcast alive (Android allows about 10 s). */
 private fun BroadcastReceiver.goAsync(context: Context, block: suspend AlarmEngine.() -> Unit) {
-  val entryPoint = EntryPointAccessors.fromApplication(context.applicationContext, ReceiverEntryPoint::class.java)
+  val entryPoint = entryPoint(context)
   // Null when onReceive is called directly rather than by a broadcast (receiver tests do this for the protected
   // system actions they cannot send).
   val pending: BroadcastReceiver.PendingResult? = goAsync()

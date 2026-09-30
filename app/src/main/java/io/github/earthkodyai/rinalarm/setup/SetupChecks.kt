@@ -58,6 +58,12 @@ enum class CheckId {
   MICROPHONE,
 }
 
+/**
+ * After an app update: tell the user when full-screen alarms were turned off ([fullScreenAllowed] false; null below
+ * Android 14, where it needs no grant) and a notification can reach them at all.
+ */
+fun fullScreenLostNotice(fullScreenAllowed: Boolean?, canNotify: Boolean): Boolean = fullScreenAllowed == false && canNotify
+
 enum class Severity {
   OK,
   /** Worth knowing; alarms still ring on time. */
@@ -75,8 +81,10 @@ object SetupChecks {
   fun evaluate(status: DeviceStatus): List<CheckResult> = buildList {
     // Off: Android hides the ring notification and blocks the full-screen launch; only the sound is left (1.2).
     add(CheckResult(CheckId.NOTIFICATIONS, if (status.notificationsAllowed) Severity.OK else Severity.CRITICAL))
-    // Off: a heads-up notification instead of the ring screen over the lock screen. Sound is unaffected (S1).
-    status.fullScreenAllowed?.let { add(CheckResult(CheckId.FULL_SCREEN, if (it) Severity.OK else Severity.WARNING)) }
+    // Off: a heads-up notification instead of the ring screen over the lock screen; the sound is unaffected (S1). Raised
+    // from WARNING (1.4) on 2026-10-01: HyperOS turned it off again on an app update, the user got only the sound and
+    // had to unlock, and nothing on the main screen said so. Hidden is one of the three things the banner is for.
+    status.fullScreenAllowed?.let { add(CheckResult(CheckId.FULL_SCREEN, if (it) Severity.OK else Severity.CRITICAL)) }
     // Only revocable on Android 12-12L; off means inexact rings that can be minutes late.
     add(CheckResult(CheckId.EXACT_ALARMS, if (status.exactAlarmsAllowed) Severity.OK else Severity.CRITICAL))
     // The ring raises a low alarm volume to the floor by itself, so a low volume is only worth a note.
