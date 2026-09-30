@@ -127,7 +127,8 @@ class RingService : Service() {
       record(RingEventType.OVERLAP, request.alarmId, request.scheduledAt, "ringing=${current.request.alarmId}")
       return
     }
-    val dayMode = readDayMode()
+    // The Diagnostics test alarm rings as usual and leaves a waiting rest or sick day for the real morning.
+    val dayMode = if (request.isTest) null else readDayMode()
     // A rest or sick day has no game: the plain Dismiss, as with no mission.
     val plan = if (dayMode != null) null else planMission(request)
     // State first: the full-screen activity may start as soon as the notification is posted, and reads it.

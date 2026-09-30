@@ -120,6 +120,7 @@ constructor(
           late = scheduledAt != null && Duration.between(scheduledAt, now) > LATE_THRESHOLD,
           options = alarm.ring,
           mission = alarm.mission,
+          isTest = alarm.isTest,
         )
       if (!ringer.start(request)) log.record(RingEventType.FGS_FAIL, alarmId, scheduledAt)
     }

@@ -340,6 +340,8 @@ class AlarmEngineTest {
 
     assertEquals(listOf(testId), rings.map { it.alarmId })
     assertEquals(0, rings.single().snoozesLeft)
+    // Marked, so the ring leaves a waiting rest or sick day for the real morning.
+    assertTrue(rings.single().isTest)
     assertTrue(log.events.single { it.type == FIRED }.detail.endsWith(AlarmEngine.TEST_MARK))
     assertEquals(listOf(userAlarm), alarmDao.getAll().map { it.id })
     assertTrue(pendingDao.rings().none { it.alarmId == testId })
