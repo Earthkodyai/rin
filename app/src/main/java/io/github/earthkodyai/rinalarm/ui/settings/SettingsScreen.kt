@@ -44,14 +44,14 @@ class SettingsViewModel @Inject constructor(private val settings: AppSettings) :
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onPrivacy: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
   val poutOff by viewModel.poutOff.collectAsStateWithLifecycle()
-  SettingsScreen(poutOff = poutOff, onPoutOff = viewModel::setPoutOff, onBack = onBack)
+  SettingsScreen(poutOff = poutOff, onPoutOff = viewModel::setPoutOff, onPrivacy = onPrivacy, onBack = onBack)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsScreen(poutOff: Boolean, onPoutOff: (Boolean) -> Unit, onBack: () -> Unit) {
+internal fun SettingsScreen(poutOff: Boolean, onPoutOff: (Boolean) -> Unit, onPrivacy: () -> Unit, onBack: () -> Unit) {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -77,6 +77,12 @@ internal fun SettingsScreen(poutOff: Boolean, onPoutOff: (Boolean) -> Unit, onBa
         headlineContent = { Text(stringResource(R.string.about_rin_title)) },
         supportingContent = { Text(stringResource(R.string.about_rin)) },
       )
+      HorizontalDivider()
+      ListItem(
+        headlineContent = { Text(stringResource(R.string.privacy_title)) },
+        supportingContent = { Text(stringResource(R.string.privacy_summary)) },
+        modifier = Modifier.clickable(onClick = onPrivacy),
+      )
     }
   }
 }
@@ -84,5 +90,5 @@ internal fun SettingsScreen(poutOff: Boolean, onPoutOff: (Boolean) -> Unit, onBa
 @Preview(showBackground = true)
 @Composable
 private fun SettingsScreenPreview() {
-  RinAlarmTheme { SettingsScreen(poutOff = true, onPoutOff = {}, onBack = {}) }
+  RinAlarmTheme { SettingsScreen(poutOff = true, onPoutOff = {}, onPrivacy = {}, onBack = {}) }
 }

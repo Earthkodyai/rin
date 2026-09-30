@@ -20,6 +20,7 @@ import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorViewModel
 import io.github.earthkodyai.rinalarm.ui.main.MainScreen
 import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingScreen
 import io.github.earthkodyai.rinalarm.ui.qrsetup.QrSetupScreen
+import io.github.earthkodyai.rinalarm.ui.settings.PrivacyScreen
 import io.github.earthkodyai.rinalarm.ui.settings.SettingsScreen
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -80,7 +81,13 @@ private fun AppNavigation(first: NavKey) {
           )
         }
         entry<QrSetup> { QrSetupScreen(onClose = { if (backStack.lastOrNull() == QrSetup) backStack.removeLastOrNull() }) }
-        entry<Settings> { SettingsScreen(onBack = { if (backStack.lastOrNull() == Settings) backStack.removeLastOrNull() }) }
+        entry<Settings> {
+          SettingsScreen(
+            onBack = { if (backStack.lastOrNull() == Settings) backStack.removeLastOrNull() },
+            onPrivacy = { if (backStack.lastOrNull() == Settings) backStack.add(Privacy) },
+          )
+        }
+        entry<Privacy> { PrivacyScreen(onBack = { if (backStack.lastOrNull() == Privacy) backStack.removeLastOrNull() }) }
         entry<Diagnostics> {
           DiagnosticsScreen(onBack = { if (backStack.lastOrNull() == Diagnostics) backStack.removeLastOrNull() })
         }

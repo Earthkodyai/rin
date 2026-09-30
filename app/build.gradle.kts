@@ -287,6 +287,32 @@ abstract class DevModelCopy : DefaultTask() {
   }
 }
 
+/**
+ * The privacy notice in the app (6.3) is the repo's PRIVACY.md itself, copied into assets/privacy/, so the app and the
+ * GitHub Pages copy can never say different things.
+ */
+abstract class PrivacyCopy : DefaultTask() {
+  @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val notice: RegularFileProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:Inject abstract val fs: FileSystemOperations
+
+  @TaskAction
+  fun copy() {
+    fs.sync {
+      from(notice)
+      into(outputDir.dir("privacy"))
+    }
+  }
+}
+
+val privacyNotice =
+  tasks.register<PrivacyCopy>("copyPrivacyNotice") {
+    notice.set(rootProject.layout.projectDirectory.file("PRIVACY.md"))
+    outputDir.set(layout.buildDirectory.dir("generated/privacy"))
+  }
+
 val devModelInRelease =
   if (rinModel == null && devModel.asFile.isFile && localProperties.getProperty("rin.devModelInRelease") == "true") {
     tasks.register<DevModelCopy>("copyDevModelForRelease") {
@@ -424,6 +450,7 @@ androidComponents {
   onVariants { variant ->
     variant.sources.assets?.addGeneratedSourceDirectory(characterWeb, CharacterWebBuild::outputDir)
     variant.sources.assets?.addGeneratedSourceDirectory(voskModel, VoskModelFetch::outputDir)
+    variant.sources.assets?.addGeneratedSourceDirectory(privacyNotice, PrivacyCopy::outputDir)
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
     rinVoice?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinVoiceCopy::outputDir) }
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }

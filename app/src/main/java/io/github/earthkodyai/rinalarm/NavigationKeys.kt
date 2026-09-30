@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
 /** Pout off (Phase 5). */
 @Serializable data object Settings : NavKey
 
+/** How Rin uses your data: PRIVACY.md (6.3). */
+@Serializable data object Privacy : NavKey
+
 /** QR sticker setup for the QR mission (task 3.2). */
 @Serializable data object QrSetup : NavKey
 
