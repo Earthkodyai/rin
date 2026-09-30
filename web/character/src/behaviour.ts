@@ -9,7 +9,7 @@ import { restArm, restFingers } from '../scripts/vrma.mjs';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { Blend, EXPRESSIONS, TapReaction, moodChannels, type Mood } from './emotion';
 import type { GesturePlayer } from './gesture';
-import { MouthPlayer, VISEMES } from './mouth';
+import { MouthPlayer, VISEMES, gestureFace, talkEnvelope } from './mouth';
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const REST_ARMS = { left: restArm('left'), right: restArm('right') };
@@ -28,6 +28,8 @@ export class Behaviour {
 
   private nextBlink = 2;
   private blinkT = -1;
+  /** 0 quiet .. 1 speaking, eased (mouth.ts talkEnvelope). */
+  private talk = 0;
 
   /** What her eyes look at (three-vrm aims the eyes at it); it chases `desired` quickly, like a saccade. */
   private readonly target = new THREE.Object3D();
@@ -197,6 +199,7 @@ export class Behaviour {
     const g = (name: string) => gesture.weights[name] ?? 0;
     // Speaking opens the mouth over the mood's own mouth shape, so a smile softens while she talks.
     const mouth = this.mouth.at(Date.now());
+    this.talk = talkEnvelope(this.talk, mouth !== null, dt);
     let open = 0;
     for (const v of VISEMES) {
       const value = Math.max(g(v), mouth?.[v] ?? 0);
@@ -204,8 +207,10 @@ export class Behaviour {
       open += value;
     }
     const mood = (1 - 0.8 * gesture.takeover) * (1 - 0.5 * Math.min(open, 1));
-    for (const e of EXPRESSIONS) em.setValue(e, Math.max(c[e] * mood, g(e)));
-    if (!this.hasSmile) em.setValue('happy', Math.min(Math.max(c.happy * mood, g('happy')) + 0.35 * c.smile * mood, 1));
+    // A gesture's face steps back while she talks too, or its mouth shape hides her lips (the win screen's joy).
+    const ge = (e: string) => gestureFace(g(e), this.talk);
+    for (const e of EXPRESSIONS) em.setValue(e, Math.max(c[e] * mood, ge(e)));
+    if (!this.hasSmile) em.setValue('happy', Math.min(Math.max(c.happy * mood, ge('happy')) + 0.35 * c.smile * mood, 1));
     const t = this.t;
     let pulse = 0;
     if (this.blinkT < 0 && t > this.nextBlink) this.blinkT = 0;

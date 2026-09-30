@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation';
 import { buildVrma, poseAt, solveArm, validate, ARM_REST, SKELETON, type GestureDef } from '../scripts/vrma.mjs';
 import { Clip, FADE_IN_S, FADE_OUT_S, GESTURES, GesturePlayer, envelope, isGesture } from './gesture';
-import { MAX_OPEN, MouthPlayer, isMouthTrack, mouthAt, trackSeconds } from './mouth';
+import { GESTURE_HUSH, MAX_OPEN, MouthPlayer, TALK_EASE_S, gestureFace, isMouthTrack, mouthAt, talkEnvelope, trackSeconds } from './mouth';
 import { parseNative } from './bridge';
 import table from './gestures.json';
 
@@ -175,5 +175,22 @@ describe('parseNative (task 2.4 messages)', () => {
     expect(parseNative('{"type":"speak","mouth":{"fps":30,"f":"zz"},"at":12}')).toBeNull();
     expect(parseNative('{"type":"speak","mouth":{"fps":30,"f":"a5"}}')).toBeNull(); // no start time
     expect(parseNative('{"type":"hush"}')).toEqual({ type: 'hush' });
+  });
+});
+
+describe('a gesture face while she talks (task 4.3: the joy gesture hid her mouth on the win screen)', () => {
+  it('eases toward talking and back instead of snapping', () => {
+    let talk = 0;
+    talk = talkEnvelope(talk, true, TALK_EASE_S / 2);
+    expect(talk).toBeCloseTo(0.5);
+    talk = talkEnvelope(talk, true, 1);
+    expect(talk).toBe(1);
+    expect(talkEnvelope(1, false, 1)).toBe(0);
+    expect(talkEnvelope(0.4, true, -1)).toBe(0.4);
+  });
+  it('scales a gesture expression down while talking and leaves it whole when quiet', () => {
+    expect(gestureFace(1, 0)).toBe(1);
+    expect(gestureFace(1, 1)).toBeCloseTo(1 - GESTURE_HUSH);
+    expect(gestureFace(1, 1)).toBeLessThan(0.3);
   });
 });

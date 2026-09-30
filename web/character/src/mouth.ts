@@ -85,3 +85,21 @@ export class MouthPlayer {
     return this.weights;
   }
 }
+
+/**
+ * While she talks, a gesture's face (a clap's `happy`, a wave's `smile`) steps back like her mood does, or its fixed
+ * mouth shape covers the lips: on the win screen the `joy` gesture held VRoid's `happy` (Fcl_ALL_Joy) at 1 through
+ * her line, and the user saw her mouth not move at all (task 4.3, 2026-09-30). Visemes and blinks are not scaled.
+ */
+export const GESTURE_HUSH = 0.75;
+/** Seconds for the talking envelope to follow the line starting or ending, so the face eases instead of snapping. */
+export const TALK_EASE_S = 0.12;
+
+/** Moves the talking envelope (0 quiet, 1 speaking) toward whether a line is playing. */
+export function talkEnvelope(previous: number, speaking: boolean, dt: number): number {
+  const target = speaking ? 1 : 0;
+  return previous + (target - previous) * Math.min(1, Math.max(0, dt) / TALK_EASE_S);
+}
+
+/** A gesture's expression weight with the talking envelope applied. */
+export const gestureFace = (weight: number, talk: number): number => weight * (1 - GESTURE_HUSH * talk);
