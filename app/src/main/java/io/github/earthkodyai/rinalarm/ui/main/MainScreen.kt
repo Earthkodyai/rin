@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +97,10 @@ fun MainScreen(
           cues = rin.cues,
           speech = rin.speaking,
           onHeadTap = rin::onHeadTap,
+          onVisible = rin::onCharacterVisible,
         )
+        // The editor on top takes the strip (and her page) away; her next line then waits for the new page.
+        DisposableEffect(rin) { onDispose { rin.onCharacterGone() } }
         // Under her strip only while she speaks (4.3): home lines are rare, so no empty band sits over the alarms.
         RinLine(line?.text, reserve = false)
       }

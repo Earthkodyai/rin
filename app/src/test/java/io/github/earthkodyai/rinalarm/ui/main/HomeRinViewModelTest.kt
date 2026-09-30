@@ -36,8 +36,12 @@ class HomeRinViewModelTest {
 
   private val settings = FakeSettings()
 
-  private fun TestScope.home(book: LineBook = realLineBook()): Pair<HomeRinViewModel, MutableList<Gesture>> {
+  private fun TestScope.home(
+    book: LineBook = realLineBook(),
+    faceUp: Boolean = true,
+  ): Pair<HomeRinViewModel, MutableList<Gesture>> {
     val viewModel = HomeRinViewModel(book, { voice }, time, { clockMs }, moments, settings)
+    if (faceUp) viewModel.onCharacterVisible()
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     runCurrent()
@@ -102,9 +106,39 @@ class HomeRinViewModelTest {
     }
 
   @Test
+  fun backFromTheEditor_theSavedAlarmLine_waitsForHerNewPage_andLeavesTheGreetingWaveAlone() =
+    runTest(main.dispatcher) {
+      val (rin, cues) = home()
+      // The editor took the strip away; saving brings the user back to a strip whose page is still loading.
+      rin.onCharacterGone()
+      moments.alarmSaved.trySend(Unit)
+      advanceTimeBy(1_300)
+      runCurrent()
+      assertNull("her page is still loading", rin.line.value)
+
+      rin.onCharacterVisible()
+      runCurrent()
+      assertNull(rin.line.value)
+      advanceTimeBy(HomeRinViewModel.FACE_SETTLE_MS + 1)
+      runCurrent()
+      assertEquals("app.alarmset", rin.line.value?.pool)
+      assertTrue("her page greets with its own wave", cues.isEmpty())
+    }
+
+  @Test
+  fun aPageThatNeverLoads_stillGetsTheLine() =
+    runTest(main.dispatcher) {
+      val (rin, _) = home(faceUp = false)
+      rin.onHeadTap()
+      advanceTimeBy(HomeRinViewModel.FACE_WAIT_MS + HomeRinViewModel.FACE_SETTLE_MS + 1)
+      runCurrent()
+      assertEquals("tap.head", rin.line.value?.pool)
+    }
+
+  @Test
   fun withNoScript_sheStaysQuiet() =
     runTest(main.dispatcher) {
-      val (rin, _) = home { _, _, _ -> null }
+      val (rin, _) = home(book = { _, _, _ -> null })
       rin.onShown()
       rin.onHeadTap()
       runCurrent()

@@ -17,11 +17,15 @@ import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Rin on the home screen's strip (task 4.2): a hello when the app opens (or comes back after
@@ -59,6 +63,11 @@ constructor(
 
   private var seen = false
   private var hiddenAt: Long? = null
+  /**
+   * Her face is on the strip. Coming back from the editor rebuilds the strip, and her page takes ~1.3 s to show
+   * (release build on the 14T): the alarm-saved line started before it, and the user saw her mouth miss the line.
+   */
+  private val faceUp = MutableStateFlow(false)
 
   init {
     viewModelScope.launch { settings.poutOff.collect { poutOff = it } }
@@ -81,6 +90,16 @@ constructor(
     speaker.stop()
   }
 
+  /** Her face is up (the page is ready) or the still image is here to stay. From the strip's CharacterView. */
+  fun onCharacterVisible() {
+    faceUp.value = true
+  }
+
+  /** The strip left the screen with its page (the editor on top): the next line waits for the new page. */
+  fun onCharacterGone() {
+    faceUp.value = false
+  }
+
   fun onHeadTap() {
     say(Pools.HEAD_TAP)
   }
@@ -88,12 +107,27 @@ constructor(
   private fun say(pool: String, gesture: Boolean = true) {
     viewModelScope.launch {
       val line = lines.pick(pool, time.now().atZone(time.zone()).toLocalDate(), Unit) ?: return@launch
-      if (gesture) line.gesture?.onStrip()?.let(cueFlow::tryEmit)
+      // The same wait as the ring screen's opening line (4.3). Her new page greets with a wave as it comes up, so a
+      // line that waited for it drops its own gesture: two at once jerked her hand there.
+      val waited = !faceUp.value
+      if (waited) {
+        withTimeoutOrNull(FACE_WAIT_MS) { faceUp.first { it } }
+        delay(FACE_SETTLE_MS)
+      }
+      if (gesture && !waited) line.gesture?.onStrip()?.let(cueFlow::tryEmit)
       speaker.say(line)
     }
   }
 
   override fun onCleared() {
     speaker.release()
+  }
+
+  companion object {
+    /** The longest a line waits for her page (the ring screen's RingViewModel.OPENING_WAIT_MS). */
+    const val FACE_WAIT_MS = 5_000L
+
+    /** After her page is ready, a moment for its first frames before she speaks. */
+    const val FACE_SETTLE_MS = 300L
   }
 }
