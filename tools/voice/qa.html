@@ -35,7 +35,7 @@
   <div class="bar">
     <button id="auto" aria-pressed="false">เล่นต่อกันอัตโนมัติ</button>
     <button id="todo" aria-pressed="false">เฉพาะที่ยังไม่ตัดสิน</button>
-    <button id="round" aria-pressed="false">เฉพาะที่ต้องเลือกเทค</button>
+    <button id="round" aria-pressed="false">เฉพาะรอบนี้</button>
     <span class="meta" id="count"></span>
     <button id="done">สรุปผล</button>
   </div>
@@ -52,13 +52,14 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 const round = (c) => (c.candidates ? "c" + c.candidates.map((x) => x.n).join("-") : c.take);
 const verdict = (c) => { const v = state[c.id]; return v && v.take === round(c) ? v : null; };
 let clips = [];
+let batch = null; // the newest regen batch: shown with the candidates under "เฉพาะรอบนี้"
 let auto = false, onlyTodo = false, onlyRound = false;
 
 function render() {
   const view = document.getElementById("view");
   view.textContent = "";
   let pool = null;
-  const shown = clips.filter((c) => c.src && (!onlyTodo || !verdict(c)?.pick) && (!onlyRound || c.candidates));
+  const shown = clips.filter((c) => c.src && (!onlyTodo || !verdict(c)?.pick) && (!onlyRound || c.candidates || (batch && c.batch === batch)));
   for (const c of shown) {
     if (c.pool !== pool) { pool = c.pool; const h = document.createElement("h2"); h.textContent = pool; view.append(h); }
     const v = verdict(c);
@@ -127,8 +128,9 @@ function count() {
 
 fetch(`${PACK}/qa.json`, { cache: "no-store" }).then((r) => r.json()).then((j) => {
   clips = j.clips;
-  // When a round of candidates is waiting, open on those.
-  onlyRound = clips.some((c) => c.candidates);
+  batch = j.batch ?? null;
+  // When a round is waiting (candidates or a fresh batch), open on it.
+  onlyRound = clips.some((c) => c.candidates || (batch && c.batch === batch && !verdict(c)?.pick));
   document.getElementById("round").setAttribute("aria-pressed", onlyRound);
   render();
 })

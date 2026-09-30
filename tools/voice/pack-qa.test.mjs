@@ -25,24 +25,34 @@ test('voiced time skips the silence at both ends and finds the longest gap', () 
 });
 
 test('a clean take has no flags', () => {
-  assert.deepEqual(check(tone(2), RATE, 'one two three four five').flags, []);
+  const clean = join(tone(2), tone(0.2, 0));
+  assert.deepEqual(check(clean, RATE, 'one two three four five').flags, []);
 });
 
 test('a click, clipping, a rushed read and a stall are each flagged', () => {
-  const click = tone(2);
+  const end = tone(0.2, 0); // every take below ends in quiet, so none is cut off
+  const click = join(tone(2), end);
   click[4000] = 0.9;
   assert.deepEqual(check(click, RATE, 'one two three four five').flags, ['crackle']);
-  assert.ok(check(tone(2, 1.2), RATE, 'one two three four five').flags.includes('clipped'));
-  assert.deepEqual(check(tone(1), RATE, 'one two three four five six seven eight').flags, ['pace']);
-  assert.deepEqual(check(join(tone(1), tone(1.5, 0), tone(1)), RATE, 'one two three four five').flags, ['gap']);
+  assert.ok(check(join(tone(2, 1.2), end), RATE, 'one two three four five').flags.includes('clipped'));
+  assert.deepEqual(check(join(tone(1), end), RATE, 'one two three four five six seven eight').flags, ['pace']);
+  assert.deepEqual(check(join(tone(1), tone(1.5, 0), tone(1), end), RATE, 'one two three four five').flags, ['gap']);
   assert.deepEqual(check(tone(1, 0), RATE, 'hi').flags, ['empty']);
 });
 
-test('the best take has the fewest flags, then the fewest clicks, then comes first', () => {
-  const t = (flags, jumps = 0) => ({ flags, jumps });
-  assert.equal(best([t(['crackle'], 3), t([]), t([])]), 1);
-  assert.equal(best([t(['crackle'], 3), t(['crackle'], 1)]), 1);
+test('the best take has the fewest retake flags, then the fewest flags, then comes first', () => {
+  const t = (flags) => ({ flags });
+  assert.equal(best([t(['crackle']), t([]), t([])]), 1);
+  assert.equal(best([t(['cut']), t(['crackle', 'gap'])]), 1);
   assert.equal(best([t(['gap']), t(['pace'])]), 0);
+});
+
+test('a take that stops mid-sound is cut; one that fades out is not', () => {
+  const words = 'one two three four five';
+  assert.ok(check(tone(2), RATE, words).flags.includes('cut'));
+  const tail = tone(0.2);
+  const fade = join(tone(2), tail.map((x, i) => x * (1 - i / tail.length) ** 4), tone(0.1, 0));
+  assert.ok(!check(fade, RATE, words).flags.includes('cut'));
 });
 
 test('the pack covers every line and Repeat sentence once, in the paths the app reads', () => {

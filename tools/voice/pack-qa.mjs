@@ -9,6 +9,13 @@ export const JUMP = 0.5;
 export const CLIP = 0.99;
 /** Words per second outside this range: a cut-off take or one with a stall (tags like [yawns] add time). */
 export const PACE = [1.0, 4.5];
+/** The last 40 ms louder than this, in dB under the take's peak, is a line cut off mid-sound. 69 of the first 191
+ * chosen takes ended at -35 to -17 dB, where a clean end is ~-45 (median); the user heard them as cut off
+ * (2026-09-30). */
+export const CUT_DB = -35;
+/** Flags a retake is made for automatically. The others (crackle, pace, gap) did not match the user's ear in round 1
+ * (crackle caught 1 of 23), so they only inform the listening page. */
+export const RETAKE = ['cut', 'clipped', 'empty'];
 /** A gap of quiet longer than this mid-line, in seconds. */
 export const GAP_S = 1.0;
 /** Quiet, in dBFS, for trimming and for gaps. */
@@ -48,9 +55,19 @@ export function voiced(samples, rate) {
 /** Words the listener hears, for pace. */
 export const wordCount = (text) => text.replace(/\[[^\]]*\]/g, ' ').split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
 
+/** RMS of the last 40 ms in dB under the peak. */
+export function endDb(samples, rate) {
+  let peak = 0;
+  for (const x of samples) peak = Math.max(peak, Math.abs(x));
+  const n = Math.min(samples.length, Math.max(1, Math.round(0.04 * rate)));
+  let e = 0;
+  for (let i = samples.length - n; i < samples.length; i++) e += samples[i] * samples[i];
+  return db(Math.sqrt(e / n)) - db(peak);
+}
+
 /**
  * Flags for one take: `crackle` (clicks), `clipped`, `pace` (too fast or slow for its words), `gap` (a long stall),
- * `empty`. An empty list means the take goes to listening as is.
+ * `empty`, `cut` (stops mid-sound). An empty list means the take goes to listening as is.
  */
 export function check(samples, rate, text) {
   let jumps = 0;
@@ -71,16 +88,20 @@ export function check(samples, rate, text) {
   if (clipped) flags.push('clipped');
   if (v.dur && (wps < PACE[0] || wps > PACE[1])) flags.push('pace');
   if (v.gap > GAP_S) flags.push('gap');
-  return { flags, jumps, clipped, peakDb: +db(peak).toFixed(2), dur: +v.dur.toFixed(2), gap: +v.gap.toFixed(2), wps: +wps.toFixed(2) };
+  const end = endDb(samples, rate);
+  if (v.dur && end > CUT_DB) flags.push('cut');
+  return { flags, end: +end.toFixed(1), jumps, clipped, peakDb: +db(peak).toFixed(2), dur: +v.dur.toFixed(2), gap: +v.gap.toFixed(2), wps: +wps.toFixed(2) };
 }
 
-/** Of several takes' checks, the index of the best: fewest flags, then fewest clicks, then the earliest. */
+/** Of several takes' checks, the index of the best: fewest retake flags, then fewest flags, then the earliest. */
 export function best(checks) {
   let at = 0;
   for (let i = 1; i < checks.length; i++) {
     const a = checks[i];
     const b = checks[at];
-    if (a.flags.length < b.flags.length || (a.flags.length === b.flags.length && a.jumps < b.jumps)) at = i;
+    const ra = a.flags.filter((f) => RETAKE.includes(f)).length;
+    const rb = b.flags.filter((f) => RETAKE.includes(f)).length;
+    if (ra < rb || (ra === rb && a.flags.length < b.flags.length)) at = i;
   }
   return at;
 }

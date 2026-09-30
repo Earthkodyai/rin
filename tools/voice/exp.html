@@ -31,12 +31,20 @@
   <div class="card" id="result" hidden></div>
 </main>
 <script>
-const KEY = "rin-voice-exp";
-const TAGS = [["ok", "ปกติ"], ["crack", "แตก"], ["hiss", "ซ่า"], ["muffle", "อู้อี้"]];
+// ?exp=exp2 loads another test set (pack/<exp>/exp.json), which may bring its own labels.
+const EXP = new URLSearchParams(location.search).get("exp") ?? "exp";
+const KEY = "rin-voice-" + EXP;
+let TAGS = [["ok", "ปกติ"], ["crack", "แตก"], ["hiss", "ซ่า"], ["muffle", "อู้อี้"]];
 let state = {};
 try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
-fetch("pack/exp/exp.json", { cache: "no-store" }).then((r) => r.json()).then((exp) => {
+fetch(`pack/${EXP}/exp.json`, { cache: "no-store" }).then((r) => r.json()).then((exp) => {
+  if (exp.tags) TAGS = exp.tags;
+  if (exp.title) { document.querySelector("h1").textContent = exp.title; document.querySelector("p.hint").textContent = exp.hint; }
+  else if (EXP !== "exp") {
+    document.querySelector("h1").textContent = "เสียงลมท้ายคำ: เทียบวิธีแก้ (ซ่อนชื่อ)";
+    document.querySelector("p.hint").textContent = "6 คลิปที่เคยมีเสียงลมท้ายคำ (เช่น watch, job) แต่ละคลิปมี 4 แบบ สลับลำดับแล้ว กดป้ายที่ได้ยิน (กดได้หลายอัน) หรือ \"ปกติ\" แล้วกด ★ ที่แบบที่ชอบที่สุด ระวังด้วยว่าแบบที่ลมหายอาจทำให้เสียงทื่อหรืออู้อี้ ถ้าเป็นแบบนั้นให้กด \"อู้อี้/ทื่อ\"";
+  }
   const view = document.getElementById("view");
   for (const l of exp.lines) {
     const s = state[l.id] ??= { order: [...exp.variants].sort(() => Math.random() - 0.5), marks: {}, best: null };
@@ -48,7 +56,7 @@ fetch("pack/exp/exp.json", { cache: "no-store" }).then((r) => r.json()).then((ex
     s.order.forEach((v, i) => {
       const row = document.createElement("div");
       row.className = "v";
-      row.innerHTML = `<b>${i + 1}</b><audio controls preload="none" src="pack/exp/${l.id}/${v}.mp3"></audio><div class="tags"></div>`;
+      row.innerHTML = `<b>${i + 1}</b><audio controls preload="none" src="pack/${EXP}/${l.id}/${v}.mp3"></audio><div class="tags"></div>`;
       const tags = row.querySelector(".tags");
       const marks = (s.marks[v] ??= []);
       const paint = () => { for (const b of tags.querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.t === "best" ? s.best === v : marks.includes(b.dataset.t)); };
@@ -71,7 +79,7 @@ fetch("pack/exp/exp.json", { cache: "no-store" }).then((r) => r.json()).then((ex
   }
   save();
   document.getElementById("done").onclick = () => {
-    const per = Object.fromEntries(exp.variants.map((v) => [v, { ok: 0, crack: 0, hiss: 0, muffle: 0, unmarked: 0, best: 0 }]));
+    const per = Object.fromEntries(exp.variants.map((v) => [v, { ...Object.fromEntries(TAGS.map(([t]) => [t, 0])), unmarked: 0, best: 0 }]));
     const rows = [];
     for (const l of exp.lines) {
       const s = state[l.id];

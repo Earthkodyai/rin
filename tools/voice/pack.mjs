@@ -8,6 +8,9 @@
 //                                             retaken up to --retakes times and the best one is kept
 //   node pack.mjs redo <id,id...> [--takes 3] new takes for clips the user marked on the listening page; they wait
 //                                             as candidates until the user picks one there
+//   node pack.mjs regen <id,id...> [--batch name]  new takes (with the ending) for clips already chosen, retaken while
+//                                             cut/clipped/empty; reviewed as one batch on the listening page
+//   node pack.mjs recheck                     re-runs the automatic checks on every chosen take
 //   node pack.mjs pick <id>:<take>[,...]      keep that take (a candidate the user picked, or an earlier one)
 //   node pack.mjs build                       chosen takes -> trim, gain to -16 LUFS + limiter, 10 ms fades, MP3 96 kb/s mono,
 //                                             mouth track; then writes qa.json for the listening page (qa.html)
@@ -20,7 +23,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readAudio } from './audio.mjs';
 import { mouthTrack } from './mouth.mjs';
-import { best, check } from './pack-qa.mjs';
+import { best, check, RETAKE } from './pack-qa.mjs';
 import { load, spoken } from './script-check.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -45,7 +48,11 @@ export function clips({ script, repeat } = load()) {
   return [...lines, ...rs];
 }
 
-export const request = (c) => (c.tag ? `${c.tag} ${c.text}` : c.text);
+// eleven_v3 often stops mid-sound on the last word (69 of the first 191 chosen takes). A trailing tag fixed 6 of 6 cut
+// lines in a test, and the user picked it over a trailing "…" (5 of 6 best, nothing spoken aloud; exp3, 2026-09-30).
+// The build trims the pause off again.
+export const ENDING = ' [short pause]';
+export const request = (c) => (c.tag ? `${c.tag} ${c.text}` : c.text) + ENDING;
 /** Where a built clip lives, relative to assets/voice/rin (LineVoice reads <id>, the Repeat game repeat/<id>). */
 export const outPath = (c) => (c.kind === 'repeat' ? `repeat/${c.id}` : c.id);
 
@@ -156,13 +163,13 @@ export function wav(pcm, rate) {
   return Buffer.concat([h, pcm]);
 }
 
-async function gen(pack, list, { retakes, maxCredits, redo, takes = 1 }) {
+async function gen(pack, list, { retakes, maxCredits, redo, takes = 1, force = false, batch }) {
   const api = new Eleven(maxCredits);
   const log = join(pack.dir, 'gen-log.jsonl');
   for (const c of list) {
     const e = pack.entry(c.id);
     const fresh = e.takes.filter((t) => t.text === request(c));
-    if (!redo && fresh.length) continue;
+    if (!redo && !force && fresh.length) continue;
     // A redo makes `takes` candidates for the user to pick from by ear (the automatic checks missed most of what they
     // heard in round 1); otherwise up to 1 + retakes until one has no flags.
     const budget = redo ? takes : 1 + retakes;
@@ -173,12 +180,18 @@ async function gen(pack, list, { retakes, maxCredits, redo, takes = 1 }) {
       made.push(t.n);
       console.log(`${c.id} take ${t.n}: ${t.qa.flags.join(',') || 'ok'} (${meta.cost} credits, total ${api.spent})`);
       pack.save();
-      if (!redo && !t.qa.flags.length) break;
+      if (!redo && !t.qa.flags.some((f) => RETAKE.includes(f))) break;
     }
     if (redo) {
       e.candidates = made;
       e.chosen = made[0];
+    } else if (force) {
+      // Only this run's takes compete: earlier ones were made without the ending.
+      const mine = e.takes.filter((t) => made.includes(t.n));
+      e.chosen = mine[best(mine.map((t) => t.qa))].n;
+      delete e.candidates;
     } else pack.choose(c.id);
+    if (batch) e.batch = batch;
     pack.save();
   }
   console.log(`credits this run: ${api.spent}`);
@@ -199,13 +212,17 @@ function meter(bin, file) {
 // on 13 (2026-09-30).
 const LIMIT_DB = LOUDNESS.TP - 0.5;
 
-const TRIM = 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.08,areverse,' +
-  'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.15,areverse';
+// Silence below -60 dBFS: at -45 the quiet PCM takes lost the soft end of their last word (back.last.01: 2.80 -> 2.72 s).
+const TRIM = 'silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.08,areverse,' +
+  'silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.15,areverse';
+
+/** Clean-up filters before loudness (none until the air test decides; see exp2). */
+export let POLISH = '';
 
 /** One take (any format ffmpeg reads) -> trimmed, -16 LUFS, peak-limited, faded MP3 at `kbps`. */
-export function master(bin, input, mp3, { kbps = 96, tmp = dirname(mp3) } = {}) {
+export function master(bin, input, mp3, { kbps = 96, tmp = dirname(mp3), polish = POLISH } = {}) {
   const wav = join(tmp, `_${process.pid}_${Math.random().toString(36).slice(2)}.wav`);
-  ffmpeg(bin, ['-i', input, '-af', TRIM, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', wav]);
+  ffmpeg(bin, ['-i', input, '-af', polish ? `${TRIM},${polish}` : TRIM, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', wav]);
   const dur = (readFileSync(wav).length - 44) / 2 / 44100;
   const before = meter(bin, wav);
   const limit = 10 ** (LIMIT_DB / 20);
@@ -275,10 +292,11 @@ function page(pack, list, results) {
       id: c.id, kind: c.kind, pool: c.pool, tag: c.tag, text: c.screen, take: e?.chosen ?? null, takes: e?.takes.length ?? 0,
       flags: take?.qa.flags ?? ['missing'], src: built ? `out/${outPath(c)}.mp3` : null,
       dur: r?.dur ?? o?.dur, lufs: r?.lufs ?? o?.lufs, tp: r?.tp ?? o?.tp, loud: r ? (r.ok ? 'ok' : 'off') : o?.loud, mode: r?.mode ?? o?.mode,
+      batch: e?.batch,
       candidates: e?.candidates?.map((n) => ({ n, src: `cand/${c.id}.${n}.mp3`, flags: e.takes.find((t) => t.n === n).qa.flags })),
     };
   });
-  writeFileSync(join(pack.dir, 'qa.json'), JSON.stringify({ built: new Date().toISOString(), model: MODEL, clips: rows }, null, 1) + '\n');
+  writeFileSync(join(pack.dir, 'qa.json'), JSON.stringify({ built: new Date().toISOString(), model: MODEL, batch: rows.map((r) => r.batch).filter(Boolean).sort().at(-1), clips: rows }, null, 1) + '\n');
   return rows;
 }
 
@@ -302,6 +320,27 @@ async function main() {
     const unknown = ids.filter((id) => !all.some((c) => c.id === id));
     if (!ids.length || unknown.length) throw new Error(`usage: node pack.mjs redo <id,id...> (unknown: ${unknown})`);
     await gen(pack, all.filter((c) => ids.includes(c.id)), { retakes: 0, maxCredits, redo: true, takes: Number(opt('takes', 3)) });
+  } else if (cmd === 'regen') {
+    // New takes with the current request (ending included), retaken while cut/clipped/empty; the user reviews them as
+    // one batch on the listening page.
+    const ids = (args.shift() ?? '').split(',').filter(Boolean);
+    const batch = opt('batch', new Date().toISOString().slice(0, 16));
+    await gen(pack, all.filter((c) => ids.includes(c.id)), { retakes, maxCredits, redo: false, force: true, batch });
+  } else if (cmd === 'recheck') {
+    // Re-runs the automatic checks on every chosen take (after a new check is added) and lists the retake flags.
+    const hits = [];
+    for (const c of list) {
+      const e = pack.state[c.id];
+      if (!e?.chosen) continue;
+      const t = e.takes.find((x) => x.n === e.chosen);
+      const { samples, rate } = await readAudio(join(pack.dir, t.file));
+      t.qa = check(samples, rate, c.text);
+      const f = t.qa.flags.filter((x) => RETAKE.includes(x));
+      if (f.length) hits.push(`${c.id}:${f}`);
+    }
+    pack.save();
+    console.log(`${hits.length} chosen takes with retake flags
+${hits.join(',')}`);
   } else if (cmd === 'pick') {
     for (const pair of (args.shift() ?? '').split(',').filter(Boolean)) {
       const [id, n] = pair.split(':');
