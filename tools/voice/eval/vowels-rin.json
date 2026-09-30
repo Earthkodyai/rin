@@ -1,0 +1,16 @@
+{
+  "_note": "Task 4.3: vowel mouth shapes calibrated on Rin's own voice (ElevenLabs Rin soft, eleven_v3, paid month). Frozen 2026-09-30 before any clip was made or analysed. dev = the 2.4 dev words (fit centroids on them); test = 20 words never used in 2.4, run once after fitting. One voice, so this answers only 'does it work for Rin', which is all the app needs (her lines are prerecorded).",
+  "dev":  { "voices": ["rin-soft"], "words": {
+    "aa": ["hot", "top", "mom", "calm"],
+    "ih": ["see", "me", "tea", "key"],
+    "ou": ["blue", "two", "moon", "food"],
+    "ee": ["bed", "red", "ten", "net"],
+    "oh": ["go", "no", "home", "bone"] } },
+  "test": { "voices": ["rin-soft"], "words": {
+    "aa": ["cot", "dot", "got", "shop"],
+    "ih": ["tree", "free", "she", "three"],
+    "ou": ["true", "new", "soon", "cool"],
+    "ee": ["leg", "yes", "wet", "bread"],
+    "oh": ["boat", "coat", "show", "toe"] } },
+  "passBar": "held-out word accuracy >= 60% (12/20; chance 20%): a word counts when the most common shape over its loud voiced frames is its label. Pass -> shapes: true in the pack's mouth tracks; fail -> loudness only (as now)."
+}
