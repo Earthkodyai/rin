@@ -9,6 +9,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import javax.inject.Inject
@@ -19,8 +20,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** A ring in progress and the mission RingService planned for it (null plan: plain Dismiss). */
-data class ActiveRing(val request: RingRequest, val mission: MissionPlan.Run?)
+/**
+ * A ring in progress and the mission RingService planned for it (null plan: plain Dismiss). [dayMode]: a rest or sick
+ * day covers this ring, so there is no mission and Rin says her day-mode line.
+ */
+data class ActiveRing(val request: RingRequest, val mission: MissionPlan.Run?, val dayMode: DayModeKind? = null)
 
 /**
  * The ring on screen right now, shared in-process between RingService (writes the ring) and RingActivity (reads it,

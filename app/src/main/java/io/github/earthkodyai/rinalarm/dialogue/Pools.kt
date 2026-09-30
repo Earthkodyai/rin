@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.dialogue
 
 import io.github.earthkodyai.rinalarm.character.DefaultMood
 import io.github.earthkodyai.rinalarm.character.Mood
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.mission.Feedback
 import io.github.earthkodyai.rinalarm.mission.Miss
 import io.github.earthkodyai.rinalarm.mission.MissionType
@@ -41,6 +42,9 @@ object Pools {
     }
 
   const val EMERGENCY = "emergency"
+
+  /** A rest or sick day's ring (Phase 5): her day-mode line, as the opening one and again after a snooze. */
+  fun dayMode(kind: DayModeKind): String = "p5." + kind.stored
 
   /** "Let's play": the game's own intro lines, drawn together with the shared ones. */
   fun intro(game: MissionType): String =

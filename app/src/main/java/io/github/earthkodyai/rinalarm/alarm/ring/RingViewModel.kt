@@ -9,11 +9,14 @@ import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
 import io.github.earthkodyai.rinalarm.character.Speaking
+import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.di.AppScope
 import io.github.earthkodyai.rinalarm.dialogue.Line
 import io.github.earthkodyai.rinalarm.dialogue.LineBook
 import io.github.earthkodyai.rinalarm.dialogue.LineVoiceFactory
 import io.github.earthkodyai.rinalarm.dialogue.Pools
+import io.github.earthkodyai.rinalarm.dialogue.PoutFilter
+import io.github.earthkodyai.rinalarm.dialogue.pouty
 import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.mission.CupsMission
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
@@ -82,8 +85,9 @@ constructor(
   private val clock: ElapsedClock,
   private val readiness: MissionReadiness,
   private val time: TimeSource,
-  private val lines: LineBook,
+  book: LineBook,
   voices: LineVoiceFactory,
+  settings: AppSettings,
 ) : ViewModel() {
   private val state = MutableStateFlow(RingUiState())
   val uiState: StateFlow<RingUiState> = state.asStateFlow()
@@ -102,6 +106,9 @@ constructor(
   /** The clip Rin is saying (one of her lines, or a game's sentence in Repeat after Rin), for her mouth. */
   val speaking: StateFlow<Speaking?> = speakingFlow.asStateFlow()
 
+  /** Pout off (Phase 5), as last read from the settings. */
+  @Volatile private var poutOff = false
+  private val lines = PoutFilter(book) { calm() }
   private val speaker = RinSpeaker(voices.create(alarm = true), viewModelScope)
   private var gameSpeaking: Speaking? = null
   /** What the game asks of the tone (Repeat after Rin); the ring gets the stronger of it and her lines' hush. */
@@ -133,6 +140,12 @@ constructor(
 
   init {
     viewModelScope.launch {
+      settings.poutOff.collect { off ->
+        poutOff = off
+        state.update { it.copy(calm = calm()) }
+      }
+    }
+    viewModelScope.launch {
       ringState.active.collect { ring ->
         if (ring == null) onRingEnded() else onRing(ring)
       }
@@ -140,6 +153,14 @@ constructor(
     viewModelScope.launch { speaker.line.collect { line -> state.update { it.copy(line = line) } } }
     viewModelScope.launch { speaker.hush.collect { pushHush() } }
     viewModelScope.launch { speaker.speaking.collect { publishSpeaking() } }
+  }
+
+  /** No pouting: Pout off, or a rest or sick day's ring (it never scolds). */
+  private fun calm(): Boolean = poutOff || state.value.ring?.dayMode != null
+
+  /** A gesture for Rin, unless it is a pouty one and she is [calm]. */
+  private fun cue(gesture: Gesture) {
+    if (!(gesture.pouty && calm())) cueFlow.tryEmit(gesture)
   }
 
   private fun pushHush() = ringState.setHush(maxOf(gameHush, speaker.hush.value))
@@ -158,7 +179,7 @@ constructor(
     return viewModelScope.launch {
       val line = lines.pick(pool, ringDay ?: today(), morning) ?: return@launch
       if (!cut) speaker.finish()
-      if (gesture) line.gesture?.let(cueFlow::tryEmit)
+      if (gesture) line.gesture?.let(::cue)
       speaker.say(line).join()
     }
   }
@@ -181,13 +202,16 @@ constructor(
     cups2dReason = null
     trouble = false
     state.value = RingUiState(ring = ring)
+    state.update { it.copy(calm = calm()) }
     refreshPhase()
     val now = time.now().atZone(time.zone())
     ringDay = now.toLocalDate()
     morning = ring.request.alarmId to ringDay
     // Her first line waits for her face (4.3): a line that starts while her page still loads plays to the still image,
     // and the user saw her mouth miss it. A page that never loads costs at most OPENING_WAIT_MS.
-    val pool = ring.request.let { Pools.opening(it.snoozeCount, it.snoozesLeft, it.late, now.dayOfWeek, it.time) }
+    val pool =
+      ring.dayMode?.let(Pools::dayMode)
+        ?: ring.request.let { Pools.opening(it.snoozeCount, it.snoozesLeft, it.late, now.dayOfWeek, it.time) }
     val waiting =
       viewModelScope.launch {
         // Her face was already up (a ring after a snooze on the same screen): no wait at all.
@@ -250,7 +274,7 @@ constructor(
     if (game.phase != RepeatPhase.FEEDBACK || before?.phase == RepeatPhase.FEEDBACK) return
     val feedback = game.feedback ?: return
     // A sentence done: she nods. A miss gets no sulk: an unheard word is as likely the mic's fault as the user's.
-    if (feedback == Feedback.RIGHT) cueFlow.tryEmit(Gesture.NOD) else trouble = true
+    if (feedback == Feedback.RIGHT) cue(Gesture.NOD) else trouble = true
     if (feedback != Feedback.RIGHT) say(Pools.speechMiss(feedback, outOfTries = game.tries >= game.maxTries), gesture = false)
   }
 
@@ -290,7 +314,7 @@ constructor(
     state.update { it.copy(cups = game) }
     if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) {
       // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
-      cueFlow.tryEmit(Gesture.HUFF)
+      cue(Gesture.HUFF)
       trouble = true
       say(Pools.CUPS_SCOLD, gesture = false)
     }
@@ -354,7 +378,7 @@ constructor(
     state.update { it.copy(pads = game) }
     if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) {
       // The cut to Rin (D17): she sulks with a huff for the length of the scold.
-      cueFlow.tryEmit(Gesture.HUFF)
+      cue(Gesture.HUFF)
       trouble = true
       say(Pools.padsScold(game.miss ?: Miss.WRONG), gesture = false)
     }
@@ -484,7 +508,7 @@ constructor(
   private fun celebrate(ring: ActiveRing) {
     viewModelScope.launch {
       val won = lines.pick(Pools.won(clean = !trouble), ringDay ?: today(), morning)
-      cueFlow.tryEmit(won?.gesture ?: Gesture.CLAP)
+      cue(won?.gesture ?: Gesture.CLAP)
       if (won == null) {
         delay(CELEBRATE_MS)
       } else {
@@ -527,7 +551,7 @@ constructor(
     if (phase == current.phase) return
     state.update { it.copy(phase = phase) }
     // A pass brings her won line's own gesture (celebrate).
-    if (phase != RingPhase.PASSED) cueFlow.tryEmit(RingMoods.cue(phase))
+    if (phase != RingPhase.PASSED) cue(RingMoods.cue(phase))
   }
 
   fun snooze() {
@@ -619,6 +643,7 @@ constructor(
  *   play" was tapped and the table is coming into view; the game starts once it is (and her intro is over).
  * @property line Rin's line on screen (the subtitle), or null.
  * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
+ * @property calm no pouting (Pout off, or a rest or sick day): a pouty mood shows as cheerful.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -640,11 +665,15 @@ data class RingUiState(
   val rinSpeaking: Boolean = false,
   val line: Line? = null,
   val leaving: Boolean = false,
+  val calm: Boolean = false,
 ) {
   /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood
-    get() =
-      line?.emotion ?: if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+    get() {
+      val mood =
+        line?.emotion ?: if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+      return if (calm && mood.pouty) Mood.CHEERFUL else mood
+    }
 
   /** A wrong cup is up: Rin sulks and says one of her lines. */
   val cupsScold: Boolean

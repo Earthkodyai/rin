@@ -7,6 +7,7 @@ import io.github.earthkodyai.rinalarm.dialogue.Line
 import io.github.earthkodyai.rinalarm.dialogue.LineBook
 import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.testing.FakeLineVoice
+import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import io.github.earthkodyai.rinalarm.testing.realLineBook
@@ -33,8 +34,10 @@ class HomeRinViewModelTest {
   // 19:30 local time: the evening hello.
   private val time = FixedTimeSource(Instant.parse("2026-09-29T19:30:00Z"), ZoneOffset.UTC)
 
+  private val settings = FakeSettings()
+
   private fun TestScope.home(book: LineBook = realLineBook()): Pair<HomeRinViewModel, MutableList<Gesture>> {
-    val viewModel = HomeRinViewModel(book, { voice }, time, { clockMs }, moments)
+    val viewModel = HomeRinViewModel(book, { voice }, time, { clockMs }, moments, settings)
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     runCurrent()

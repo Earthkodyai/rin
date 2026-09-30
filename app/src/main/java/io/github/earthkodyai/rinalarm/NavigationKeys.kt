@@ -10,6 +10,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Diagnostics : NavKey
 
+/** Pout off and the hotline (Phase 5). */
+@Serializable data object Settings : NavKey
+
 /** QR sticker setup for the QR mission (task 3.2). */
 @Serializable data object QrSetup : NavKey
 

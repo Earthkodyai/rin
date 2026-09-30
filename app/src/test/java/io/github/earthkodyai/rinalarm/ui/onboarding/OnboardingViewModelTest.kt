@@ -1,9 +1,9 @@
 package io.github.earthkodyai.rinalarm.ui.onboarding
 
 import androidx.lifecycle.SavedStateHandle
-import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.testing.FakeAlarms
 import io.github.earthkodyai.rinalarm.testing.FakeDeviceStatus
+import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingStep.EXACT_ALARMS
@@ -14,8 +14,6 @@ import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingStep.TEST
 import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingStep.WELCOME
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -139,14 +137,5 @@ class OnboardingViewModelTest {
     var done = false
     viewModel().finish { done = settings.completed.value }
     assertTrue(done)
-  }
-
-  private class FakeSettings : AppSettings {
-    val completed = MutableStateFlow(false)
-    override val onboardingCompleted: Flow<Boolean> = completed
-
-    override suspend fun setOnboardingCompleted(completed: Boolean) {
-      this.completed.value = completed
-    }
   }
 }

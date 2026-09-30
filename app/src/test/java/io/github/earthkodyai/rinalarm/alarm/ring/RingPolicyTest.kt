@@ -54,6 +54,14 @@ class RingPolicyTest {
   }
 
   @Test
+  fun toneGain_onASickDay_isCappedLower_andQuietStillWins() {
+    assertEquals(RingPolicy.SICK_GAIN, RingPolicy.toneGain(60_000, 30, quiet = false, sick = true), 0f)
+    assertEquals(RingPolicy.MISSION_QUIET_GAIN, RingPolicy.toneGain(60_000, 30, quiet = true, sick = true), 0f)
+    // Early in the ramp the tone is under the cap already: the cap never raises it.
+    assertEquals(RingPolicy.rampGain(0, 30), RingPolicy.toneGain(0, 30, quiet = false, sick = true), 0f)
+  }
+
+  @Test
   fun toneGain_isCappedWhileQuiet_andNeverRaisedByIt() {
     assertEquals(RingPolicy.MISSION_QUIET_GAIN, RingPolicy.toneGain(60_000, 30, quiet = true), 0f)
     assertEquals(1f, RingPolicy.toneGain(60_000, 30, quiet = false), 0f)

@@ -26,9 +26,14 @@ object RingPolicy {
   fun missionQuiet(nowMs: Long, lastProgressMs: Long?): Boolean =
     lastProgressMs != null && nowMs - lastProgressMs in 0 until MISSION_IDLE.toMillis()
 
-  /** The tone's gain: the ramp, capped at [MISSION_QUIET_GAIN] while [quiet]. */
-  fun toneGain(elapsedMillis: Long, rampSeconds: Int, quiet: Boolean): Float =
-    rampGain(elapsedMillis, rampSeconds).let { if (quiet) minOf(it, MISSION_QUIET_GAIN) else it }
+  /** Track gain cap on a sick day (Phase 5): about 6 dB under full, still a ring you wake to. */
+  const val SICK_GAIN = 0.5f
+
+  /** The tone's gain: the ramp, capped at [MISSION_QUIET_GAIN] while [quiet] and at [SICK_GAIN] on a [sick] day. */
+  fun toneGain(elapsedMillis: Long, rampSeconds: Int, quiet: Boolean, sick: Boolean = false): Float =
+    rampGain(elapsedMillis, rampSeconds)
+      .let { if (sick) minOf(it, SICK_GAIN) else it }
+      .let { if (quiet) minOf(it, MISSION_QUIET_GAIN) else it }
 
   /**
    * Track gain (0..1) at [elapsedMillis] into a ramp of [rampSeconds]. The ramp is linear in decibels, which the ear

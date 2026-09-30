@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,8 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -43,6 +46,7 @@ import io.github.earthkodyai.rinalarm.character.rememberDefaultMood
 import io.github.earthkodyai.rinalarm.ui.common.RinLine
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
@@ -57,11 +61,13 @@ fun MainScreen(
   onAdd: () -> Unit,
   onEdit: (Long) -> Unit,
   onDiagnostics: () -> Unit,
+  onSettings: () -> Unit,
   viewModel: MainScreenViewModel = hiltViewModel(),
   rin: HomeRinViewModel = hiltViewModel(),
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val setupIssue by viewModel.setupIssue.collectAsStateWithLifecycle()
+  val dayMode by viewModel.dayMode.collectAsStateWithLifecycle()
   LifecycleResumeEffect(viewModel) {
     viewModel.refreshSetup()
     onPauseOrDispose {}
@@ -77,6 +83,9 @@ fun MainScreen(
     onToggle = viewModel::setEnabled,
     setupIssue = setupIssue,
     onDiagnostics = onDiagnostics,
+    onSettings = onSettings,
+    dayMode = dayMode,
+    onDayMode = viewModel::tapDayMode,
     character = {
       val line by rin.line.collectAsStateWithLifecycle()
       val mood = rememberDefaultMood()
@@ -107,6 +116,9 @@ internal fun MainScreen(
   onToggle: (Long, Boolean) -> Unit,
   setupIssue: Boolean = false,
   onDiagnostics: () -> Unit = {},
+  onSettings: () -> Unit = {},
+  dayMode: DayModeKind? = null,
+  onDayMode: (DayModeKind) -> Unit = {},
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable () -> Unit = {},
 ) {
@@ -114,7 +126,12 @@ internal fun MainScreen(
     topBar = {
       TopAppBar(
         title = { Text(stringResource(R.string.alarms_title)) },
-        actions = { TextButton(onClick = onDiagnostics) { Text(stringResource(R.string.diagnostics_title)) } },
+        actions = {
+          TextButton(onClick = onDiagnostics) { Text(stringResource(R.string.diagnostics_title)) }
+          IconButton(onClick = onSettings) {
+            Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
+          }
+        },
       )
     },
     floatingActionButton = {
@@ -128,6 +145,7 @@ internal fun MainScreen(
     Column(Modifier.fillMaxSize().padding(padding)) {
       if (setupIssue) SetupBanner(onDiagnostics)
       character()
+      DayModeRow(dayMode, onDayMode)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth())
     }
   }
@@ -145,6 +163,32 @@ private fun SetupBanner(onClick: () -> Unit) {
     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
       Icon(painterResource(R.drawable.ic_error), contentDescription = null)
       Text(stringResource(R.string.setup_banner), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyMedium)
+    }
+  }
+}
+
+/**
+ * Rest day and sick day (Phase 5): one tap each, for the next ring; a tap on the one that is on cancels it. Chips only,
+ * nothing to type (the user's slips, Phase 2).
+ */
+@Composable
+private fun DayModeRow(dayMode: DayModeKind?, onTap: (DayModeKind) -> Unit) {
+  Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      DayModeKind.entries.forEach { kind ->
+        FilterChip(
+          selected = dayMode == kind,
+          onClick = { onTap(kind) },
+          label = { Text(stringResource(if (kind == DayModeKind.REST) R.string.day_rest else R.string.day_sick)) },
+        )
+      }
+    }
+    if (dayMode != null) {
+      Text(
+        stringResource(if (dayMode == DayModeKind.REST) R.string.day_rest_on else R.string.day_sick_on),
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(bottom = 8.dp),
+      )
     }
   }
 }

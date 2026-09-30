@@ -6,11 +6,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.GestureDirector
 import io.github.earthkodyai.rinalarm.character.Speaking
+import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.dialogue.Line
 import io.github.earthkodyai.rinalarm.dialogue.LineBook
 import io.github.earthkodyai.rinalarm.dialogue.LineVoiceFactory
 import io.github.earthkodyai.rinalarm.dialogue.Pools
+import io.github.earthkodyai.rinalarm.dialogue.PoutFilter
 import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import io.github.earthkodyai.rinalarm.time.TimeSource
@@ -31,12 +33,17 @@ import kotlinx.coroutines.launch
 class HomeRinViewModel
 @Inject
 constructor(
-  private val lines: LineBook,
+  book: LineBook,
   voices: LineVoiceFactory,
   private val time: TimeSource,
   private val clock: ElapsedClock,
   moments: HomeMoments,
+  settings: AppSettings,
 ) : ViewModel() {
+  /** Pout off (Phase 5): her one pouty head-tap line stays unsaid. */
+  @Volatile private var poutOff = false
+  private val lines = PoutFilter(book) { poutOff }
+
   private val speaker = RinSpeaker(voices.create(alarm = false), viewModelScope)
 
   /** Her line on screen (the subtitle), or null. */
@@ -54,6 +61,7 @@ constructor(
   private var hiddenAt: Long? = null
 
   init {
+    viewModelScope.launch { settings.poutOff.collect { poutOff = it } }
     viewModelScope.launch { for (saved in moments.alarmSaved) say(Pools.ALARM_SET) }
   }
 

@@ -35,7 +35,10 @@ import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
 import io.github.earthkodyai.rinalarm.mission.ScanMission
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.mission.SeenCode
+import io.github.earthkodyai.rinalarm.data.DayModeKind
+import io.github.earthkodyai.rinalarm.dialogue.pouty
 import io.github.earthkodyai.rinalarm.testing.FakeLineVoice
+import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import io.github.earthkodyai.rinalarm.testing.quietLineBook
@@ -74,9 +77,10 @@ class RingViewModelTest {
   /** Quiet unless a test gives her the real script (task 4.2 tests below). */
   private var book = quietLineBook
   private val voice = FakeLineVoice()
+  private val settings = FakeSettings()
 
   private fun TestScope.ringScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
-    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -167,7 +171,7 @@ class RingViewModelTest {
 
   private fun TestScope.qrRingScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.QR)))
-    val viewModel = RingViewModel(ringState, { scan }, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+    val viewModel = RingViewModel(ringState, { scan }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -260,7 +264,7 @@ class RingViewModelTest {
   fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
     runTest(main.dispatcher) {
       val pads = FakePadsMission()
-      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
@@ -285,7 +289,7 @@ class RingViewModelTest {
     }
 
   private fun TestScope.cupsScreen(cups: FakeCupsMission): Pair<RingViewModel, MutableList<Gesture>> {
-    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
@@ -397,7 +401,7 @@ class RingViewModelTest {
       val repeat = FakeRepeatMission()
       val pads = FakePadsMission()
       val viewModel =
-        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.SPEECH)))
@@ -452,7 +456,7 @@ class RingViewModelTest {
     faceUp: Boolean = true,
   ): Triple<RingViewModel, MutableList<RingCommand>, MutableList<Gesture>> {
     book = realLineBook()
-    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice })
+    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
     if (faceUp) viewModel.onCharacterVisible()
     val commands = mutableListOf<RingCommand>()
     val cues = mutableListOf<Gesture>()
@@ -519,6 +523,51 @@ class RingViewModelTest {
       val again = request.copy(snoozeCount = 3, snoozesLeft = 0)
       val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(again, MissionPlan.Run(MissionType.PADS)))
       assertEquals("back.last", viewModel.line?.pool)
+    }
+
+  @Test
+  fun aRestDayRing_hasNoGame_opensWithItsDayModeLine_andNeverPouts() =
+    runTest(main.dispatcher) {
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(request, null, DayModeKind.REST))
+      assertEquals("p5.rest", viewModel.line?.pool)
+      assertTrue(viewModel.uiState.value.plainDismiss)
+      assertEquals(0, mission.starts)
+      assertTrue(viewModel.uiState.value.calm)
+    }
+
+  @Test
+  fun aSickDayRing_afterASnooze_stillSaysItsDayModeLine() =
+    runTest(main.dispatcher) {
+      val again = request.copy(snoozeCount = 2, snoozesLeft = 1)
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(again, null, DayModeKind.SICK))
+      assertEquals("p5.sick", viewModel.line?.pool)
+    }
+
+  @Test
+  fun poutOff_aSnoozeAfterTheFirst_isQuiet_andTheLastSnoozesReturnHasNoPoutyLine() =
+    runTest(main.dispatcher) {
+      settings.poutOff.value = true
+      val again = request.copy(snoozeCount = 3, snoozesLeft = 0)
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(again, MissionPlan.Run(MissionType.PADS)))
+      // back.last is all pouty lines: she says nothing rather than pout.
+      assertNull(viewModel.line)
+    }
+
+  @Test
+  fun poutOff_aMissedPadsRound_getsNoHuff_noScold_andACalmFace() =
+    runTest(main.dispatcher) {
+      settings.poutOff.value = true
+      val pads = FakePadsMission()
+      val (viewModel, _, cues) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      untilSaid(viewModel)
+      viewModel.startGame()
+      runCurrent()
+      untilSaid(viewModel)
+      pads.game.value = PadsState(PadsPhase.SCOLD, miss = Miss.WRONG)
+      runCurrent()
+      assertNull(viewModel.line)
+      assertFalse(cues.any { it.pouty })
+      assertFalse(viewModel.uiState.value.mood.pouty)
     }
 
   @Test

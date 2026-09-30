@@ -23,6 +23,9 @@ import io.github.earthkodyai.rinalarm.alarm.engine.Ringer
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.alarm.notify.AlarmNotifications
+import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.data.DayMode
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.di.AppScope
 import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
@@ -34,7 +37,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Rings one alarm: a systemExempted foreground service (S1: allowed for exact-alarm apps and startable from boot,
@@ -62,13 +68,20 @@ class RingService : Service() {
   @Inject @AppScope lateinit var appScope: CoroutineScope
   @Inject lateinit var missionReadiness: MissionReadiness
   @Inject lateinit var time: TimeSource
+  @Inject lateinit var settings: AppSettings
 
   private val handler = Handler(Looper.getMainLooper())
   // One writer thread, so log rows keep the order they were recorded in.
   @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class) private val logOrder = Dispatchers.Default.limitedParallelism(1)
   private var session: Session? = null
 
-  private class Session(val request: RingRequest, val tone: TonePlayer?, val vibrator: AlarmVibrator) {
+  private class Session(
+    val request: RingRequest,
+    val tone: TonePlayer?,
+    val vibrator: AlarmVibrator,
+    /** The rest or sick day this ring answers; a Dismiss or auto stop uses it up. */
+    val dayMode: DayMode?,
+  ) {
     val startedAt = SystemClock.elapsedRealtime()
     var focus: AudioFocusRequest? = null
     /** The last focus request was refused; [watchTick] asks again. */
@@ -86,7 +99,9 @@ class RingService : Service() {
     var hushJob: Job? = null
     var vibrating = false
 
-    fun gain(): Float = RingPolicy.toneGain(elapsedMillis(), request.options.rampSeconds, quiet || hush != Hush.NONE)
+    val sick = dayMode?.kind == DayModeKind.SICK
+
+    fun gain(): Float = RingPolicy.toneGain(elapsedMillis(), request.options.rampSeconds, quiet || hush != Hush.NONE, sick)
 
     fun elapsedMillis() = SystemClock.elapsedRealtime() - startedAt
   }
@@ -108,18 +123,20 @@ class RingService : Service() {
     val current = session
     if (current != null) {
       // Every startForegroundService call must be answered with startForeground, even when already ringing.
-      startForegroundWith(ActiveRing(current.request, ringState.active.value?.mission))
+      startForegroundWith(ringState.active.value ?: ActiveRing(current.request, null))
       record(RingEventType.OVERLAP, request.alarmId, request.scheduledAt, "ringing=${current.request.alarmId}")
       return
     }
-    val plan = planMission(request)
+    val dayMode = readDayMode()
+    // A rest or sick day has no game: the plain Dismiss, as with no mission.
+    val plan = if (dayMode != null) null else planMission(request)
     // State first: the full-screen activity may start as soon as the notification is posted, and reads it.
-    val ring = ActiveRing(request, plan as? MissionPlan.Run)
+    val ring = ActiveRing(request, plan as? MissionPlan.Run, dayMode?.kind)
     ringState.set(ring)
     startForegroundWith(ring)
 
     val tone = runCatching { TonePlayer() }.getOrNull()
-    val s = Session(request, tone, AlarmVibrator(this))
+    val s = Session(request, tone, AlarmVibrator(this), dayMode)
     session = s
     s.wakeLock =
       getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RinAlarm:ring").apply {
@@ -130,7 +147,7 @@ class RingService : Service() {
     s.focusRefused = focus == AudioManager.AUDIOFOCUS_REQUEST_FAILED
     s.pausedForFocus = focus == AudioManager.AUDIOFOCUS_REQUEST_DELAYED
     s.pausedForCall = inCall()
-    tone?.setGain(RingPolicy.toneGain(0, request.options.rampSeconds, quiet = false))
+    tone?.setGain(RingPolicy.toneGain(0, request.options.rampSeconds, quiet = false, sick = s.sick))
     updateTone(s)
     updateVibration(s)
     s.hushJob = appScope.launch(Dispatchers.Main.immediate) { ringState.hush.collect { applyHush(s, it) } }
@@ -149,10 +166,20 @@ class RingService : Service() {
       request.alarmId,
       request.scheduledAt,
       "tone=${tone != null} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}" +
-        if (s.pausedForCall) " call=true" else "",
+        (if (s.pausedForCall) " call=true" else "") +
+        (dayMode?.let { " dayMode=${it.kind.stored}" } ?: ""),
     )
     if (plan is MissionPlan.Unavailable) record(RingEventType.MISSION_UNAVAILABLE, s, plan.reason)
   }
+
+  /**
+   * The rest or sick day waiting for this ring, or null. Never throws and waits at most [DAY_MODE_WAIT_MS]: a settings
+   * file that cannot be read means an ordinary ring, never a late one.
+   */
+  private fun readDayMode(): DayMode? =
+    runCatching { runBlocking { withTimeoutOrNull(DAY_MODE_WAIT_MS) { settings.dayMode.first() } } }
+      .getOrNull()
+      ?.takeIf { it.activeAt(time.now().toEpochMilli()) }
 
   /** Never throws: a failed readiness check means no mission (plain Dismiss), never a ring that cannot stop. */
   private fun planMission(request: RingRequest): MissionPlan =
@@ -290,6 +317,11 @@ class RingService : Service() {
     s.wakeLock?.takeIf { it.isHeld }?.release()
     ringState.set(null)
     record(type, s.request.alarmId, s.request.scheduledAt, "$detail rangMs=${s.elapsedMillis()}")
+    // The day mode covered this ring and its snoozes; a ring that is over for good uses it up.
+    val used = s.dayMode
+    if (used != null && (type == RingEventType.DISMISSED || type == RingEventType.AUTO_STOPPED)) {
+      appScope.launch { runCatching { settings.endDayMode(used) } }
+    }
     ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     stopSelf()
   }
@@ -382,6 +414,8 @@ class RingService : Service() {
     record(type, s.request.alarmId, s.request.scheduledAt, detail)
 
   companion object {
+    /** The longest a ring waits to read the day mode (DataStore's first read after a cold start). */
+    private const val DAY_MODE_WAIT_MS = 1_000L
     private const val ACTION_RING = "io.github.earthkodyai.rinalarm.action.RING"
     private const val ACTION_SNOOZE = "io.github.earthkodyai.rinalarm.action.SNOOZE"
     private const val ACTION_DISMISS = "io.github.earthkodyai.rinalarm.action.DISMISS"
