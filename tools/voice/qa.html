@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rin Voice QA</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e4e3dc; --accent:#c2410c; --pick:#fff4ec; --ok:#15803d; --warn:#b45309; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161614; --fg:#ecebe6; --muted:#9a9993; --card:#201f1d; --line:#34332f; --accent:#fb923c; --pick:#2c2119; --ok:#4ade80; --warn:#fbbf24; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, "Segoe UI", "Leelawadee UI", sans-serif; }
+  main { max-width:820px; margin:0 auto; padding:20px 16px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:16px; margin:22px 0 6px; color:var(--muted); }
+  p.hint { color:var(--muted); margin:0 0 12px; }
+  .bar { position:sticky; top:0; background:var(--bg); padding:8px 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--line); z-index:1; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:8px 0; }
+  .card.ok { border-color:var(--ok); } .card.redo { border-color:var(--accent); background:var(--pick); }
+  .head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .id { font-weight:600; font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+  .meta { color:var(--muted); font-size:12px; }
+  .flag { color:var(--warn); font-size:12px; font-weight:600; }
+  .txt { margin:4px 0 6px; }
+  audio { height:32px; width:100%; }
+  .row { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; cursor:pointer; }
+  button[aria-pressed=true] { border-color:var(--accent); color:var(--accent); font-weight:600; background:var(--pick); }
+  input[type=text] { flex:1; min-width:160px; font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:5px 8px; }
+  #result { white-space:pre-wrap; font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ฟังตรวจเสียงริน</h1>
+  <p class="hint">ฟังทุกคลิป กด "ผ่าน" หรือ "สร้างใหม่" (พิมพ์เหตุผลสั้นๆ ได้ เช่น เสียงแตก, อ่านแท็กออกเสียง, อารมณ์ผิด, ออกเสียงคำผิด) คลิปที่มีป้าย ⚠ คือที่ตัวตรวจอัตโนมัติสงสัย ช่วยฟังให้ละเอียดว่าได้ยินปัญหาจริงไหม คำตัดสินจะถูกบันทึกในเบราว์เซอร์นี้ ปิดหน้าแล้วกลับมาทำต่อได้</p>
+  <div class="bar">
+    <button id="auto" aria-pressed="false">เล่นต่อกันอัตโนมัติ</button>
+    <button id="todo" aria-pressed="false">เฉพาะที่ยังไม่ตัดสิน</button>
+    <span class="meta" id="count"></span>
+    <button id="done">สรุปผล</button>
+  </div>
+  <div class="card" id="result" hidden></div>
+  <div id="view"></div>
+</main>
+<script>
+const PACK = new URLSearchParams(location.search).get("pack") ?? "pack";
+const KEY = "rin-voice-qa:" + PACK;
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+// A verdict belongs to one take: a new take of the clip starts undecided.
+const verdict = (c) => { const v = state[c.id]; return v && v.take === c.take ? v : null; };
+let clips = [];
+let auto = false, onlyTodo = false;
+
+function render() {
+  const view = document.getElementById("view");
+  view.textContent = "";
+  let pool = null;
+  const shown = clips.filter((c) => c.src && (!onlyTodo || !verdict(c)?.pick));
+  for (const c of shown) {
+    if (c.pool !== pool) { pool = c.pool; const h = document.createElement("h2"); h.textContent = pool; view.append(h); }
+    const v = verdict(c);
+    const card = document.createElement("div");
+    card.className = "card" + (v?.pick ? " " + v.pick : "");
+    card.dataset.id = c.id;
+    const flags = c.flags.length ? `<span class="flag">⚠ ${c.flags.join(", ")}</span>` : "";
+    card.innerHTML = `<div class="head"><span class="id">${c.id}</span><span class="meta">${c.tag ?? ""} · take ${c.take}/${c.takes} · ${c.dur}s</span>${flags}</div>
+      <div class="txt"></div><audio controls preload="none" src="${PACK}/${c.src}?t=${c.take}"></audio>
+      <div class="row"><button data-p="ok">ผ่าน</button><button data-p="redo">สร้างใหม่</button><input type="text" placeholder="เหตุผล (ถ้ามี)"></div>`;
+    card.querySelector(".txt").textContent = c.text;
+    const note = card.querySelector("input");
+    note.value = v?.note ?? "";
+    for (const b of card.querySelectorAll("button[data-p]")) {
+      b.setAttribute("aria-pressed", v?.pick === b.dataset.p);
+      b.onclick = () => {
+        state[c.id] = { take: c.take, pick: b.dataset.p, note: note.value };
+        save(); card.className = "card " + b.dataset.p;
+        for (const o of card.querySelectorAll("button[data-p]")) o.setAttribute("aria-pressed", o === b);
+        count();
+      };
+    }
+    note.onchange = () => { state[c.id] = { take: c.take, pick: verdict(c)?.pick ?? null, note: note.value }; save(); };
+    const audio = card.querySelector("audio");
+    audio.onended = () => {
+      if (!auto) return;
+      const next = card.nextElementSibling?.matches(".card") ? card.nextElementSibling : card.nextElementSibling?.nextElementSibling;
+      next?.querySelector("audio")?.play(); next?.scrollIntoView({ block: "center" });
+    };
+    view.append(card);
+  }
+  count();
+}
+
+function count() {
+  const built = clips.filter((c) => c.src);
+  const done = built.filter((c) => verdict(c)?.pick).length;
+  document.getElementById("count").textContent = `ตัดสินแล้ว ${done}/${built.length}`;
+}
+
+fetch(`${PACK}/qa.json`, { cache: "no-store" }).then((r) => r.json()).then((j) => { clips = j.clips; render(); })
+  .catch(() => { document.getElementById("view").textContent = "ยังไม่มี pack/qa.json (รัน node pack.mjs build)"; });
+
+document.getElementById("auto").onclick = (e) => { auto = !auto; e.target.setAttribute("aria-pressed", auto); };
+document.getElementById("todo").onclick = (e) => { onlyTodo = !onlyTodo; e.target.setAttribute("aria-pressed", onlyTodo); render(); };
+document.getElementById("done").onclick = () => {
+  const built = clips.filter((c) => c.src);
+  const redo = built.filter((c) => verdict(c)?.pick === "redo");
+  const open = built.filter((c) => !verdict(c)?.pick);
+  // How the automatic flags compared with the ear: flagged and heard, flagged but fine, missed.
+  const flagged = built.filter((c) => c.flags.length && verdict(c)?.pick);
+  const out = document.getElementById("result");
+  out.hidden = false;
+  out.textContent = `RESULT built=${built.length} ok=${built.length - redo.length - open.length} redo=${redo.length} open=${open.length}\n` +
+    `REDO ${redo.map((c) => c.id).join(",")}\n` +
+    redo.map((c) => `  ${c.id}: ${verdict(c).note || "-"}${c.flags.length ? "  [auto: " + c.flags + "]" : ""}`).join("\n") +
+    `\nFLAGGED ${flagged.map((c) => `${c.id}:${c.flags}=${verdict(c).pick}`).join(" ")}` +
+    `\nOPEN ${open.map((c) => c.id).join(",")}`;
+  out.scrollIntoView();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rin v3 vs v4</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e4e3dc; --accent:#c2410c; --pick:#fff4ec; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161614; --fg:#ecebe6; --muted:#9a9993; --card:#201f1d; --line:#34332f; --accent:#fb923c; --pick:#2c2119; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, "Segoe UI", "Leelawadee UI", sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.hint { color:var(--muted); margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0; }
+  .txt { font-size:14px; margin-bottom:6px; } .emo { color:var(--muted); font-size:12px; }
+  .pair { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:center; }
+  .pair b { font-size:18px; }
+  audio { height:32px; width:100%; }
+  .pick { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; cursor:pointer; }
+  button[aria-pressed=true] { border-color:var(--accent); color:var(--accent); font-weight:600; background:var(--pick); }
+  #result { white-space:pre-wrap; font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>เสียงริน: เทียบ 2 โมเดล (ซ่อนชื่อ)</h1>
+  <p class="hint">เสียง "Rin soft" ตัวเดิม ประโยคเดิม 10 ประโยคจาก S4 แต่ละข้อ A/B สุ่มสลับกัน ฟังทั้งสองแล้วเลือกอันที่ชอบกว่า ถ้าได้ยินแท็กอย่าง "softly" ถูกอ่านออกเสียง หรือเสียงไม่เหมือนรินเดิม ให้กด "มีปัญหา" ด้วย</p>
+  <div id="view"></div>
+  <div class="pick"><button id="done">ดูผล (เปิดชื่อ)</button></div>
+  <div class="card" id="result" hidden></div>
+</main>
+<script>
+const MODELS = { v3: "out/el-rin-soft", v4: "out/el-rin-soft-v4" };
+let state = {};
+try { state = JSON.parse(localStorage.getItem("ab-v3v4") || "{}"); } catch {}
+const save = () => { try { localStorage.setItem("ab-v3v4", JSON.stringify(state)); } catch {} };
+fetch("out/manifest.json").then(r => r.json()).then(m => {
+  const view = document.getElementById("view");
+  for (const l of m.lines) {
+    const s = state[l.id] ??= { a: Math.random() < 0.5 ? "v3" : "v4", pick: null, issue: false };
+    const b = s.a === "v3" ? "v4" : "v3";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<div class="txt">${l.id} · ${l.text} <span class="emo">(${l.emotion})</span></div>
+      <div class="pair"><b>A</b><audio controls preload="none" src="${MODELS[s.a]}/${l.id}.mp3"></audio>
+      <b>B</b><audio controls preload="none" src="${MODELS[b]}/${l.id}.mp3"></audio></div>
+      <div class="pick"></div>`;
+    const pick = card.querySelector(".pick");
+    const opts = [["A", "A ดีกว่า"], ["=", "พอๆ กัน"], ["B", "B ดีกว่า"]];
+    const btns = opts.map(([v, label]) => {
+      const bt = document.createElement("button");
+      bt.textContent = label;
+      bt.onclick = () => { s.pick = v; save(); paint(); };
+      pick.append(bt);
+      return [v, bt];
+    });
+    const issue = document.createElement("button");
+    issue.textContent = "มีปัญหา";
+    issue.onclick = () => { s.issue = !s.issue; save(); paint(); };
+    pick.append(issue);
+    const paint = () => {
+      for (const [v, bt] of btns) bt.setAttribute("aria-pressed", s.pick === v);
+      issue.setAttribute("aria-pressed", s.issue);
+    };
+    paint();
+    view.append(card);
+  }
+  save();
+  document.getElementById("done").onclick = () => {
+    const tally = { v3: 0, v4: 0, tie: 0 }, rows = [];
+    for (const l of m.lines) {
+      const s = state[l.id], b = s.a === "v3" ? "v4" : "v3";
+      const won = s.pick === "A" ? s.a : s.pick === "B" ? b : s.pick === "=" ? "tie" : "-";
+      if (won in tally) tally[won]++;
+      rows.push(`${l.id}: A=${s.a} B=${b} เลือก=${s.pick ?? "-"} → ${won}${s.issue ? "  ⚠ มีปัญหา" : ""}`);
+    }
+    const out = document.getElementById("result");
+    out.hidden = false;
+    out.textContent = `RESULT v3=${tally.v3} v4=${tally.v4} tie=${tally.tie}\n` + rows.join("\n");
+  };
+});
+</script>
+</body>
+</html>

@@ -47,3 +47,7 @@ tools/steplab/data/
 # Repeat after Rin lab recordings pulled from the phone (task 3.5): the tester's voice stays off the repo; the replay
 # results (words heard) are committed next to docs/spikes/3.5-repeat-after-rin.md.
 tools/stt/recordings/
+# Rin's voice pack takes and build output (task 4.3, tools/voice/pack.mjs): the paid-month raw takes, the request log
+# and the built clips stay on the PC until they are copied into the app.
+tools/voice/pack/
+tools/voice/pack-dry/
