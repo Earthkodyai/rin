@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rin Voice Test</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e4e3dc; --accent:#c2410c; --pick:#fff4ec; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161614; --fg:#ecebe6; --muted:#9a9993; --card:#201f1d; --line:#34332f; --accent:#fb923c; --pick:#2c2119; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, "Segoe UI", "Leelawadee UI", sans-serif; }
+  main { max-width:820px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } p.hint { color:var(--muted); margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:12px 0; }
+  .txt { font-weight:600; margin-bottom:6px; } .meta { color:var(--muted); font-size:12px; font-weight:400; }
+  .v { display:grid; grid-template-columns:28px minmax(140px, 1fr) auto; gap:6px 10px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+  .v b { font-size:17px; } audio { height:32px; width:100%; }
+  .tags { display:flex; gap:6px; flex-wrap:wrap; }
+  button { font:inherit; font-size:14px; padding:4px 10px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; cursor:pointer; }
+  button[aria-pressed=true] { border-color:var(--accent); color:var(--accent); font-weight:600; background:var(--pick); }
+  #result { white-space:pre-wrap; font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+  @media (max-width:600px) { .v { grid-template-columns:28px 1fr; } .tags { grid-column:1 / -1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>หาสาเหตุเสียงแตก (ซ่อนชื่อ)</h1>
+  <p class="hint">8 ประโยคที่คุณให้สร้างใหม่ แต่ละประโยคมี 5 แบบ สลับลำดับแล้ว ฟังทีละแบบ ถ้าได้ยินปัญหาให้กดป้าย (กดได้มากกว่าหนึ่ง) ถ้าฟังแล้วปกติให้กด "ปกติ" จากนั้นกด ★ ที่แบบที่ชอบที่สุดในประโยคนั้น บางแบบอาจดังหรือเบากว่าแบบอื่น ให้ตัดสินจากความสะอาดของเสียง ไม่ใช่จากความดัง</p>
+  <div id="view"></div>
+  <button id="done">สรุปผล</button>
+  <div class="card" id="result" hidden></div>
+</main>
+<script>
+const KEY = "rin-voice-exp";
+const TAGS = [["ok", "ปกติ"], ["crack", "แตก"], ["hiss", "ซ่า"], ["muffle", "อู้อี้"]];
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+fetch("pack/exp/exp.json", { cache: "no-store" }).then((r) => r.json()).then((exp) => {
+  const view = document.getElementById("view");
+  for (const l of exp.lines) {
+    const s = state[l.id] ??= { order: [...exp.variants].sort(() => Math.random() - 0.5), marks: {}, best: null };
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<div class="txt"></div>`;
+    card.querySelector(".txt").textContent = l.text + "  ";
+    card.querySelector(".txt").insertAdjacentHTML("beforeend", `<span class="meta">${l.tag ?? ""}</span>`);
+    s.order.forEach((v, i) => {
+      const row = document.createElement("div");
+      row.className = "v";
+      row.innerHTML = `<b>${i + 1}</b><audio controls preload="none" src="pack/exp/${l.id}/${v}.mp3"></audio><div class="tags"></div>`;
+      const tags = row.querySelector(".tags");
+      const marks = (s.marks[v] ??= []);
+      const paint = () => { for (const b of tags.querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.t === "best" ? s.best === v : marks.includes(b.dataset.t)); };
+      for (const [t, label] of [...TAGS, ["best", "★"]]) {
+        const b = document.createElement("button");
+        b.textContent = label; b.dataset.t = t;
+        b.onclick = () => {
+          if (t === "best") { s.best = v; save(); for (const x of card.querySelectorAll(".v")) x.dispatchEvent(new Event("paint")); return; }
+          if (t === "ok") marks.splice(0, marks.length, "ok");
+          else { const at = marks.indexOf("ok"); if (at >= 0) marks.splice(at, 1); const k = marks.indexOf(t); k >= 0 ? marks.splice(k, 1) : marks.push(t); }
+          save(); paint();
+        };
+        tags.append(b);
+      }
+      row.addEventListener("paint", paint);
+      paint();
+      card.append(row);
+    });
+    view.append(card);
+  }
+  save();
+  document.getElementById("done").onclick = () => {
+    const per = Object.fromEntries(exp.variants.map((v) => [v, { ok: 0, crack: 0, hiss: 0, muffle: 0, unmarked: 0, best: 0 }]));
+    const rows = [];
+    for (const l of exp.lines) {
+      const s = state[l.id];
+      for (const v of exp.variants) {
+        const m = s.marks[v] ?? [];
+        if (!m.length) per[v].unmarked++;
+        for (const t of m) per[v][t]++;
+      }
+      if (s.best) per[s.best].best++;
+      rows.push(`${l.id}: best=${s.best ?? "-"} ` + exp.variants.map((v) => `${v}[${(s.marks[v] ?? []).join("+") || "-"}]`).join(" "));
+    }
+    const out = document.getElementById("result");
+    out.hidden = false;
+    out.textContent = "RESULT\n" + exp.variants.map((v) => `${v.padEnd(7)} ${JSON.stringify(per[v])}`).join("\n") + "\n\n" + rows.join("\n");
+    out.scrollIntoView();
+  };
+});
+</script>
+</body>
+</html>

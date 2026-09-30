@@ -100,7 +100,7 @@
     {"id": "back.last.03", "pool": "back.last", "emotion": "sulky", "gesture": null, "tag": "[sighs]", "text": "Okay, I waited. Now it's game time."},
 
     {"id": "emergency.01", "pool": "emergency", "emotion": "worried", "gesture": null, "tag": "[concerned]", "text": "Alarm off. I hope everything's okay."},
-    {"id": "emergency.02", "pool": "emergency", "emotion": "worried", "gesture": null, "tag": "[gently]", "text": "Okay, stopped. Take care of yourself."},
+    {"id": "emergency.02", "pool": "emergency", "emotion": "worried", "gesture": null, "tag": "[concerned]", "text": "Okay, it's off now. Please take care of yourself."},
 
     {"id": "game.intro.01", "pool": "game.intro", "emotion": "cheerful", "gesture": null, "tag": null, "text": "Game time! Wake up your brain with me."},
     {"id": "game.intro.02", "pool": "game.intro", "emotion": "cheerful", "gesture": "nod", "tag": null, "text": "Let's play. Win, and the alarm stops."},
@@ -195,7 +195,7 @@
     {"id": "app.afternoon.03", "pool": "app.afternoon", "emotion": "cheerful", "gesture": "wave", "tag": null, "text": "Hello! Nice to see you this afternoon."},
     {"id": "app.evening.01", "pool": "app.evening", "emotion": "relieved", "gesture": "wave", "tag": "[warmly]", "text": "Good evening. Setting an alarm for tomorrow?"},
     {"id": "app.evening.02", "pool": "app.evening", "emotion": "relieved", "gesture": "wave", "tag": "[softly]", "text": "Evening! Long day?"},
-    {"id": "app.evening.03", "pool": "app.evening", "emotion": "relieved", "gesture": "wave", "tag": null, "text": "Hi. Let's get tomorrow ready."},
+    {"id": "app.evening.03", "pool": "app.evening", "emotion": "relieved", "gesture": "wave", "tag": null, "text": "Hi… Let's get tomorrow ready."},
     {"id": "app.night.01", "pool": "app.night", "emotion": "sleepy", "gesture": "wave", "tag": "[softly]", "text": "It's late. Set your alarm and sleep, okay?"},
     {"id": "app.night.02", "pool": "app.night", "emotion": "sleepy", "gesture": null, "tag": "[playfully]", "text": "Still up? Tomorrow-you will say thank you."},
     {"id": "app.night.03", "pool": "app.night", "emotion": "sleepy", "gesture": "yawn", "tag": "[whispers]", "text": "It's quiet time now. Sleep well soon."},
@@ -204,7 +204,7 @@
     {"id": "app.alarmset.03", "pool": "app.alarmset", "emotion": "cheerful", "gesture": "wave", "tag": "[cheerfully]", "text": "All set. See you then!"},
     {"id": "app.alarmset.04", "pool": "app.alarmset", "emotion": "cheerful", "gesture": "nod", "tag": "[playfully]", "text": "Okay! Leave it to me."},
     {"id": "tap.head.01", "pool": "tap.head", "emotion": "cheerful", "gesture": null, "tag": "[giggles]", "text": "Hey, that tickles."},
-    {"id": "tap.head.02", "pool": "tap.head", "emotion": "cheerful", "gesture": null, "tag": null, "text": "Yes? I'm here."},
+    {"id": "tap.head.02", "pool": "tap.head", "emotion": "cheerful", "gesture": null, "tag": "[gently]", "text": "Yes? I'm here."},
     {"id": "tap.head.03", "pool": "tap.head", "emotion": "cheerful", "gesture": "wave", "tag": "[giggles]", "text": "Hi to you too."},
     {"id": "tap.head.04", "pool": "tap.head", "emotion": "pouty", "gesture": null, "tag": "[playfully]", "text": "Careful, my hair!"},
     {"id": "tap.head.05", "pool": "tap.head", "emotion": "cheerful", "gesture": null, "tag": "[curious]", "text": "Mm? Do you need something?"},

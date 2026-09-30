@@ -35,6 +35,7 @@
   <div class="bar">
     <button id="auto" aria-pressed="false">เล่นต่อกันอัตโนมัติ</button>
     <button id="todo" aria-pressed="false">เฉพาะที่ยังไม่ตัดสิน</button>
+    <button id="round" aria-pressed="false">เฉพาะที่ต้องเลือกเทค</button>
     <span class="meta" id="count"></span>
     <button id="done">สรุปผล</button>
   </div>
@@ -47,22 +48,24 @@ const KEY = "rin-voice-qa:" + PACK;
 let state = {};
 try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
-// A verdict belongs to one take: a new take of the clip starts undecided.
-const verdict = (c) => { const v = state[c.id]; return v && v.take === c.take ? v : null; };
+// A verdict belongs to one take, or to one set of candidate takes: new takes of the clip start undecided.
+const round = (c) => (c.candidates ? "c" + c.candidates.map((x) => x.n).join("-") : c.take);
+const verdict = (c) => { const v = state[c.id]; return v && v.take === round(c) ? v : null; };
 let clips = [];
-let auto = false, onlyTodo = false;
+let auto = false, onlyTodo = false, onlyRound = false;
 
 function render() {
   const view = document.getElementById("view");
   view.textContent = "";
   let pool = null;
-  const shown = clips.filter((c) => c.src && (!onlyTodo || !verdict(c)?.pick));
+  const shown = clips.filter((c) => c.src && (!onlyTodo || !verdict(c)?.pick) && (!onlyRound || c.candidates));
   for (const c of shown) {
     if (c.pool !== pool) { pool = c.pool; const h = document.createElement("h2"); h.textContent = pool; view.append(h); }
     const v = verdict(c);
     const card = document.createElement("div");
     card.className = "card" + (v?.pick ? " " + v.pick : "");
     card.dataset.id = c.id;
+    if (c.candidates) { view.append(candidateCard(c, v, card)); continue; }
     const flags = c.flags.length ? `<span class="flag">⚠ ${c.flags.join(", ")}</span>` : "";
     card.innerHTML = `<div class="head"><span class="id">${c.id}</span><span class="meta">${c.tag ?? ""} · take ${c.take}/${c.takes} · ${c.dur}s</span>${flags}</div>
       <div class="txt"></div><audio controls preload="none" src="${PACK}/${c.src}?t=${c.take}"></audio>
@@ -80,15 +83,40 @@ function render() {
       };
     }
     note.onchange = () => { state[c.id] = { take: c.take, pick: verdict(c)?.pick ?? null, note: note.value }; save(); };
-    const audio = card.querySelector("audio");
-    audio.onended = () => {
-      if (!auto) return;
-      const next = card.nextElementSibling?.matches(".card") ? card.nextElementSibling : card.nextElementSibling?.nextElementSibling;
-      next?.querySelector("audio")?.play(); next?.scrollIntoView({ block: "center" });
-    };
     view.append(card);
   }
+  // Auto-play walks every player on the page in order, candidates included.
+  const players = [...view.querySelectorAll("audio")];
+  players.forEach((a, i) => { a.onended = () => { if (auto && players[i + 1]) { players[i + 1].play(); players[i + 1].scrollIntoView({ block: "center" }); } }; });
   count();
+}
+
+/** Round 2: several takes of one clip; the user keeps one, or none (make more). */
+function candidateCard(c, v, card) {
+  card.innerHTML = `<div class="head"><span class="id">${c.id}</span><span class="meta">${c.tag ?? ""} · เลือก 1 จาก ${c.candidates.length} เทค</span></div>
+    <div class="txt"></div><div class="cands"></div>
+    <div class="row"><button data-p="redo">ไม่ผ่านทั้งหมด</button><input type="text" placeholder="เหตุผล (ถ้ามี)"></div>`;
+  card.querySelector(".txt").textContent = c.text;
+  const note = card.querySelector("input");
+  note.value = v?.note ?? "";
+  const paint = () => {
+    const now = verdict(c);
+    card.className = "card" + (now?.pick ? " " + now.pick : "");
+    for (const b of card.querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.p === "redo" ? now?.pick === "redo" : now?.choose === Number(b.dataset.n));
+    count();
+  };
+  const set = (pick, choose) => { state[c.id] = { take: round(c), pick, choose, note: note.value }; save(); paint(); };
+  for (const [i, k] of c.candidates.entries()) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<b>${i + 1}</b><audio controls preload="none" src="${PACK}/${k.src}?t=${k.n}" style="flex:1"></audio><button data-n="${k.n}">เลือกอันนี้</button>`;
+    row.querySelector("button").onclick = () => set("ok", k.n);
+    card.querySelector(".cands").append(row);
+  }
+  card.querySelector("button[data-p=redo]").onclick = () => set("redo", null);
+  note.onchange = () => set(verdict(c)?.pick ?? null, verdict(c)?.choose ?? null);
+  paint();
+  return card;
 }
 
 function count() {
@@ -97,11 +125,18 @@ function count() {
   document.getElementById("count").textContent = `ตัดสินแล้ว ${done}/${built.length}`;
 }
 
-fetch(`${PACK}/qa.json`, { cache: "no-store" }).then((r) => r.json()).then((j) => { clips = j.clips; render(); })
+fetch(`${PACK}/qa.json`, { cache: "no-store" }).then((r) => r.json()).then((j) => {
+  clips = j.clips;
+  // When a round of candidates is waiting, open on those.
+  onlyRound = clips.some((c) => c.candidates);
+  document.getElementById("round").setAttribute("aria-pressed", onlyRound);
+  render();
+})
   .catch(() => { document.getElementById("view").textContent = "ยังไม่มี pack/qa.json (รัน node pack.mjs build)"; });
 
 document.getElementById("auto").onclick = (e) => { auto = !auto; e.target.setAttribute("aria-pressed", auto); };
 document.getElementById("todo").onclick = (e) => { onlyTodo = !onlyTodo; e.target.setAttribute("aria-pressed", onlyTodo); render(); };
+document.getElementById("round").onclick = (e) => { onlyRound = !onlyRound; e.target.setAttribute("aria-pressed", onlyRound); render(); };
 document.getElementById("done").onclick = () => {
   const built = clips.filter((c) => c.src);
   const redo = built.filter((c) => verdict(c)?.pick === "redo");
@@ -114,7 +149,8 @@ document.getElementById("done").onclick = () => {
     `REDO ${redo.map((c) => c.id).join(",")}\n` +
     redo.map((c) => `  ${c.id}: ${verdict(c).note || "-"}${c.flags.length ? "  [auto: " + c.flags + "]" : ""}`).join("\n") +
     `\nFLAGGED ${flagged.map((c) => `${c.id}:${c.flags}=${verdict(c).pick}`).join(" ")}` +
-    `\nOPEN ${open.map((c) => c.id).join(",")}`;
+    `\nOPEN ${open.map((c) => c.id).join(",")}` +
+    `\nPICKS ${built.filter((c) => c.candidates && verdict(c)?.choose).map((c) => `${c.id}:${verdict(c).choose}`).join(",")}`;
   out.scrollIntoView();
 };
 </script>

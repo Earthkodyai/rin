@@ -1,0 +1,11 @@
+{
+  "_note": "Task 4.3 QA round 2: one voice tag per Repeat after Rin sentence, by meaning (the user's pick, 2026-09-30), because all 30 in [warmly] sounded monotone. Sentences the user passed in round 1 keep [warmly] (their approved takes). Tags come from the script's list (lines.json 'tags'); no non-verbal tags ([giggles], [yawns], [sighs]) or [whispers], so every word stays clear to repeat.",
+  "tags": {
+    "R01": "[warmly]", "R02": "[warmly]", "R03": "[warmly]", "R04": "[cheerfully]", "R05": "[cheerfully]",
+    "R06": "[warmly]", "R07": "[excited]", "R08": "[playfully]", "R09": "[gently]", "R10": "[playfully]",
+    "R11": "[playfully]", "R12": "[cheerfully]", "R13": "[warmly]", "R14": "[cheerfully]", "R15": "[playfully]",
+    "R16": "[cheerfully]", "R17": "[gently]", "R18": "[warmly]", "R19": "[proudly]", "R20": "[softly]",
+    "R21": "[excited]", "R22": "[warmly]", "R23": "[proudly]", "R24": "[warmly]", "R25": "[warmly]",
+    "R26": "[excited]", "R27": "[playfully]", "R28": "[excited]", "R29": "[cheerfully]", "R30": "[warmly]"
+  }
+}
