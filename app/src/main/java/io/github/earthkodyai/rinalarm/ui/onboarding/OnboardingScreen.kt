@@ -105,6 +105,7 @@ internal fun OnboardingScreen(
       when (state.step) {
         OnboardingStep.WELCOME -> {
           Page(R.string.welcome_title, R.string.welcome_text)
+          Text(stringResource(R.string.about_rin), style = MaterialTheme.typography.bodyLarge)
           PrimaryButton(R.string.onboarding_start, onNext)
         }
         OnboardingStep.NOTIFICATIONS -> {

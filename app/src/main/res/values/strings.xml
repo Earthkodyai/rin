@@ -263,6 +263,9 @@
     <string name="onboarding_open_settings">Open settings</string>
     <string name="welcome_title">Let\'s make sure alarms work</string>
     <string name="welcome_text">RinAlarm needs a few permissions so alarms ring on time and show over the lock screen. It takes about a minute, and nothing here uses the internet.</string>
+    <!-- 05e companion safety (6.2): she is an AI, said once up front and kept on the settings page. -->
+    <string name="about_rin_title">About Rin</string>
+    <string name="about_rin">Rin is an AI character. Her voice and lines were made with AI and are built into the app; nothing you say or do leaves your phone.</string>
     <string name="notif_title">Allow notifications</string>
     <string name="notif_text">When an alarm rings, its screen appears over the lock screen through a notification. Without it you\'ll still hear the alarm, but you\'ll have to open RinAlarm to stop it.</string>
     <string name="notif_allow">Allow notifications</string>

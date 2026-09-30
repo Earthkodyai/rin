@@ -30,10 +30,28 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
+    // Release signing (6.2): the key lives outside the repo, and `rin.signing` in local.properties points at its
+    // keystore.properties. Without it (CI, clones) the release build is unsigned.
+    val signing =
+      rootProject.file("local.properties").takeIf { it.exists() }
+        ?.let { f -> Properties().apply { f.reader().use { load(it) } }.getProperty("rin.signing") }
+        ?.let { path -> Properties().apply { File(path).reader().use { load(it) } } }
+    signingConfigs {
+      if (signing != null) {
+        create("release") {
+          storeFile = File(signing.getProperty("storeFile"))
+          storePassword = signing.getProperty("storePassword")
+          keyAlias = signing.getProperty("keyAlias")
+          keyPassword = signing.getProperty("keyPassword")
+        }
+      }
+    }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
@@ -250,6 +268,36 @@ val devModel = layout.projectDirectory.file("src/debug/assets/character/model/de
 val devStills = if (rinModel == null && devModel.asFile.isFile) registerStills("renderDevStills", provider { devModel }) else null
 
 /**
+ * The VRoid sample in a release build, for the user's own phone only (D25: its licence forbids redistribution, so such
+ * an APK is never shared). Off unless `rin.devModelInRelease=true` in local.properties; CI and clones never set it.
+ */
+abstract class DevModelCopy : DefaultTask() {
+  @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val model: RegularFileProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:Inject abstract val fs: FileSystemOperations
+
+  @TaskAction
+  fun copy() {
+    fs.sync {
+      from(model)
+      into(outputDir.dir("character/model"))
+    }
+  }
+}
+
+val devModelInRelease =
+  if (rinModel == null && devModel.asFile.isFile && localProperties.getProperty("rin.devModelInRelease") == "true") {
+    tasks.register<DevModelCopy>("copyDevModelForRelease") {
+      model.set(devModel)
+      outputDir.set(layout.buildDirectory.dir("generated/devModelRelease"))
+    }
+  } else {
+    null
+  }
+
+/**
  * Checks that her arms stay out of her body through every gesture, on the build's model (tools/character/
  * check-gestures.mjs, task 2.5): fails above 10 mm, and leaves front/side/above sheets in build/reports/gesture-check.
  * Not part of assemble. For a new model: run with -PwriteBody to re-measure web/character/src/body.json, rebuild,
@@ -381,6 +429,11 @@ androidComponents {
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
     if (variant.buildType == "debug") {
       devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
+    } else {
+      devModelInRelease?.let { copy ->
+        variant.sources.assets?.addGeneratedSourceDirectory(copy, DevModelCopy::outputDir)
+        devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
+      }
     }
   }
 }

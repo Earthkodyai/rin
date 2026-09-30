@@ -5,7 +5,9 @@ Phase 2 **done 2026-09-28** on the VRoid sample. **Your model still pending** (`
 ## Deadline plan (D25, 2026-09-30 22:30): finish by 2026-10-01
 Finish line = app on the user's phone + 60–90 s demo video + public repo with an English README. **Order and cut list: `docs/plan/07-phases.md` top section.** Tonight: 4.4 (short) → 5.1 (rest/sick buttons + settings). Tomorrow: 5.2 device → 0.4 GitHub (user) → 6.1 reviews → 6.2 release build (own phone only; never distribute the VRoid sample) → 9.1 README + ADR 0005 → 9.2 video. Everything else is a README limit, not a task.
 ## Next
-- **Next (D25 order):** 0.4 the user makes a GitHub account + empty public repo → push, CI green · 6.1 `/security-review` + `/code-review` · 6.2 release build (R8, signing outside repo) + in-app 18+ and **AI notice in onboarding (05e, still missing)** + privacy notice file · 9.1 README (+ VRoid sample credit, limits) + ADR 0005 · 9.2 video.
+- **Next (D25 order):** release smoke ring on the 14T (onboarding again: data was wiped) → 9.1 README (+ VRoid sample credit, limits, privacy section) + ADR 0005 → 9.2 video.
+- **Remote:** https://github.com/Earthkodyai/rin (public), CI green on main since 968e6b4. Dependabot PRs #1–#4 left unmerged until after the deadline.
+- **Release (6.2):** `./gradlew assembleRelease` signs with `D:\RinAlarm-keys\keystore.properties` (`rin.signing`, escape the colon: `D\:/`); lint does not track local.properties, so rerun `lintAnalyzeRelease --rerun` after editing it. The installed app on the 14T is now the **release** build: a debug install needs `adb uninstall` first (wipes alarms).
 - **Phase 5 done 2026-10-01:** the user ran a sick-day ring themselves (dayMode=sick, no game) and said all OK; they dropped the 1323 hotline (no chat, D21). Settings page now has only No pouting.
 - **4.4 done 2026-09-30:** no-network morning passed (5/5 lines with clips), LinePickerTest 8/8, mouth in sync by eye on the home strip.
 - Redo the Phase 2 checks once the user's own model lands.

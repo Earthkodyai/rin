@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Offline by design (6.1 security review): ML Kit's bundled barcode model merges these in for Google's usage
+         logs (datatransport). Removed, so no library can reach the network; the scanner itself runs on the phone. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <!-- Exact alarms: USE_EXACT_ALARM (13+, alarm-clock apps only, cannot be revoked); SCHEDULE_EXACT_ALARM for 12-12L. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -62,8 +72,7 @@
             android:showWhenLocked="true"
             android:taskAffinity=""
             android:turnScreenOn="true"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity"
-            xmlns:tools="http://schemas.android.com/tools" />
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
         <!-- Shares the generated QR sticker image so it can be printed (task 3.2). -->
         <provider

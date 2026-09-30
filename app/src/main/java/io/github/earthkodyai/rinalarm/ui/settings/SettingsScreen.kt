@@ -73,6 +73,10 @@ internal fun SettingsScreen(poutOff: Boolean, onPoutOff: (Boolean) -> Unit, onBa
         modifier = Modifier.clickable { onPoutOff(!poutOff) },
       )
       HorizontalDivider()
+      ListItem(
+        headlineContent = { Text(stringResource(R.string.about_rin_title)) },
+        supportingContent = { Text(stringResource(R.string.about_rin)) },
+      )
     }
   }
 }
