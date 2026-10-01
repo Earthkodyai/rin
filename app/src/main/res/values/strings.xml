@@ -37,7 +37,10 @@
     <string name="alarms_empty">No alarms yet. Tap Add alarm to set one.</string>
     <string name="alarms_load_error">Couldn\'t load your alarms.</string>
     <string name="alarm_off">Off</string>
-    <string name="alarm_next_ring">Next ring: %1$s %2$s</string>
+    <string name="home_next_today">Next: today %1$s</string>
+    <string name="home_next_tomorrow">Next: tomorrow %1$s</string>
+    <string name="home_next_day">Next: %1$s %2$s</string>
+    <string name="home_no_game">No game</string>
     <string name="repeat_once">Once</string>
     <string name="repeat_every_day">Every day</string>
     <string name="repeat_weekdays">Weekdays</string>

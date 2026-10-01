@@ -8,10 +8,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
 import java.time.DayOfWeek
 import java.time.Duration
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Locale
 
 // Text shared by the alarm list and the editor.
 
@@ -29,6 +33,27 @@ fun rememberTimeFormatter(): DateTimeFormatter {
   }
 }
 
+/**
+ * A time as digits only, "07:00" on a 24-hour phone, "7:00" plus [amPm] on a 12-hour one: the alarm cards' big
+ * numbers and the list header (UX.2, the user's pick). No locale suffix such as Thai "น.", which the rounded font
+ * cannot draw; screen readers still get the locale's full time from [rememberTimeFormatter].
+ */
+data class ClockText(val digits: String, val amPm: String?) {
+  override fun toString(): String = if (amPm == null) digits else "$digits $amPm"
+}
+
+@Composable
+fun rememberClockText(): (LocalTime) -> ClockText {
+  val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+  val locale = LocalLocale.current.platformLocale
+  return remember(is24Hour, locale) {
+    val digits = DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm", Locale.ROOT)
+    val amPm = DateTimeFormatter.ofPattern("a", locale)
+    val format: (LocalTime) -> ClockText = { ClockText(it.format(digits), if (is24Hour) null else it.format(amPm)) }
+    format
+  }
+}
+
 @Composable
 fun repeatSummary(days: RepeatDays): String =
   when (days) {
@@ -41,6 +66,23 @@ fun repeatSummary(days: RepeatDays): String =
       days.days.joinToString(", ") { it.getDisplayName(TextStyle.SHORT, locale) }
     }
   }
+
+/** What stops an alarm, as the editor and the alarm list name it. */
+@Composable
+fun missionChoiceName(choice: MissionChoice): String =
+  stringResource(
+    when (choice) {
+      MissionChoice.RinPicks -> R.string.mission_choice_rin_picks
+      MissionChoice.None -> R.string.mission_choice_none
+      is MissionChoice.Only ->
+        when (choice.type) {
+          MissionType.PADS -> R.string.mission_choice_pads
+          MissionType.CUPS -> R.string.mission_choice_cups
+          MissionType.QR -> R.string.mission_choice_qr
+          MissionType.SPEECH -> R.string.mission_choice_speech
+        }
+    }
+  )
 
 /** A weekday's name in the UI's current locale (observable, so a locale change recomposes). */
 @Composable

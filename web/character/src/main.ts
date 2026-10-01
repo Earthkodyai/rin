@@ -8,7 +8,8 @@
 //   t0=<epoch ms>         native timestamp taken before the WebView was created
 //   mood=cheerful         starting mood (emotion.ts), shown from the first frame without a blend
 //   intensity=1           starting mood intensity, 0..1
-//   frame=full            head to toe (the ring screen, task 3.1); default: the strip's head and shoulders
+//   frame=full            head to toe (the ring screen, task 3.1); frame=waist: waist up (UX.2, the home panel);
+//                         default: the strip's head and shoulders
 //   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
 //   cups=demo             (desktop preview) the cup shuffle (task 3.4) on a loop, as the app would drive it
 //   still                 still-image mode for tools/character/render-stills.mjs: no loop, no bridge; window.rinStill
@@ -42,6 +43,7 @@ const t0 = q.has('t0') ? Number(q.get('t0')) : null;
 let mood: Mood = isMood(q.get('mood')) ? (q.get('mood') as Mood) : 'relieved';
 let intensity = Math.min(num('intensity', 1), 1);
 const fullBody = q.get('frame') === 'full';
+const waistUp = q.get('frame') === 'waist';
 /**
  * How bright her lights are, as a share of the original rig (directional pi + ambient 0.4 pi). That rig washed the
  * user's Rin's cream skin out to white (2026-10-01; VRoid Studio shows it shaded). `light=` overrides it to compare.
@@ -73,16 +75,17 @@ scene.add(light, ambient);
 let topY = 1.55;
 
 /**
- * Head and shoulders in a wide view (the strip above the alarm list), upper body in a tall one, head to toe with
- * `frame=full` (the ring screen, where clap and pout show). The visible height at the model decides the distance, so
+ * Head and shoulders in a wide view (the strip above the alarm list), upper body in a tall one, waist up with
+ * `frame=waist` (the home panel), head to toe with `frame=full` (the ring screen, where clap and pout show). The visible height at the model decides the distance, so
  * she fills the view whatever its pixel size. The top margin keeps the hair inside the frame through breathing and
  * the tap nod (2.1 cropped it, framing from the head bone); full body leaves room under her feet for a stretch.
  */
 function frame() {
   camera.aspect = innerWidth / innerHeight;
   const wide = camera.aspect > 1;
-  const margin = fullBody ? 0.06 : wide ? 0.03 : 0.08;
-  const visibleHeight = fullBody ? topY + 2 * margin : wide ? 0.44 : 0.95; // metres at the model
+  const margin = fullBody ? 0.06 : waistUp ? WAIST_MARGIN : wide ? 0.03 : 0.08;
+  // metres at the model
+  const visibleHeight = fullBody ? topY + 2 * margin : waistUp ? WAIST_HEIGHT : wide ? 0.44 : 0.95;
   const distance = visibleHeight / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const target = topY + margin - visibleHeight / 2;
   baseView.position.set(0, target + (fullBody ? 0 : 0.03), distance);
@@ -91,6 +94,13 @@ function frame() {
   aim();
   cupsReported = -1; // the tap zones move with the view
 }
+
+/**
+ * Waist up (UX.2): the panel where she stands beside the home screen's controls, half her body so the busy screen
+ * keeps room (the user, 2026-10-01). Metres at the model from her hair down past her waist, whatever the view's shape.
+ */
+const WAIST_HEIGHT = 0.72;
+const WAIST_MARGIN = 0.05;
 
 /** The cup table (task 3.4), built with her; an act that arrives before she loads waits in `queuedAct`. */
 let cups: CupScene | null = null;

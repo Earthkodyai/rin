@@ -368,7 +368,7 @@ private class CharacterHost {
         .appendQueryParameter("t0", t0.toString())
         .appendQueryParameter("mood", mood.first.wire)
         .appendQueryParameter("intensity", mood.second.toString())
-        .apply { if (framing == Framing.FULL) appendQueryParameter("frame", framing.wire) }
+        .apply { if (framing != Framing.STRIP) appendQueryParameter("frame", framing.wire) }
         .build()
     wanted = mood
     onPage = mood

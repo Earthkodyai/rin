@@ -9,7 +9,10 @@ import androidx.compose.ui.test.performClick
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -33,8 +36,29 @@ class MainScreenTest {
       MainScreen(MainScreenUiState.Success(listOf(AlarmRow(alarm, nextRing = null))), {}, {}, { _, _ -> })
     }
 
-    composeTestRule.onNodeWithText(string(R.string.repeat_weekdays)).assertExists()
     composeTestRule.onNodeWithText(string(R.string.alarm_off)).assertExists()
+  }
+
+  @Test
+  fun dayDots_readAsTheRepeatSummary_andTheHeaderSaysTomorrow() {
+    val zone = ZoneId.of("Asia/Bangkok")
+    val alarm = Alarm(id = 1, time = LocalTime.of(7, 0), repeatDays = RepeatDays.WEEKDAYS)
+    val next = ZonedDateTime.of(2026, 9, 29, 7, 0, 0, 0, zone)
+    composeTestRule.setContent {
+      MainScreen(MainScreenUiState.Success(listOf(AlarmRow(alarm, next)), today = LocalDate.of(2026, 9, 28)), {}, {}, { _, _ -> })
+    }
+
+    composeTestRule.onNodeWithContentDescription(string(R.string.repeat_weekdays)).assertExists()
+    composeTestRule.onNodeWithText(string(R.string.home_next_tomorrow, ""), substring = true).assertExists()
+  }
+
+  @Test
+  fun rinLine_showsInHerBubble() {
+    composeTestRule.setContent {
+      MainScreen(MainScreenUiState.Success(emptyList()), {}, {}, { _, _ -> }, rinLine = "Morning!")
+    }
+
+    composeTestRule.onNodeWithText("Morning!").assertExists()
   }
 
   @Test

@@ -11,6 +11,7 @@ import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.setup.DeviceStatusSource
 import io.github.earthkodyai.rinalarm.setup.SetupChecks
 import io.github.earthkodyai.rinalarm.time.TimeSource
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +57,7 @@ constructor(
         val now = timeSource.now()
         val zone = timeSource.zone()
         val rows = alarms.map { AlarmRow(it, it.nextTrigger(now, zone)?.atZone(zone)) }
-        MainScreenUiState.Success(rows)
+        MainScreenUiState.Success(rows, today = now.atZone(zone).toLocalDate())
       }
       .catch { emit(MainScreenUiState.Error(it)) }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainScreenUiState.Loading)
@@ -80,5 +81,6 @@ sealed interface MainScreenUiState {
 
   data class Error(val throwable: Throwable) : MainScreenUiState
 
-  data class Success(val alarms: List<AlarmRow>) : MainScreenUiState
+  /** [today] in the current zone, so the list can say "today" or "tomorrow" for the next ring (null: weekday names). */
+  data class Success(val alarms: List<AlarmRow>, val today: LocalDate? = null) : MainScreenUiState
 }

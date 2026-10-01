@@ -2,7 +2,8 @@
 // Renders the still images the app shows while Rin's 3D page loads, or instead of it when it fails (task 2.5): one
 // transparent WebP per mood, from the model the build ships, through the built page itself (its `still` mode), so a
 // still matches the live page's framing, lighting and faces exactly. Two sets: <out-dir>/<mood>.webp for the home
-// strip (head and shoulders) and <out-dir>/full/<mood>.webp for the ring screen (head to toe, task 3.1). Also
+// strip (head and shoulders), <out-dir>/full/<mood>.webp for the ring screen (head to toe, task 3.1) and
+// <out-dir>/waist/<mood>.webp for the home panel (waist up, UX.2). Also
 // <out-dir>/hand.webp, her right hand from above for the colour pads (task 3.3), cropped so her fingertip sits at the
 // bottom centre and her forearm runs off the top edge.
 //
@@ -30,6 +31,8 @@ import sharp from 'sharp';
 export const FRAMINGS = [
   { name: 'strip', dir: '', query: '', aspect: 1.6, scale: 1 },
   { name: 'full', dir: 'full', query: '&frame=full', aspect: 0.6, scale: 1.8 },
+  // The home panel (UX.2): her view is about as tall as the strip (220 dp) and a little narrower than that.
+  { name: 'waist', dir: 'waist', query: '&frame=waist', aspect: 0.9, scale: 1 },
 ];
 const MARGIN = 8;
 

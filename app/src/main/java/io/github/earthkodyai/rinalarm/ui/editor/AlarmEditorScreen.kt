@@ -76,6 +76,7 @@ import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
+import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
 import java.time.DayOfWeek
@@ -454,22 +455,6 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
     }
   }
 }
-
-@Composable
-private fun missionChoiceName(choice: MissionChoice): String =
-  stringResource(
-    when (choice) {
-      MissionChoice.RinPicks -> R.string.mission_choice_rin_picks
-      MissionChoice.None -> R.string.mission_choice_none
-      is MissionChoice.Only ->
-        when (choice.type) {
-          MissionType.PADS -> R.string.mission_choice_pads
-          MissionType.CUPS -> R.string.mission_choice_cups
-          MissionType.QR -> R.string.mission_choice_qr
-          MissionType.SPEECH -> R.string.mission_choice_speech
-        }
-    }
-  )
 
 @Composable
 private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
