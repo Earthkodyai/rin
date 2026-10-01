@@ -27,7 +27,8 @@ export const TILE = { width: 720, height: 240 };
 let NIGHT = false;
 
 export function prompt(spec, tile, night = false) {
-  return `${night ? spec.nightStyle : spec.style}\n\nSubject: ${tile.subject}`;
+  // Night prompts have their own props: the day subjects' tables and forests pulled Gemini into whole scenes.
+  return night ? `${spec.nightStyle}\n\nProps: ${tile.nightSubject ?? tile.subject}` : `${spec.style}\n\nSubject: ${tile.subject}`;
 }
 
 /** A tile's name in takes/ and in the APK, by look. */
