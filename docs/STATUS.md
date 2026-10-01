@@ -7,7 +7,8 @@ Finish line = app on the user's phone + 60–90 s demo video + public repo with 
 ## Next
 - **6.2 done on the device 2026-10-01** (release rings, games, lock screen; D26: HyperOS revokes full-screen on every app update, now a banner + a notice).
 - **6.3 done 2026-10-01:** privacy notice (app + https://earthkodyai.github.io/rin/privacy/), overnight battery 9.09/633 mAh (1.4%), WebView Safe Browsing turned off after it sent ~7 KB per app open through Play services (now 0 B). Re-check tomorrow: `uidnet.py 10356` over `dumpsys netstats detail` (the 0x4001804 tag from the debug period). Phase 6 is left with limited distribution only (blocked on the user's own model).
-- **Next (D25 order):** 9.1 README (+ VRoid sample credit, limits, privacy section) + ADR 0005 → 9.2 video.
+- **9.1 done 2026-10-01:** README.md (problem, approach, architecture diagram, challenges, measured results, what is not done, build, privacy, credits), ADR 0005 (D25) and ADR 0006 (D26).
+- **Next (D25 order):** 9.2 demo video, then 9.1 README (+ VRoid sample credit, limits, privacy section) + ADR 0005 → 9.2 video.
 - **Remote:** https://github.com/Earthkodyai/rin (public), CI green on main since 968e6b4. Dependabot PRs #1–#4 left unmerged until after the deadline.
 - **Release (6.2):** `./gradlew assembleRelease` signs with `D:\RinAlarm-keys\keystore.properties` (`rin.signing`, escape the colon: `D\:/`); lint does not track local.properties, so rerun `lintAnalyzeRelease --rerun` after editing it. The debug app is uninstalled from the 14T; the release install waits for the user to tap Install on the phone. Once in, it is the **release** build: a debug install needs `adb uninstall` first (wipes alarms).
 - **Phase 5 done 2026-10-01:** the user ran a sick-day ring themselves (dayMode=sick, no game) and said all OK; they dropped the 1323 hotline (no chat, D21). Settings page now has only No pouting.
