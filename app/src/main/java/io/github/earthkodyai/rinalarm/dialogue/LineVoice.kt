@@ -64,8 +64,17 @@ class AndroidLineVoice(private val context: Context, attributes: AudioAttributes
   }
 
   // RinSpeaker asks once per line as she starts it: the log shows every line she says (tag RinLines).
-  override fun hasClip(line: Line): Boolean =
-    ("${line.id}.mp3" in clips).also { Log.i(TAG, "say ${line.id} clip=$it") }
+  override fun hasClip(line: Line): Boolean {
+    val name = "${line.id}.mp3"
+    val listed = name in clips
+    // On 2026-10-01 two lines in one ring logged clip=false although the APK carried both clips (the next ring played
+    // them). Until the cause is known, a clip missing from the list is opened directly before she goes silent, and
+    // the log says so.
+    val found = listed || runCatching { context.assets.open("$pack/$name").close() }.isSuccess
+    if (found && !listed) Log.w(TAG, "${line.id}: not in the listed ${clips.size} files, but it opens")
+    Log.i(TAG, "say ${line.id} clip=$found")
+    return found
+  }
 
   override suspend fun play(line: Line): Boolean =
     RinMouth.turn.withLock {
