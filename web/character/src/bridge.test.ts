@@ -17,6 +17,19 @@ describe('parseNative (task 2.5 messages)', () => {
   });
 });
 
+describe('parseNative insets (UX.4)', () => {
+  it('reads the covered shares of the view', () => {
+    expect(parseNative('{"type":"insets","top":0.15,"bottom":0.4}')).toEqual({ type: 'insets', top: 0.15, bottom: 0.4 });
+    expect(parseNative('{"type":"insets","top":0,"bottom":0}')).toEqual({ type: 'insets', top: 0, bottom: 0 });
+  });
+
+  it('refuses shares that would leave almost nothing open', () => {
+    expect(parseNative('{"type":"insets","top":0.5,"bottom":0.5}')).toBeNull();
+    expect(parseNative('{"type":"insets","top":-0.1,"bottom":0.2}')).toBeNull();
+    expect(parseNative('{"type":"insets","top":0.1}')).toBeNull();
+  });
+});
+
 describe('frameStats', () => {
   it('is null without frames', () => {
     expect(frameStats([], 30)).toBeNull();

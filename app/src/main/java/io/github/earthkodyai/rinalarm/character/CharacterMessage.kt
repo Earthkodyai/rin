@@ -168,6 +168,20 @@ sealed interface CharacterCommand {
         .toString()
   }
 
+  /**
+   * The shares of her view's height the screen covers at its top and bottom (UX.4, the ring screen's time and sheet):
+   * the page frames her, and the cup table, into the open part between them, gliding when they change.
+   */
+  data class Insets(val top: Float, val bottom: Float) : CharacterCommand {
+    override val json: String
+      get() = buildJsonObject {
+          put("type", "insets")
+          put("top", top)
+          put("bottom", bottom)
+        }
+        .toString()
+  }
+
   /** Blend to [mood]; [at] (epoch ms, the page shares the clock) lets the page time the change end to end. */
   /**
    * The cup shuffle's act for the page to play (web/character/src/cups.ts), or null to put the table away. The act's

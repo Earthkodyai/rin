@@ -20,11 +20,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,11 +60,11 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.character.CharacterAssets
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
@@ -163,34 +161,24 @@ private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Un
   )
 }
 
-/** Below the board: the round, whose turn it is, and the 3 s for the next tap draining away. */
+/**
+ * The pads' part of the ring screen's sheet: the intro and "Let's play", then whose turn it is and the 3 s for the
+ * next tap draining away (the round is in the top bar's score since UX.4).
+ */
 @Composable
 internal fun PadsCard(state: PadsState?, onStart: () -> Unit) {
-  Card(Modifier.fillMaxWidth()) {
-    Column(
-      Modifier.padding(16.dp).fillMaxWidth(),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      if (state == null || state.phase == PadsPhase.READY) {
-        Text(stringResource(R.string.pads_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.pads_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(64.dp).testTag(PADS_START_TAG)) {
-          Text(stringResource(R.string.pads_start), style = MaterialTheme.typography.titleMedium)
-        }
-        return@Column
-      }
-      Text(
-        stringResource(R.string.pads_round, state.round + 1, state.rounds),
-        style = MaterialTheme.typography.titleMedium,
-      )
-      Text(
-        stringResource(if (state.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch),
-        style = MaterialTheme.typography.headlineSmall,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-      )
-      Countdown(state)
-    }
+  if (state == null || state.phase == PadsPhase.READY) {
+    GameIntro(R.string.pads_title, R.string.pads_intro, onStart, PADS_START_TAG)
+    return
+  }
+  Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Text(
+      stringResource(if (state.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch),
+      style = MaterialTheme.typography.headlineSmall,
+      color = RinTheme.palette.ink,
+      modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+    Countdown(state)
   }
 }
 
@@ -206,6 +194,8 @@ private fun Countdown(state: PadsState) {
   LinearProgressIndicator(
     progress = { if (input) left.value else 0f },
     modifier = Modifier.fillMaxWidth().height(8.dp),
+    color = RinTheme.palette.primary,
+    trackColor = RinTheme.palette.line,
   )
 }
 

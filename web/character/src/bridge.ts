@@ -96,7 +96,9 @@ export type FromNative =
   /** Change the frame-rate cap (debug: 120 shows the headroom above the 30 fps cap). */
   | { type: 'fps'; cap: number }
   /** The cup shuffle's current act (task 3.4), or null to put the table away. */
-  | { type: 'cups'; act: CupsAct | null };
+  | { type: 'cups'; act: CupsAct | null }
+  /** Shares of the view's height the app covers at its top and bottom (UX.4); she is framed between them. */
+  | { type: 'insets'; top: number; bottom: number };
 
 interface NativeBridge {
   postMessage(message: string): void;
@@ -137,6 +139,10 @@ export function parseNative(data: string): FromNative | null {
     return { type: 'speak', mouth: { fps: m.mouth.fps, f: m.mouth.f }, at: m.at };
   }
   const positive = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0;
+  const share = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x < 0.8;
+  if (m.type === 'insets' && share(m.top) && share(m.bottom) && m.top + m.bottom <= 0.8) {
+    return { type: 'insets', top: m.top, bottom: m.bottom };
+  }
   if (m.type === 'stats' && positive(m.ms)) return { type: 'stats', ms: Math.min(m.ms, 300_000) };
   if (m.type === 'fps' && positive(m.cap)) return { type: 'fps', cap: Math.min(m.cap, 240) };
   if (m.type === 'cups') {

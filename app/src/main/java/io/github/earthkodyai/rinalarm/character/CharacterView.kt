@@ -23,6 +23,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -124,6 +128,7 @@ fun CharacterView(
   onHeadTap: () -> Unit = {},
   onVisible: () -> Unit = {},
   greetOnShow: Boolean = true,
+  insets: CharacterInsets = CharacterInsets(),
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -157,18 +162,23 @@ fun CharacterView(
   val voice = remember { VoicePlayer(context, scope, onSpeaking = host::speak) }
   DisposableEffect(voice) { onDispose { voice.stop() } }
 
-  Box(modifier.semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
+  BoxWithConstraints(modifier.semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
+    val shares = insets.shares(maxHeight)
+    SideEffect { host.setInsets(shares) }
     if (model != null && phase != Phase.FALLBACK) {
       AndroidView(
         factory = { ctx ->
-          host.create(ctx, model, shown, framing, onReady = { phase = Phase.READY }, onFailed = { phase = Phase.FALLBACK })
+          host.create(ctx, model, shown, framing, shares, onReady = { phase = Phase.READY }, onFailed = { phase = Phase.FALLBACK })
         },
         onRelease = { host.release() },
         modifier = Modifier.fillMaxSize(),
       )
     }
     AnimatedVisibility(phase != Phase.READY, enter = fadeIn(tween(FADE_MS)), exit = fadeOut(tween(FADE_MS))) {
-      Still(shown.first, stills)
+      // In the open part, as the page frames her there.
+      Box(Modifier.fillMaxSize().padding(top = insets.top, bottom = insets.bottom), contentAlignment = Alignment.Center) {
+        Still(shown.first, stills)
+      }
     }
   }
 
@@ -200,6 +210,26 @@ fun CharacterView(
   LaunchedEffect(host) { CharacterDebug.fpsCap.collect { host.debug(CharacterCommand.FpsCap(it)) } }
   LaunchedEffect(host) { CharacterDebug.mood.collect { debugMood = it } }
   LaunchedEffect(mood) { debugMood = null }
+}
+
+/**
+ * What covers her view at its top and bottom (UX.4: the ring screen's time and sheet sit over a view that never
+ * resizes). Her page frames her in the open part between them; [CharacterView] passes them on as shares of its height.
+ */
+data class CharacterInsets(val top: Dp = 0.dp, val bottom: Dp = 0.dp) {
+  /** As shares of a view [height] tall, scaled down together if they would leave less than a fifth of it open. */
+  fun shares(height: Dp): Pair<Float, Float> {
+    if (height <= 0.dp || height == Dp.Infinity) return 0f to 0f
+    val top = (top / height).coerceIn(0f, 1f)
+    val bottom = (bottom / height).coerceIn(0f, 1f)
+    val scale = if (top + bottom > MAX_COVERED) MAX_COVERED / (top + bottom) else 1f
+    return top * scale to bottom * scale
+  }
+
+  private companion object {
+    /** The page refuses more (web/character/src/bridge.ts). */
+    const val MAX_COVERED = 0.79f
+  }
 }
 
 /**
@@ -260,6 +290,9 @@ private class CharacterHost {
   private var pausedAt: Long? = null
   /** Called when she is on screen and ready: first with null (the app just opened), then with the time away. */
   var onShown: (awayMs: Long?) -> Unit = {}
+  /** The covered shares of the view the screen wants, and the ones the page has (from the URL, then commands). */
+  private var insets = 0f to 0f
+  private var insetsOnPage = 0f to 0f
   /** The cup shuffle's act the screen wants shown, and whether the page has it. */
   private var cups: CupsAct? = null
   private var cupsSent = false
@@ -273,6 +306,7 @@ private class CharacterHost {
     model: String,
     mood: Pair<Mood, Float>,
     framing: Framing,
+    shares: Pair<Float, Float>,
     onReady: () -> Unit,
     onFailed: () -> Unit,
   ): View {
@@ -310,8 +344,9 @@ private class CharacterHost {
           sendMood()
           sendSpeaking()
           sendCups()
+          sendInsets()
           // Debug builds: frame pacing over the ring screen's first seconds, where the tester saw her stutter (3.4).
-          if (debuggable && framing == Framing.FULL) proxy.postMessage(CharacterCommand.MeasureFrames(STARTUP_MEASURE_MS).json)
+          if (debuggable && framing == Framing.RING) proxy.postMessage(CharacterCommand.MeasureFrames(STARTUP_MEASURE_MS).json)
           if (resumed) onShown(null)
         }
         is CharacterMessage.EmotionShown ->
@@ -343,9 +378,13 @@ private class CharacterHost {
         .appendQueryParameter("mood", mood.first.wire)
         .appendQueryParameter("intensity", mood.second.toString())
         .apply { if (framing != Framing.STRIP) appendQueryParameter("frame", framing.wire) }
+        .apply { if (shares.first > 0f) appendQueryParameter("top", shares.first.toString()) }
+        .apply { if (shares.second > 0f) appendQueryParameter("bottom", shares.second.toString()) }
         .build()
     wanted = mood
     onPage = mood
+    insets = shares
+    insetsOnPage = shares
     web.loadUrl(url.toString())
     webView = web
     // Hosting the WebView directly in AndroidView froze a WebGL page after its first frames on the 14T (WebView 153,
@@ -396,6 +435,19 @@ private class CharacterHost {
     val offset = System.currentTimeMillis() - SystemClock.elapsedRealtime()
     proxy.postMessage(CharacterCommand.Cups(cups, offset).json)
     cupsSent = true
+  }
+
+  fun setInsets(shares: Pair<Float, Float>) {
+    insets = shares
+    sendInsets()
+  }
+
+  /** Sent even while paused: the page glides to them on its next frames, a camera move rather than a resize. */
+  private fun sendInsets() {
+    val proxy = reply ?: return
+    if (!ready || insets == insetsOnPage) return
+    proxy.postMessage(CharacterCommand.Insets(insets.first, insets.second).json)
+    insetsOnPage = insets
   }
 
   fun setMood(mood: Pair<Mood, Float>) {

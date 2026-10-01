@@ -27,10 +27,10 @@ class CharacterAssetsTest {
   }
 
   @Test
-  fun fullBodyAndWaistStills_liveInTheirOwnFolders() {
+  fun waistStills_liveInTheirOwnFolder_forHomeAndRing() {
     assertEquals(
-      mapOf(Mood.PROUD to "character/stills/full/proud.webp"),
-      CharacterAssets.pickStills(listOf("proud.webp"), Framing.FULL),
+      mapOf(Mood.PROUD to "character/stills/waist/proud.webp"),
+      CharacterAssets.pickStills(listOf("proud.webp"), Framing.RING),
     )
     assertEquals(
       mapOf(Mood.SLEEPY to "character/stills/waist/sleepy.webp"),

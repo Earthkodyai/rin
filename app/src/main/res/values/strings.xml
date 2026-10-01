@@ -63,7 +63,7 @@
         <item quantity="other">Snooze %1$d min (%2$d left)</item>
     </plurals>
     <string name="ring_dismiss">Dismiss</string>
-    <string name="ring_hold_to_stop">Emergency: hold 3 s to stop</string>
+    <string name="ring_hold_to_stop">Hold 3 s to stop</string>
     <string name="mission_passed">Nice work! Alarm off.</string>
     <string name="ring_tap_to_close">Tap anywhere to close</string>
     <!-- Ring screen: colour pads (task 3.3). -->

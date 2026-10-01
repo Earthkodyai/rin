@@ -2,15 +2,15 @@
 // Renders the still images the app shows while Rin's 3D page loads, or instead of it when it fails (task 2.5): one
 // transparent WebP per mood, from the model the build ships, through the built page itself (its `still` mode), so a
 // still matches the live page's framing, lighting and faces exactly. Two sets: <out-dir>/<mood>.webp for the home
-// strip (head and shoulders), <out-dir>/full/<mood>.webp for the ring screen (head to toe, task 3.1) and
-// <out-dir>/waist/<mood>.webp for the home panel (waist up, UX.2). Also
+// strip (head and shoulders) and <out-dir>/waist/<mood>.webp for the home panel and the ring screen (waist up,
+// UX.2 and UX.4). Also
 // <out-dir>/hand.webp, her right hand from above for the colour pads (task 3.3), cropped so her fingertip sits at the
 // bottom centre and her forearm runs off the top edge.
 //
 // usage: node render-stills.mjs <page-dir> <model.vrm> <out-dir> [--height 720] [--browser <path>] [--software]
 //   page-dir  the built web/character page (the folder holding index.html)
-//   --height  strip pixels; the phone's strip is 220 dp, so 720 covers 3.25x screens like the 14T's. Full-body stills
-//             are FULL_SCALE times taller (the ring screen gives her about half of a 2712 px screen)
+//   --height  strip pixels; the phone's strip is 220 dp, so 720 covers 3.25x screens like the 14T's. Waist-up stills
+//             are their framing's `scale` times taller (the ring screen leaves her about 450 dp open)
 //   --browser a Chrome or Edge executable (default: $RIN_BROWSER, then the usual install paths)
 //   --software render with SwiftShader (CPU) even when there is a GPU
 //
@@ -26,13 +26,13 @@ import sharp from 'sharp';
 
 /**
  * Render wider than she is, then crop the empty sides. The strip is wider than 1:1 (main.ts frame(): the wide
- * framing); the full-body view is tall.
+ * framing); the waist-up view is a little taller than wide.
  */
 export const FRAMINGS = [
   { name: 'strip', dir: '', query: '', aspect: 1.6, scale: 1 },
-  { name: 'full', dir: 'full', query: '&frame=full', aspect: 0.6, scale: 1.8 },
-  // The home panel (UX.2): her view is about as tall as the strip (220 dp) and a little narrower than that.
-  { name: 'waist', dir: 'waist', query: '&frame=waist', aspect: 0.9, scale: 1 },
+  // Waist up for the home panel (UX.2, ~210 dp tall) and the ring screen (UX.4, ~450 dp open on the 14T, which
+  // replaced the head-to-toe set): rendered for the bigger one, the panel scales them down.
+  { name: 'waist', dir: 'waist', query: '&frame=waist', aspect: 0.9, scale: 2 },
 ];
 const MARGIN = 8;
 

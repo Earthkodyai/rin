@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.theme.RinTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -42,12 +43,14 @@ internal fun HoldToStopButton(onStop: () -> Unit, modifier: Modifier = Modifier)
   val stop by rememberUpdatedState(onStop)
   val fill = remember { Animatable(0f) }
   val scope = rememberCoroutineScope()
-  val shape = RoundedCornerShape(28.dp)
+  val shape = RoundedCornerShape(26.dp)
   val label = stringResource(R.string.ring_hold_to_stop)
+  val danger = RinTheme.palette.danger
   Box(
     modifier
       .clip(shape)
-      .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+      .background(RinTheme.palette.card)
+      .border(2.dp, danger.copy(alpha = 0.4f), shape)
       .semantics {
         role = Role.Button
         onLongClick(label) {
@@ -80,9 +83,9 @@ internal fun HoldToStopButton(onStop: () -> Unit, modifier: Modifier = Modifier)
           val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
           layout(width, placeable.height) { placeable.place(0, 0) }
         }
-        .background(MaterialTheme.colorScheme.errorContainer)
+        .background(danger.copy(alpha = 0.25f))
     )
-    Text(label, style = MaterialTheme.typography.labelLarge)
+    Text(label, style = MaterialTheme.typography.labelLarge, color = danger)
   }
 }
 

@@ -8,8 +8,10 @@
 //   t0=<epoch ms>         native timestamp taken before the WebView was created
 //   mood=cheerful         starting mood (emotion.ts), shown from the first frame without a blend
 //   intensity=1           starting mood intensity, 0..1
-//   frame=full            head to toe (the ring screen, task 3.1); frame=waist: waist up (UX.2, the home panel);
+//   frame=full            head to toe (task 3.1); frame=waist: waist up (UX.2 home panel, UX.4 ring screen);
 //                         default: the strip's head and shoulders
+//   top=0.15 bottom=0.4   shares of the view's height the app covers (UX.4); she and the cup table are framed into
+//                         the open part between them. The app changes them with an `insets` message.
 //   gesture=wave          (desktop preview) play this gesture once loaded, and again every 4 s
 //   cups=demo             (desktop preview) the cup shuffle (task 3.4) on a loop, as the app would drive it
 //   still                 still-image mode for tools/character/render-stills.mjs: no loop, no bridge; window.rinStill
@@ -44,6 +46,19 @@ let mood: Mood = isMood(q.get('mood')) ? (q.get('mood') as Mood) : 'relieved';
 let intensity = Math.min(num('intensity', 1), 1);
 const fullBody = q.get('frame') === 'full';
 const waistUp = q.get('frame') === 'waist';
+/** A share of the view, 0 up to `max`; anything else is 0. */
+const share = (key: string, max = 0.8) => {
+  const value = Number(q.get(key));
+  return Number.isFinite(value) && value > 0 ? Math.min(value, max) : 0;
+};
+/**
+ * The share of the view's height the app covers at its top and bottom (UX.4): on the ring screen the time and the
+ * sheet of buttons sit over a view that never resizes (a resize reframed her mid-ring, which the user saw as a shake),
+ * and she is framed into the open part between them. A change glides over INSET_S: a camera move, not a resize.
+ */
+const insets = { top: share('top'), bottom: share('bottom') };
+const insetsTo = { ...insets };
+const INSET_S = 0.35;
 /**
  * How bright her lights are, as a share of the original rig (directional pi + ambient 0.4 pi). That rig washed the
  * user's Rin's cream skin out to white (2026-10-01; VRoid Studio shows it shaded). `light=` overrides it to compare.
@@ -84,10 +99,12 @@ function frame() {
   camera.aspect = innerWidth / innerHeight;
   const wide = camera.aspect > 1;
   const margin = fullBody ? 0.06 : waistUp ? WAIST_MARGIN : wide ? 0.03 : 0.08;
-  // metres at the model
-  const visibleHeight = fullBody ? topY + 2 * margin : waistUp ? WAIST_HEIGHT : wide ? 0.44 : 0.95;
+  // Metres at the model the open part shows; the whole view shows that much more, covered at its top and bottom.
+  const open = fullBody ? topY + 2 * margin : waistUp ? WAIST_HEIGHT : wide ? 0.44 : 0.95;
+  const visibleHeight = open / openShare();
   const distance = visibleHeight / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const target = topY + margin - visibleHeight / 2;
+  // Her top (plus the margin) at the top of the open part, which starts insets.top down from the view's top.
+  const target = topY + margin - visibleHeight / 2 + insets.top * visibleHeight;
   baseView.position.set(0, target + (fullBody ? 0 : 0.03), distance);
   baseView.target.set(0, target, 0);
   if (cups) tableView = fitView(cups.framePoints(topY + 0.03), TABLE_PITCH);
@@ -112,6 +129,11 @@ let cupsFrozenAt: number | null = null;
 /** Her usual framing, and the cup table's (task 3.4); the camera blends between them as the table comes and goes. */
 const baseView = { position: new THREE.Vector3(), target: new THREE.Vector3() };
 let tableView: typeof baseView | null = null;
+/**
+ * How much of the open part the table scene fills, across and down (UX.4 scales it up from 0.9, the user's ask: the
+ * cups, the table and her bigger). The points already include her lean and a lifted cup, so little margin is needed.
+ */
+const TABLE_FILL = 0.96;
 /** How far the table view looks down, so the cups never hide one another and a lifted cup shows the ball. */
 const TABLE_PITCH = THREE.MathUtils.degToRad(22);
 
@@ -123,9 +145,29 @@ function aim() {
   camera.updateProjectionMatrix();
 }
 
+/** The share of the view's height left open between the app's insets. */
+function openShare() {
+  return Math.max(1 - insets.top - insets.bottom, 0.2);
+}
+
+/** Moves the insets toward the app's latest; true while they still move (the frame needs recomputing). */
+function stepInsets(dt: number): boolean {
+  let moved = false;
+  for (const side of ['top', 'bottom'] as const) {
+    const gap = insetsTo[side] - insets[side];
+    if (gap === 0) continue;
+    const step = dt > 0 ? Math.min(Math.abs(gap), dt / INSET_S) : Math.abs(gap);
+    insets[side] += Math.sign(gap) * step;
+    moved = true;
+  }
+  return moved;
+}
+
+const insetsMoving = () => insets.top !== insetsTo.top || insets.bottom !== insetsTo.bottom;
+
 /**
- * A view looking down by `pitch` that fits every point with a margin, centred on them: the camera backs off until the
- * farthest point is inside, then shifts so the points sit in the middle, three times over.
+ * A view looking down by `pitch` that fits every point with a margin into the open part between the app's insets,
+ * centred there: the camera backs off until the points fit, then shifts so they sit in the middle, three times over.
  */
 function fitView(points: THREE.Vector3[], pitch: number) {
   const dir = new THREE.Vector3(0, -Math.sin(pitch), -Math.cos(pitch));
@@ -148,6 +190,9 @@ function fitView(points: THREE.Vector3[], pitch: number) {
     }
     return { x, lo, hi };
   };
+  // The open part in normalised device coordinates: [-1, 1] across, [-1 + 2 bottom, 1 - 2 top] down.
+  const openMid = insets.bottom - insets.top;
+  const openHalf = openShare();
   let d = 1;
   for (let round = 0; round < 3; round++) {
     let near = 0.2;
@@ -156,14 +201,14 @@ function fitView(points: THREE.Vector3[], pitch: number) {
       d = (near + far) / 2;
       place(d);
       const e = extent();
-      if (Math.max(e.x, -e.lo, e.hi) > 0.9) near = d;
+      if (Math.max(e.x / TABLE_FILL, (e.hi - e.lo) / 2 / (openHalf * TABLE_FILL)) > 1) near = d;
       else far = d;
     }
     d = far;
     place(d);
     const e = extent();
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(eye.quaternion);
-    center.addScaledVector(up, ((e.lo + e.hi) / 2) * d * Math.tan(THREE.MathUtils.degToRad(eye.fov / 2)));
+    center.addScaledVector(up, ((e.lo + e.hi) / 2 - openMid) * d * Math.tan(THREE.MathUtils.degToRad(eye.fov / 2)));
   }
   place(d);
   return { position: eye.position.clone(), target: center.clone() };
@@ -226,7 +271,7 @@ function setAct(act: CupsAct | null) {
  */
 function reportCups() {
   const table = cups;
-  if (!table) return;
+  if (!table || insetsMoving()) return; // the tap zones are reported where the view comes to rest
   const state = table.active && table.shown >= 1 ? 1 : !table.active && table.shown <= 0 ? 0 : null;
   if (state === null || state === cupsReported) return;
   cupsReported = state;
@@ -256,6 +301,16 @@ onNativeMessage((message) => {
       return;
     case 'cups':
       return setAct(message.act);
+    case 'insets':
+      insetsTo.top = message.top;
+      insetsTo.bottom = message.bottom;
+      // Before her first frame there is nothing to glide from: frame her there at once.
+      if (!loadedVrm) {
+        insets.top = message.top;
+        insets.bottom = message.bottom;
+        frame();
+      }
+      return;
     default:
       paused = message.type === 'pause';
   }
@@ -367,6 +422,7 @@ async function main() {
     const first = last < 0;
     const dt = first ? 0 : Math.min((now - last) / 1000, 0.1);
     last = now;
+    if (stepInsets(dt)) frame();
     // At her table she watches the cups while her hands move them, and the user the rest of the time (CupScene.attend).
     life.aimCamera = 1 - smooth(table.shown) * (1 - smooth(table.attend));
     const blended = life.update(dt);

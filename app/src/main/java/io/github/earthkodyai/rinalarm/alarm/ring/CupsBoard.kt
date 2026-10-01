@@ -4,20 +4,16 @@ import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
@@ -47,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.withFrameMillis
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.mission.CupsAct
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
@@ -111,7 +107,7 @@ private fun CupsBoard2d(act: CupsAct, modifier: Modifier) {
     produceState(SystemClock.elapsedRealtime(), act) {
       while (true) withFrameMillis { value = SystemClock.elapsedRealtime() }
     }
-  val background = MaterialTheme.colorScheme.primaryContainer
+  val background = RinTheme.palette.ground
   Canvas(modifier.background(background)) {
     val frame = CupsTimeline.frameAt(act, now)
     val w = size.width
@@ -143,52 +139,32 @@ private fun CupsBoard2d(act: CupsAct, modifier: Modifier) {
 }
 
 /**
- * Below the board: the intro and "Let's play", then how the streak stands and whose turn it is. Both layouts are
- * always laid out, one of them invisible, so the card keeps one height: when it changed, Rin's view above resized and
- * her page stalled a frame (58 ms) just as the table came in, and the cups jumped again at the pass (14T, 2026-09-29).
+ * The cups' part of the ring screen's sheet: the intro and "Let's play", then one line of whose turn it is (the streak
+ * is in the top bar's score since UX.4). The sheet may change height here: her view no longer resizes with it (her
+ * page glides to the new framing), unlike the card of 3.4, which had to keep one height.
  */
 @Composable
 internal fun CupsCard(state: CupsState?, staging: Boolean, passed: Boolean, onStart: () -> Unit) {
   val ready = (state == null || state.phase == CupsPhase.READY) && !staging && !passed
-  Card(Modifier.fillMaxWidth()) {
-    Box(Modifier.padding(16.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-      Column(
-        Modifier.fillMaxWidth().alpha(if (ready) 1f else 0f).then(if (ready) Modifier else Modifier.clearAndSetSemantics {}),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Text(stringResource(R.string.cups_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.cups_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-        Button(onClick = onStart, enabled = ready, modifier = Modifier.fillMaxWidth().height(64.dp).testTag(CUPS_START_TAG)) {
-          Text(stringResource(R.string.pads_start), style = MaterialTheme.typography.titleMedium)
-        }
-      }
-      Column(
-        Modifier.fillMaxWidth().alpha(if (ready) 0f else 1f).then(if (ready) Modifier.clearAndSetSemantics {} else Modifier),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Text(
-          stringResource(R.string.cups_streak, state?.streak ?: 0, state?.target ?: 3),
-          style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-          stringResource(
-            when {
-              passed -> R.string.mission_passed
-              state?.phase == CupsPhase.PICK -> R.string.cups_pick
-              state?.right == true -> R.string.cups_right
-              state?.right == false -> R.string.cups_pick
-              else -> R.string.cups_watch
-            }
-          ),
-          style = MaterialTheme.typography.headlineSmall,
-          textAlign = TextAlign.Center,
-          modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        )
-      }
-    }
+  if (ready) {
+    GameIntro(R.string.cups_title, R.string.cups_intro, onStart, CUPS_START_TAG)
+    return
   }
+  Text(
+    stringResource(
+      when {
+        passed -> R.string.mission_passed
+        state?.phase == CupsPhase.PICK -> R.string.cups_pick
+        state?.right == true -> R.string.cups_right
+        state?.right == false -> R.string.cups_pick
+        else -> R.string.cups_watch
+      }
+    ),
+    style = MaterialTheme.typography.headlineSmall,
+    color = RinTheme.palette.ink,
+    textAlign = TextAlign.Center,
+    modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+  )
 }
 
 /**

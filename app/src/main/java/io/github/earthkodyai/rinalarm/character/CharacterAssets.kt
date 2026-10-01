@@ -11,10 +11,13 @@ import android.content.Context
 enum class Framing(val wire: String, internal val stillDir: String, val fpsCap: Int) {
   /** Head and shoulders: the strip above the alarm list. */
   STRIP("strip", "", fpsCap = 30),
-  /** Head to toe: the ring screen (task 3.1), where clap and pout show. */
-  FULL("full", "full/", fpsCap = 60),
   /** Waist up: the home panel (UX.2), half of her where the screen is busy. */
   WAIST("waist", "waist/", fpsCap = 30),
+  /**
+   * Waist up on the ring screen (UX.4; head to toe until then, task 3.1), at the frame rate its games need: the same
+   * framing and stills as [WAIST].
+   */
+  RING("waist", "waist/", fpsCap = 60),
 }
 
 /** Where the character page and its model live in the APK (web/character is built into assets/character/). */

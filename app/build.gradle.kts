@@ -44,6 +44,14 @@ android {
           keyAlias = signing.getProperty("keyAlias")
           keyPassword = signing.getProperty("keyPassword")
         }
+        // The instrumented-test APK is signed with this config, not the debug build type's: on the release key too, so
+        // it may instrument the debug app on the test phone (it refused a mismatched signature, UX.3).
+        getByName("debug") {
+          storeFile = File(signing.getProperty("storeFile"))
+          storePassword = signing.getProperty("storePassword")
+          keyAlias = signing.getProperty("keyAlias")
+          keyPassword = signing.getProperty("keyPassword")
+        }
       }
     }
     buildTypes {

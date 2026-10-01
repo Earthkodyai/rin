@@ -16,12 +16,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -71,27 +68,18 @@ internal fun RepeatCard(
   onTapWord: (Int) -> Unit,
   onCantTalk: () -> Unit,
 ) {
-  Card(Modifier.fillMaxWidth().height(CARD_HEIGHT)) {
+  Box(Modifier.fillMaxWidth().height(CARD_HEIGHT)) {
     Column(
-      Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxSize(),
+      Modifier.fillMaxSize(),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (state == null || state.phase == RepeatPhase.READY || state.phase == RepeatPhase.PASSED) {
-        Text(stringResource(R.string.repeat_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(stringResource(R.string.repeat_intro), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        GameIntro(R.string.repeat_title, R.string.repeat_intro, onStart, REPEAT_START_TAG, enabled = state?.phase != RepeatPhase.PASSED)
         Spacer(Modifier.weight(1f))
-        Button(
-          onClick = onStart,
-          enabled = state?.phase != RepeatPhase.PASSED,
-          modifier = Modifier.fillMaxWidth().height(64.dp).testTag(REPEAT_START_TAG),
-        ) {
-          Text(stringResource(R.string.pads_start), style = MaterialTheme.typography.titleMedium)
-        }
         CantTalk(onCantTalk)
         return@Column
       }
-      Text(stringResource(R.string.repeat_sentence, state.index + 1, state.count), style = MaterialTheme.typography.titleSmall)
       Sentence(state)
       Status(state, rinSpeaking, micLevel)
       // Top-aligned and scrollable: a long sentence's chips must never end up out of reach (smoke ring, 2026-09-29:

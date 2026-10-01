@@ -1,10 +1,5 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,45 +37,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -101,6 +77,7 @@ import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.onSick
 import io.github.earthkodyai.rinalarm.theme.sickFill
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
@@ -116,7 +93,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
-import kotlin.math.ceil
 
 @Composable
 fun MainScreen(
@@ -289,78 +265,7 @@ private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit) {
       Box(Modifier.align(Alignment.TopEnd).offset(x = 24.dp, y = (-28).dp).size(120.dp).background(p.glow, CircleShape))
     }
     character(Modifier.align(Alignment.BottomEnd).fillMaxWidth(RIN_WIDTH).fillMaxHeight().padding(top = 8.dp))
-    // Keeps the last line while the bubble fades out.
-    var shown by remember { mutableStateOf(line) }
-    if (line != null) shown = line
-    AnimatedVisibility(
-      line != null,
-      Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp),
-      enter = fadeIn() + scaleIn(initialScale = 0.85f),
-      exit = fadeOut() + scaleOut(targetScale = 0.9f),
-    ) {
-      Bubble(shown.orEmpty())
-    }
-  }
-}
-
-/**
- * Her line in a rounded bubble with two little dots trailing toward her (the user's pick, 2026-10-01, over tails; drafts
- * in docs/ux/bubble-tails.png). As wide as its longest line, not its widest allowed width, so the padding is even on
- * both sides and the text sits centred (the wrapped text had left a gap on the right).
- */
-@Composable
-private fun Bubble(text: String) {
-  val p = RinTheme.palette
-  val style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
-  val measurer = rememberTextMeasurer()
-  val width =
-    with(LocalDensity.current) {
-      val layout = measurer.measure(text, style, constraints = Constraints(maxWidth = BUBBLE_TEXT_MAX.roundToPx()))
-      val widest = (0 until layout.lineCount).maxOfOrNull { layout.getLineRight(it) - layout.getLineLeft(it) } ?: 0f
-      ceil(widest).toDp()
-    }
-  Text(
-    text,
-    style = style,
-    color = p.ink,
-    modifier =
-      Modifier.drawBehind { bubbleDots(p.bubble, p.hardShadow, if (p.night) p.line else null) }
-        .sticker(fill = p.bubble, depth = 3.dp, shape = BubbleShape)
-        .padding(start = 14.dp, end = 14.dp + DOTS_WIDE, top = 11.dp, bottom = 11.dp + DOTS_LOW)
-        .width(width)
-        .semantics { liveRegion = LiveRegionMode.Polite },
-  )
-}
-
-private val BUBBLE_TEXT_MAX = 140.dp
-
-/** Room the dots take beside and below the box. */
-private val DOTS_WIDE = 18.dp
-private val DOTS_LOW = 3.dp
-
-/** The rounded box, leaving room at its right and bottom for the dots. */
-private object BubbleShape : Shape {
-  override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-    val d = density.density
-    val r = 18f * d
-    val box = RoundRect(0f, 0f, size.width - DOTS_WIDE.value * d, size.height - DOTS_LOW.value * d, CornerRadius(r, r))
-    // A path, not Outline.Rounded: border() draws a rounded outline at the node's full size, dots' room included.
-    return Outline.Generic(Path().apply { addRoundRect(box) })
-  }
-}
-
-/**
- * The two dots off the box's lower right, toward her: a 4.5 dp one just off its side and a 2.8 dp one further out and
- * lower. Their own light 1.5 dp drop, not the box's 3 dp, which made them look like buttons at night.
- */
-private fun DrawScope.bubbleDots(fill: Color, shadow: Color, outline: Color?) {
-  val d = density
-  val bw = size.width - DOTS_WIDE.value * d
-  val bh = size.height - DOTS_LOW.value * d
-  for ((centre, radius) in listOf(Offset(bw + 6 * d, bh * 0.78f) to 4.5f * d, Offset(bw + 15 * d, bh * 0.98f) to 2.8f * d)) {
-    drawCircle(shadow, radius, centre + Offset(0f, 1.5f * d))
-    drawCircle(fill, radius, centre)
-    if (outline != null) drawCircle(outline, radius, centre, style = Stroke(1f * d))
+    RinBubble(line, Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp))
   }
 }
 
