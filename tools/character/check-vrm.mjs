@@ -25,6 +25,17 @@ async function imageFacts(json, views) {
 export async function checkFile(bytes, { author } = {}) {
   const { json, views } = readGlb(bytes);
   const result = checkModel(json, { fileBytes: bytes.byteLength, images: await imageFacts(json, views), author });
+  // The size limit is for the file the app ships, after the pipeline's KTX2 step (optimize-vrm.mjs), which usually
+  // shrinks a VRoid export by a quarter or more: a 16.5 MB export became 12.1 MB (2026-10-01). On the raw export an
+  // oversize file is only a warning, with the command that gives the real answer.
+  const sizeError = result.errors.findIndex((e) => e.startsWith('file is '));
+  if (sizeError >= 0) {
+    result.errors.splice(sizeError, 1);
+    result.warnings.unshift(
+      `raw export is ${(bytes.byteLength / 1048576).toFixed(1)} MB; the shipped (KTX2) file must be <= 15 MB: ` +
+        'node optimize-vrm.mjs <model.vrm> build/rin.vrm decides',
+    );
+  }
   const meta = json.extensions?.VRMC_vrm?.meta ?? {};
   return { ...result, meta: { name: meta.name, authors: meta.authors, version: meta.version } };
 }

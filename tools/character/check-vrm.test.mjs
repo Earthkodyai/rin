@@ -32,3 +32,13 @@ test('check-vrm: the report says what to fix for each failure', async () => {
   assert.match(text, /FAIL {2}meta\.allowRedistribution/);
   assert.match(text, /Result: FAIL \(2\)/);
 });
+
+test('check-vrm: an oversize raw export only warns, since the KTX2 step decides the shipped size', async () => {
+  const result = await checkFile(await tinyVrm(), { author: 'me' });
+  assert.deepEqual(result.errors, []);
+  // Simulate the raw size by checking a padded copy: GLB readers ignore trailing bytes after the chunks.
+  const padded = Buffer.concat([Buffer.from(await tinyVrm()), Buffer.alloc(16 * 1048576)]);
+  const big = await checkFile(padded);
+  assert.deepEqual(big.errors, []);
+  assert.match(big.warnings[0], /raw export is 16\.\d MB/);
+});
