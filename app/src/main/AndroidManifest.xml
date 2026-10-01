@@ -51,6 +51,12 @@
         android:supportsRtl="true"
         android:windowSoftInputMode="adjustResize"
         android:theme="@style/Theme.RinAlarm">
+        <!-- Rin's page only ever loads the app's own assets (WebViewAssetLoader), so Safe Browsing has nothing to check.
+             Left on, each page load had Google Play services look the address up online, charged to this app
+             (6.3: ~7 KB per app open on the 14T, while the app itself has no internet permission). -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

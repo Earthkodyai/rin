@@ -19,7 +19,11 @@ The app asks for the microphone only when you choose the Repeat after Rin game. 
 
 ## Camera (QR sticker)
 
-The camera is used only by the QR sticker game, which is turned off in this version. When it is on, the camera opens only after you tap Scan, and each frame is checked on your phone (Google ML Kit, built into the app) and discarded. ML Kit normally sends anonymous usage statistics to Google; RinAlarm removes the internet permission, so it cannot.
+The camera is used only by the QR sticker game, which is turned off in this version. When it is on, the camera opens only after you tap Scan, and each frame is checked on your phone (Google ML Kit, built into the app) and discarded. ML Kit can send anonymous usage statistics about the scanner to Google through Google Play services, even without the app's own internet permission. In this version the scanner never runs, and opening the app was measured to cause no network traffic.
+
+## Rin's page
+
+Rin is drawn by a web page built into the app. It loads only files inside the app. Android's Safe Browsing check, which would look addresses up online through Google Play services, is turned off for it, because there is nothing online to check.
 
 ## Rin's voice and lines
 

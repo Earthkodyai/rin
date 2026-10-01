@@ -48,6 +48,13 @@ class PrivacyTextTest {
   }
 
   @Test
+  fun safeBrowsingStaysOff_soPlayServicesLooksNothingUpForRinsPage() {
+    // 6.3: with it on, every page load sent a lookup through Google Play services, charged to the app.
+    val off = Regex("""android:name="android.webkit.WebView.EnableSafeBrowsing"\s+android:value="false"""")
+    assertTrue(off.containsMatchIn(manifest))
+  }
+
+  @Test
   fun backupOff_holds() {
     assertTrue("backup is turned off" in english)
     assertTrue("""android:allowBackup="false"""" in manifest)
