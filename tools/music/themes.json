@@ -5,9 +5,9 @@
   "takes": 3,
   "themes": [
     {
-      "id": "morning",
-      "name": "Candy morning",
-      "prompt": "Instrumental cute anime morning theme for an alarm clock. It opens softly with a twinkling music box and glockenspiel melody, then builds with bright piano, pizzicato strings, light hand claps and a bouncy pop drum beat into a cheerful, sparkly chorus. Major key, about 120 BPM, sweet and energetic but friendly. No vocals."
+      "id": "magic",
+      "name": "Magic morning",
+      "prompt": "Instrumental enchanting fantasy theme for a morning alarm: sparkling celesta and harp arpeggios, twinkling chimes and glockenspiel, a lilting flute melody over light orchestral strings and soft timpani, building into a bright, whimsical orchestral swell like a spell coming to life. Major key, about 115 BPM. No vocals."
     },
     {
       "id": "cafe",
@@ -20,9 +20,9 @@
       "prompt": "Instrumental upbeat chiptune for a morning mini game: a catchy 8-bit square-wave lead melody, quick arpeggios, punchy retro drums and bass, bright and playful like a cheerful video game level. Major key, about 140 BPM. No vocals."
     },
     {
-      "id": "sunny",
-      "name": "Sunny walk",
-      "prompt": "Instrumental sunny acoustic morning: strummed ukulele and acoustic guitar, a glockenspiel and xylophone melody, hand claps and a light kick drum. Warm, fresh and optimistic, like a walk outside on a bright morning. Major key, about 110 BPM. No vocals."
+      "id": "nature",
+      "name": "Forest morning",
+      "prompt": "Instrumental fresh nature morning theme: a gentle woodland melody on flute and acoustic guitar with marimba and soft hand percussion, light strings and soft birdsong in the background. Airy and green like sunrise in a forest by a stream, uplifting and moving steadily enough to wake you. Major key, about 105 BPM. No vocals."
     }
   ]
 }
