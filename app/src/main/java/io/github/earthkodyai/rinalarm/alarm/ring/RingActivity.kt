@@ -27,9 +27,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -338,12 +340,14 @@ private fun Score(state: RingUiState, game: MissionType?) {
         state.repeat?.let { Triple(it.index, it.count, stringResource(R.string.repeat_sentence, (it.index + 1).coerceAtMost(it.count), it.count)) }
       else -> null
     } ?: return
+  // Every dot is filled once the game is won (pads count finished rounds, so the last one never was).
+  val filled = if (state.passed) of else done
   Row(
     Modifier.sticker(radius = 20.dp, depth = 3.dp).padding(horizontal = 14.dp, vertical = 8.dp).semantics(mergeDescendants = true) {},
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(6.dp),
   ) {
-    repeat(of) { Box(Modifier.size(12.dp).background(if (it < done) p.mint else p.line, CircleShape).clearAndSetSemantics {}) }
+    repeat(of) { Box(Modifier.size(12.dp).background(if (it < filled) p.mint else p.line, CircleShape).clearAndSetSemantics {}) }
     Text(text, style = MaterialTheme.typography.labelLarge, color = p.ink, modifier = Modifier.padding(start = 2.dp))
   }
 }
@@ -367,20 +371,26 @@ private fun Stars(modifier: Modifier) {
 
 private val STARS = listOf(0.08f to 0.06f, 0.9f to 0.04f, 0.16f to 0.32f, 0.82f to 0.4f, 0.06f to 0.55f, 0.5f to 0.02f)
 
-/** The white sheet at the bottom: the game's part and the controls, over her view. */
+/**
+ * The white sheet at the bottom: the game's part and the controls, over her view. It sets the text colour itself:
+ * the games' texts once took it from the Material cards they sat in, and without them fell back to black, which
+ * vanished on the night sheet (Repeat after Rin's sentence, UX.4 test ring).
+ */
 @Composable
 private fun Sheet(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-  Column(
-    modifier
-      .background(p.card, shape)
-      .let { if (p.night) it.border(1.dp, p.line, shape) else it }
-      .navigationBarsPadding()
-      .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp),
-    verticalArrangement = Arrangement.spacedBy(14.dp),
-    content = content,
-  )
+  CompositionLocalProvider(LocalContentColor provides p.ink) {
+    Column(
+      modifier
+        .background(p.card, shape)
+        .let { if (p.night) it.border(1.dp, p.line, shape) else it }
+        .navigationBarsPadding()
+        .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(14.dp),
+      content = content,
+    )
+  }
 }
 
 @Composable

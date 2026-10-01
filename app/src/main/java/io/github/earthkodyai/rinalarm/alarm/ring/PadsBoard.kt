@@ -89,8 +89,8 @@ internal fun PadsBoard(
 ) {
   val rules = remember { PadsRules() }
   BoxWithConstraints(
-    // The ring screen's own colour, no panel: the pads sit on the page like the card below (the user's pick).
-    modifier.clipToBounds().background(MaterialTheme.colorScheme.primaryContainer).testTag(PADS_BOARD_TAG),
+    // The ring screen's own colour, no panel: the pads sit on the page (the user's pick; cream or navy since UX.4).
+    modifier.clipToBounds().background(RinTheme.palette.ground).testTag(PADS_BOARD_TAG),
     contentAlignment = Alignment.Center,
   ) {
     val side = minOf(maxWidth, maxHeight)
@@ -147,10 +147,18 @@ private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Un
   val dim by animateFloatAsState(if (lit) 0f else 0.55f, tween(if (lit) 40 else 180), label = "padLit")
   val name = stringResource(PAD_NAMES.getValue(pad))
   val shape = RoundedCornerShape(24.dp)
+  // On the navy night ground an unlit pad (the blue most of all) nearly vanished: its own colour outlines it there.
+  val night = RinTheme.palette.night
   Box(
     modifier
       .background(lerp(colour, Color.Black, dim), shape)
-      .then(if (lit) Modifier.border(4.dp, Color.White, shape) else Modifier)
+      .then(
+        when {
+          lit -> Modifier.border(4.dp, Color.White, shape)
+          night -> Modifier.border(2.dp, colour.copy(alpha = 0.7f), shape)
+          else -> Modifier
+        }
+      )
       .pointerInput(enabled) { if (enabled) detectTapGestures(onPress = { onTap(pad) }) }
       .semantics {
         role = Role.Button
