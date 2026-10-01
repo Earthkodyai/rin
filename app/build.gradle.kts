@@ -47,6 +47,12 @@ android {
       }
     }
     buildTypes {
+        // On the PC with the release key, debug builds use it too, so a debug build (with its measurement receivers)
+        // installs over the release build on the test phone as an update: no uninstall wiping the user's alarms and
+        // permissions. CI and clones have no key and keep the default debug key.
+        debug {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -126,6 +132,9 @@ val characterWeb =
     webDir.set(web)
     sources.from(
       web.dir("src"),
+      // vrma.mjs and make-gestures.mjs build the gestures and the idle arms; without them here a change to the arm
+      // maths reused the old page (2026-10-01: the arm-length scaling did not reach checkGestures until --rerun).
+      web.dir("scripts"),
       web.file("index.html"),
       web.file("package.json"),
       web.file("package-lock.json"),

@@ -64,6 +64,21 @@ const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'];
  * (forearm roll, radians)]. The resting arm matches Behaviour's idle pose (behaviour.ts): down, elbow back.
  */
 export const ARM_REST = { left: [0.106, -0.346, 0.01, 0, -0.3, -1, 0], right: [-0.106, -0.346, 0.01, 0, -0.3, -1, 0] };
+/**
+ * Hand targets in ARM_REST and gestures.json are authored for the VRoid sample's arm (forearm + hand bone, 0.185 +
+ * 0.178 m). A model with longer arms gets them scaled by its own length, so the same key reaches the same place on
+ * her body: the user's Rin (0.435 m, 1.2x) otherwise held her hands short, elbows bent out from her sides.
+ * The pole (a direction) and the twist (an angle) keep their values.
+ */
+export const AUTHORED_ARM_M = 0.363;
+export function armScale(s = 'left') {
+  return (Math.abs(SKELETON[`${s}LowerArm`][1][0]) + Math.abs(SKELETON[`${s}Hand`][1][0])) / AUTHORED_ARM_M;
+}
+/** An authored arm key (target, pole, twist) for this model's arm length. */
+export function scaledArm(s, channel) {
+  const k = armScale(s);
+  return [channel[0] * k, channel[1] * k, channel[2] * k, ...channel.slice(3)];
+}
 /** Finger curl 0 (flat) .. 1 (fist); a relaxed hand is a little curled. */
 export const CURL_REST = 0.15;
 
@@ -288,7 +303,7 @@ export function clearArm(s, channel, grip = { turn: [0, 0, 0], curl: 0, shoulder
 
 /** The idle arm (behaviour.ts) as bone rotations: ARM_REST, cleared of her body, so gestures start and end on it. */
 export function restArm(s) {
-  return solveArm(s, clearArm(s, ARM_REST[s], { turn: [0, 0, 0], curl: CURL_REST, shoulder: [0, 0, 0] }));
+  return solveArm(s, clearArm(s, scaledArm(s, ARM_REST[s]), { turn: [0, 0, 0], curl: CURL_REST, shoulder: [0, 0, 0] }));
 }
 
 /** The idle fingers (behaviour.ts): a little curled, as gestures start and end. Bone -> local rotation. */
@@ -340,7 +355,7 @@ export function poseAt(gesture, t) {
         curl: values[`${s}Curl`]?.[0] ?? CURL_REST,
         shoulder: values[`${s}Shoulder`] ?? [0, 0, 0],
       };
-      const { upper, lower } = solveArm(s, clearArm(s, value, hand));
+      const { upper, lower } = solveArm(s, clearArm(s, scaledArm(s, value), hand));
       out[`${s}UpperArm`] = upper;
       out[`${s}LowerArm`] = lower;
     } else if (name === 'leftCurl' || name === 'rightCurl') {
