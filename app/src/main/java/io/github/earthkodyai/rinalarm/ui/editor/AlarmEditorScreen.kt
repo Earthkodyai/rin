@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -62,8 +64,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -100,6 +104,7 @@ import java.time.Duration
 import java.time.LocalTime
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
+import kotlin.math.ceil
 
 /** Callbacks from the editor's controls; one object so the stateless screen keeps a short signature. */
 interface AlarmEditorActions {
@@ -416,7 +421,14 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
 private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, mark: TileMark? = null) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(18.dp)
-  Row(
+  val style =
+    MaterialTheme.typography.titleSmall.copy(
+      fontSize = 15.sp,
+      lineHeight = 17.sp,
+      fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold,
+    )
+  val measurer = rememberTextMeasurer()
+  BoxWithConstraints(
     modifier
       .height(60.dp)
       .sticker(radius = 18.dp, depth = 3.dp, outline = null)
@@ -424,29 +436,35 @@ private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, mod
       .clip(shape)
       .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
       .padding(horizontal = 10.dp),
-    horizontalArrangement = Arrangement.Center,
-    verticalAlignment = Alignment.CenterVertically,
+    contentAlignment = Alignment.Center,
   ) {
-    if (mark != null) {
-      TileBadge(mark)
-      Spacer(Modifier.width(8.dp))
+    // As wide as the name's longest line: a wrapped name ("Magic / morning") would otherwise take the whole width
+    // and push the mark and name off centre (the user, 2026-10-02).
+    val room = (maxWidth - if (mark != null) TILE_BADGE + MARK_GAP else 0.dp).coerceAtLeast(0.dp)
+    val width =
+      with(LocalDensity.current) {
+        val layout = measurer.measure(text, style, maxLines = 2, constraints = Constraints(maxWidth = room.roundToPx()))
+        ceil((0 until layout.lineCount).maxOf { layout.getLineRight(it) - layout.getLineLeft(it) }).toDp()
+      }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      if (mark != null) {
+        TileBadge(mark)
+        Spacer(Modifier.width(MARK_GAP))
+      }
+      Text(
+        text,
+        style = style,
+        color = if (selected) p.primary else p.ink,
+        // Two lines: the sound tiles sit in a card, and "Arcade morning" beside its badge does not fit one.
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.width(width),
+      )
     }
-    Text(
-      text,
-      style =
-        MaterialTheme.typography.titleSmall.copy(
-          fontSize = 15.sp,
-          lineHeight = 17.sp,
-          fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold,
-        ),
-      color = if (selected) p.primary else p.ink,
-      // Two lines: the sound tiles sit in a card, and "Arcade morning" beside its badge does not fit one.
-      maxLines = 2,
-      overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.weight(1f, fill = false),
-    )
   }
 }
+
+private val MARK_GAP = 8.dp
 
 @Composable
 private fun MissionProblem(type: MissionType, readiness: Readiness, actions: AlarmEditorActions) {

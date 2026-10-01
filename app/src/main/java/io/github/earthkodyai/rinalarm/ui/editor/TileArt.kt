@@ -79,14 +79,15 @@ fun TileBadge(mark: TileMark, modifier: Modifier = Modifier) {
   val night = RinTheme.palette.night
   val color = mark.color(night)
   Box(
-    modifier.size(BADGE).background(color.copy(alpha = if (night) 0.22f else 0.14f), CircleShape).clearAndSetSemantics {},
+    modifier.size(TILE_BADGE).background(color.copy(alpha = if (night) 0.22f else 0.14f), CircleShape).clearAndSetSemantics {},
     contentAlignment = Alignment.Center,
   ) {
     Canvas(Modifier.size(GLYPH)) { drawMark(mark, color) }
   }
 }
 
-private val BADGE = 32.dp
+/** The badge's side; the tile leaves room for it beside the name. */
+internal val TILE_BADGE = 32.dp
 private val GLYPH = 18.dp
 
 /** Every mark is drawn in an 18-unit square, scaled to the canvas. */
