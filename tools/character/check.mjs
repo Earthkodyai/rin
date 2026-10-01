@@ -14,6 +14,26 @@ export const REQUIRED_META = {
   modification: 'prohibited',
 };
 export const LIMITS = { fileBytes: 15 * 1024 * 1024, textureSide: 2048 };
+/**
+ * Bones the page moves (web/character/src): look-at and framing, the arm IK of every gesture, clap, and the pads
+ * hand's thumb and index finger. VRoid exports them all; a missing one means a broken or non-VRoid rig.
+ */
+export const REQUIRED_BONES = [
+  'hips', 'spine', 'chest', 'neck', 'head', 'leftEye', 'rightEye',
+  ...['Shoulder', 'UpperArm', 'LowerArm', 'Hand'].flatMap((b) => [`left${b}`, `right${b}`]),
+  ...['ThumbProximal', 'ThumbDistal', 'IndexProximal', 'IndexIntermediate', 'IndexDistal'].map((b) => `right${b}`),
+];
+/**
+ * Models that are not the user's to ship: VRoid's own samples (AvatarSample_A to Z, personal non-profit use only, no
+ * redistribution or modification; D25 found this out on the dev model).
+ */
+export function notOwnModel(meta) {
+  const authors = (meta.authors ?? []).join(' ');
+  if (/pixiv|VRoid Project/i.test(authors) || /^AvatarSample/i.test(meta.name ?? '')) {
+    return `this is a VRoid sample model (${meta.name ?? '?'} by ${authors}): its licence forbids redistribution, so it can never ship. Design your own in VRoid Studio`;
+  }
+  return null;
+}
 
 /** Morph target names across all meshes (VRoid writes them to mesh.extras.targetNames). */
 export function morphNames(json) {
@@ -27,7 +47,8 @@ export function morphNames(json) {
 
 /**
  * @param json    the glTF JSON
- * @param facts   { fileBytes, images: [{ index, width, height }] } measured from the optimized file
+ * @param facts   { fileBytes, images: [{ index, width, height }], author? } measured from the file; `author`, when
+ *                given, must be among meta.authors
  * @returns       { errors: string[], warnings: string[], stats }
  */
 export function checkModel(json, facts) {
@@ -51,15 +72,19 @@ export function checkModel(json, facts) {
   if (missingMorphs.length) errors.push(`missing morphs ${missingMorphs.join(', ')}: the eyes-open smile needs them (vroid.ts)`);
 
   const meta = vrm.meta ?? {};
+  const sample = notOwnModel(meta);
+  if (sample) errors.push(sample);
+  if (facts.author && !(meta.authors ?? []).includes(facts.author)) {
+    errors.push(`meta.authors is ${JSON.stringify(meta.authors ?? [])}, expected to include ${JSON.stringify(facts.author)}`);
+  }
   for (const [key, want] of Object.entries(REQUIRED_META)) {
     if (meta[key] !== want) errors.push(`meta.${key} is ${JSON.stringify(meta[key])}, brief asks for ${JSON.stringify(want)}`);
   }
   if (!meta.authors?.length) errors.push('meta.authors is empty');
 
   const bones = vrm.humanoid?.humanBones ?? {};
-  for (const bone of ['head', 'neck', 'leftEye', 'rightEye']) {
-    if (bones[bone]?.node === undefined) errors.push(`humanoid has no ${bone} bone (look-at and framing use it)`);
-  }
+  const missingBones = REQUIRED_BONES.filter((bone) => bones[bone]?.node === undefined);
+  if (missingBones.length) errors.push(`humanoid has no ${missingBones.join(', ')} (look-at, framing, gestures and games use them)`);
 
   if (facts.fileBytes > LIMITS.fileBytes) {
     errors.push(`file is ${mb(facts.fileBytes)} MB, limit ${mb(LIMITS.fileBytes)} MB (export with a 1024 atlas for clothes)`);
