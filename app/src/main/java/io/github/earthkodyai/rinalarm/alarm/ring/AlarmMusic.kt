@@ -87,7 +87,7 @@ class MusicPlayer(private val open: () -> AssetFileDescriptor) : RingSound {
 
   @Volatile private var running = true
 
-  /** What loops, for the ring log: "music", "beep" (fell back), or null during the first pass. */
+  /** What played, for the ring log: "music" from its first notes, "beep" when it fell back, null before any sound. */
   @Volatile var outcome: String? = null
     private set
 
@@ -188,6 +188,7 @@ class MusicPlayer(private val open: () -> AssetFileDescriptor) : RingSound {
         if (stereo.isNotEmpty()) {
           if (!pcm.append(stereo)) break
           if (write(stereo) < 0) break
+          outcome = "music"
         }
         if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
       }
