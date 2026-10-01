@@ -4,13 +4,16 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,8 +24,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
@@ -31,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.sticker
 import kotlinx.coroutines.launch
 
 /**
@@ -43,14 +52,15 @@ internal fun HoldToStopButton(onStop: () -> Unit, modifier: Modifier = Modifier)
   val stop by rememberUpdatedState(onStop)
   val fill = remember { Animatable(0f) }
   val scope = rememberCoroutineScope()
-  val shape = RoundedCornerShape(26.dp)
+  val shape = RoundedCornerShape(24.dp)
   val label = stringResource(R.string.ring_hold_to_stop)
-  val danger = RinTheme.palette.danger
+  val p = RinTheme.palette
+  // Bright red with warning stripes and a warning sign (the user, 2026-10-02): it should look dangerous to press.
   Box(
     modifier
+      .sticker(fill = p.stop, radius = 24.dp, depth = 3.dp, shadow = p.stopShadow, outline = null)
       .clip(shape)
-      .background(RinTheme.palette.card)
-      .border(2.dp, danger.copy(alpha = 0.4f), shape)
+      .drawBehind { warningStripes(p.stopHeld) }
       .semantics {
         role = Role.Button
         onLongClick(label) {
@@ -83,9 +93,36 @@ internal fun HoldToStopButton(onStop: () -> Unit, modifier: Modifier = Modifier)
           val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
           layout(width, placeable.height) { placeable.place(0, 0) }
         }
-        .background(danger.copy(alpha = 0.25f))
+        .background(p.stopHeld)
     )
-    Text(label, style = MaterialTheme.typography.labelLarge, color = danger)
+    Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+      Icon(painterResource(R.drawable.ic_warning), contentDescription = null, tint = p.onStop, modifier = Modifier.size(18.dp))
+      Text(
+        label,
+        style = MaterialTheme.typography.labelLarge,
+        color = p.onStop,
+        maxLines = 1,
+        modifier = Modifier.padding(start = 6.dp),
+      )
+    }
+  }
+}
+
+/** Faint diagonal bands, as on warning tape, in the held red: they show the button is not an ordinary one. */
+private fun DrawScope.warningStripes(color: Color) {
+  val band = 10.dp.toPx()
+  var x = -size.height
+  while (x < size.width) {
+    val stripe =
+      Path().apply {
+        moveTo(x, size.height)
+        lineTo(x + band, size.height)
+        lineTo(x + band + size.height, 0f)
+        lineTo(x + size.height, 0f)
+        close()
+      }
+    drawPath(stripe, color, alpha = 0.22f)
+    x += band * 2.4f
   }
 }
 

@@ -59,8 +59,8 @@
     <string name="ring_late_explained">Ringing late: your phone was off or asleep.</string>
     <string name="ring_snooze">Snooze</string>
     <plurals name="ring_snooze_left">
-        <item quantity="one">Snooze %1$d min (%2$d left)</item>
-        <item quantity="other">Snooze %1$d min (%2$d left)</item>
+        <item quantity="one">Snooze\u00A0%1$d\u00A0min (%2$d\u00A0left)</item>
+        <item quantity="other">Snooze\u00A0%1$d\u00A0min (%2$d\u00A0left)</item>
     </plurals>
     <string name="ring_dismiss">Dismiss</string>
     <string name="ring_hold_to_stop">Hold 3 s to stop</string>

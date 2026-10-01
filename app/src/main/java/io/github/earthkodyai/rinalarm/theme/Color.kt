@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.Color
  * @property bubble       Rin's speech bubble on her panel
  * @property alert        the deep red of a warning that an alarm could fail (the setup banner); [onAlert] its text,
  *                        [alertShadow] its drop
+ * @property stop         the bright red of the ring screen's emergency stop, meant to look dangerous (the user,
+ *                        2026-10-02); [onStop] its text, [stopHeld] the fill that grows while it is held, [stopShadow]
+ *                        its drop. The same in both looks, like [alert]
  */
 @Immutable
 data class RinPalette(
@@ -48,6 +51,10 @@ data class RinPalette(
   val alert: Color = Color(0xFFB3261E),
   val onAlert: Color = Color(0xFFFFFFFF),
   val alertShadow: Color = Color(0xFF7A1A14),
+  val stop: Color = Color(0xFFE0202A),
+  val onStop: Color = Color(0xFFFFFFFF),
+  val stopHeld: Color = Color(0xFF9E0E16),
+  val stopShadow: Color = Color(0xFF7E0A10),
 )
 
 val DayPalette =

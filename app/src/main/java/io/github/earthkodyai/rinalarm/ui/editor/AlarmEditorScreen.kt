@@ -80,6 +80,7 @@ import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
@@ -215,6 +216,7 @@ internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorAc
 
   val p = RinTheme.palette
   Box(Modifier.fillMaxSize().background(p.ground)) {
+    RinBackdrop(Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         RoundIconButton(R.drawable.ic_arrow_back, stringResource(R.string.editor_back), leave)

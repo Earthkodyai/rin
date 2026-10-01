@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -56,6 +58,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -203,6 +206,8 @@ internal fun RingScreen(
   val request = ring.request
   val p = RinTheme.palette
   // Once the ring is over (a pass, a snooze, the emergency stop) a tap anywhere closes the screen, cutting her short.
+  // Only a tap that starts after that: the finger still on the emergency button when its 3 s hold ends, lifted a
+  // moment later, closed the screen and cut her line off (the user, 2026-10-02).
   val closable = state.passed || state.leaving
   // The game being played: the planned one, or the one "Can't talk right now" switched to.
   val game = state.missionType ?: ring.mission?.type
@@ -223,7 +228,15 @@ internal fun RingScreen(
     modifier
       .fillMaxSize()
       .background(p.ground)
-      .clickable(enabled = closable, interactionSource = null, indication = null, onClick = onClose)
+      .pointerInput(closable) { if (closable) detectTapGestures { onClose() } }
+      .semantics {
+        if (closable) {
+          onClick {
+            onClose()
+            true
+          }
+        }
+      }
       .testTag(RING_SCREEN_TAG)
   ) {
     Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
@@ -471,7 +484,8 @@ private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: M
   }
 }
 
-private val HOLD_WIDTH = 150.dp
+/** Room for the warning sign and "Hold 3 s to stop" on one line (150 dp cut "stop" off). */
+private val HOLD_WIDTH = 176.dp
 
 /** Snooze and the emergency hold: big enough for a sleepy thumb, small enough to leave her the screen. */
 private val CONTROL_HEIGHT = 48.dp

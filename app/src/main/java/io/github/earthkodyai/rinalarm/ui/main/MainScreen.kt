@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,12 +38,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,7 +78,9 @@ import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.onSick
 import io.github.earthkodyai.rinalarm.theme.sickFill
+import io.github.earthkodyai.rinalarm.ui.common.AppLocale
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
@@ -87,12 +91,17 @@ import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
+import kotlinx.coroutines.delay
 
 @Composable
 fun MainScreen(
@@ -172,7 +181,7 @@ internal fun MainScreen(
 ) {
   val p = RinTheme.palette
   Box(Modifier.fillMaxSize().background(p.ground)) {
-    if (p.night) Stars(Modifier.fillMaxSize())
+    RinBackdrop(Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       TopBar(onDiagnostics, onSettings)
       if (setupIssue) SetupBanner(onDiagnostics)
@@ -242,8 +251,9 @@ private fun SetupBanner(onClick: () -> Unit) {
 }
 
 /**
- * Rin waist up on her own panel, the sun behind her by day and the moon at night. While she speaks her line sits in a
- * bubble at her side (the mockups); home lines are rare, so most of the time it is her alone.
+ * Rin waist up on her own panel, the sun behind her by day and the moon and twinkling stars at night; the moving
+ * backdrop stays on the ground around it (the user, 2026-10-02: in here it was too much). The open side shows the
+ * time and date, which fade out while she speaks and her line sits there in a bubble (the mockups).
  */
 @Composable
 private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit) {
@@ -258,34 +268,50 @@ private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit) {
       .let { if (p.night) it.border(1.dp, p.line, shape) else it }
   ) {
     if (p.night) {
+      RinBackdrop(Modifier.fillMaxSize(), meteorRate = 0f)
       Box(Modifier.align(Alignment.TopEnd).offset(x = 20.dp, y = (-30).dp).size(150.dp).background(p.line.copy(alpha = 0.45f), CircleShape))
       Box(Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 22.dp).size(70.dp).background(p.glow.copy(alpha = 0.9f), CircleShape))
-      Stars(Modifier.fillMaxSize())
     } else {
       Box(Modifier.align(Alignment.TopEnd).offset(x = 24.dp, y = (-28).dp).size(120.dp).background(p.glow, CircleShape))
     }
     character(Modifier.align(Alignment.BottomEnd).fillMaxWidth(RIN_WIDTH).fillMaxHeight().padding(top = 8.dp))
+    val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
+    PanelClock(Modifier.align(Alignment.CenterStart).padding(start = 22.dp, bottom = 12.dp).graphicsLayer { alpha = clockAlpha })
     RinBubble(line, Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp))
   }
 }
 
-/** A few fixed stars on the night ground (mockup C): decoration, so nothing reads them out. */
+private const val CLOCK_FADE_MS = 300
+
+/**
+ * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the
+ * time, and it is hidden whenever she speaks.
+ */
 @Composable
-private fun Stars(modifier: Modifier) {
+private fun PanelClock(modifier: Modifier) {
   val p = RinTheme.palette
-  Canvas(modifier.clearAndSetSemantics {}) {
-    STARS.forEachIndexed { i, (x, y) ->
-      drawCircle(
-        if (i % 3 == 2) p.glow else Color.White,
-        radius = (if (i % 2 == 0) 1.5f else 1f).dp.toPx(),
-        center = Offset(x * size.width, y * size.height),
-        alpha = 0.7f,
-      )
+  val now by
+    produceState(LocalDateTime.now()) {
+      while (true) {
+        val next = value.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+        delay(Duration.between(LocalDateTime.now(), next).toMillis().coerceAtLeast(0) + 50)
+        value = LocalDateTime.now()
+      }
     }
+  val clock = rememberClockText()(now.toLocalTime())
+  Column(modifier.clearAndSetSemantics {}) {
+    Row(verticalAlignment = Alignment.Bottom) {
+      Text(clock.digits, style = MaterialTheme.typography.displaySmall.copy(fontSize = 44.sp, lineHeight = 46.sp), color = p.ink)
+      clock.amPm?.let {
+        Text(it, style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+      }
+    }
+    Text(now.format(PANEL_DATE), style = MaterialTheme.typography.titleSmall, color = p.muted)
   }
 }
 
-private val STARS = listOf(0.1f to 0.11f, 0.87f to 0.08f, 0.77f to 0.5f, 0.18f to 0.56f, 0.06f to 0.82f, 0.42f to 0.04f, 0.93f to 0.7f)
+/** "Fri, Oct 2". */
+private val PANEL_DATE = DateTimeFormatter.ofPattern("EEE, MMM d", AppLocale)
 
 /**
  * Rest day and sick day (Phase 5): one tap each, for the next ring; a tap on the one that is on cancels it. Buttons
