@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -27,6 +28,8 @@ data class AlarmEntity(
   @ColumnInfo(defaultValue = "0") val isTest: Boolean = false,
   // Schema 4. MissionChoice.stored; the default must be MissionChoice.DEFAULT_STORED (AlarmEntityTest checks).
   @ColumnInfo(defaultValue = "rin_picks") val mission: String = MissionChoice.DEFAULT_STORED,
+  // Schema 5 (UX.7). AlarmSound.stored; the default must be AlarmSound.DEFAULT_STORED (AlarmEntityTest checks).
+  @ColumnInfo(defaultValue = "rin_picks") val sound: String = AlarmSound.DEFAULT_STORED,
 )
 
 fun AlarmEntity.toAlarm(): Alarm =
@@ -36,7 +39,7 @@ fun AlarmEntity.toAlarm(): Alarm =
     repeatDays = RepeatDays.fromMask(repeatDays),
     label = label,
     enabled = enabled,
-    ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes),
+    ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes, AlarmSound.fromStored(sound)),
     isTest = isTest,
     mission = MissionChoice.fromStored(mission),
   )
@@ -55,4 +58,5 @@ fun Alarm.toEntity(): AlarmEntity =
     maxSnoozes = ring.maxSnoozes,
     isTest = isTest,
     mission = mission.stored,
+    sound = ring.sound.stored,
   )

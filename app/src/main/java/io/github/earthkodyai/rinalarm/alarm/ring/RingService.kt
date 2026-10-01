@@ -18,6 +18,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.alarm.engine.Ringer
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
@@ -67,6 +68,7 @@ class RingService : Service() {
   @Inject lateinit var notifications: AlarmNotifications
   @Inject @AppScope lateinit var appScope: CoroutineScope
   @Inject lateinit var missionReadiness: MissionReadiness
+  @Inject lateinit var music: MusicCatalog
   @Inject lateinit var time: TimeSource
   @Inject lateinit var settings: AppSettings
 
@@ -77,7 +79,9 @@ class RingService : Service() {
 
   private class Session(
     val request: RingRequest,
-    val tone: TonePlayer?,
+    val tone: RingSound?,
+    /** The theme it plays, or null for the beep. */
+    val theme: String?,
     val vibrator: AlarmVibrator,
     /** The rest or sick day this ring answers; a Dismiss or auto stop uses it up. */
     val dayMode: DayMode?,
@@ -136,8 +140,12 @@ class RingService : Service() {
     ringState.set(ring)
     startForegroundWith(ring)
 
-    val tone = runCatching { TonePlayer() }.getOrNull()
-    val s = Session(request, tone, AlarmVibrator(this), dayMode)
+    val theme = pickTheme(request)
+    // A theme that cannot even start beeps; MusicPlayer falls back to the beep itself if the file will not decode.
+    val tone =
+      theme?.let { id -> runCatching { MusicPlayer { assets.openFd(AssetMusicCatalog.path(id)) } }.getOrNull() }
+        ?: runCatching { TonePlayer() }.getOrNull()
+    val s = Session(request, tone, theme.takeIf { tone is MusicPlayer }, AlarmVibrator(this), dayMode)
     session = s
     s.wakeLock =
       getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RinAlarm:ring").apply {
@@ -166,12 +174,19 @@ class RingService : Service() {
       if (tone != null) RingEventType.RING_START else RingEventType.RING_FAIL,
       request.alarmId,
       request.scheduledAt,
-      "tone=${tone != null} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}" +
+      "tone=${tone != null} sound=${s.theme ?: "beep"} focus=$focusName $volume snoozeCount=${request.snoozeCount} late=${request.late}" +
         (if (s.pausedForCall) " call=true" else "") +
         (dayMode?.let { " dayMode=${it.kind.stored}" } ?: ""),
     )
     if (plan is MissionPlan.Unavailable) record(RingEventType.MISSION_UNAVAILABLE, s, plan.reason)
   }
+
+  /** The alarm's theme for today (Rin picks rotates by date), or null for the beep. Never throws. */
+  private fun pickTheme(request: RingRequest): String? =
+    runCatching {
+        AlarmSound.resolve(request.options.sound, music.themes().map { it.id }, time.now().atZone(time.zone()).toLocalDate())
+      }
+      .getOrNull()
 
   /**
    * The rest or sick day waiting for this ring, or null. Never throws and waits at most [DAY_MODE_WAIT_MS]: a settings
@@ -311,13 +326,15 @@ class RingService : Service() {
     session = null
     s.hushJob?.cancel()
     handler.removeCallbacksAndMessages(null)
+    // What looped, if a theme was meant to: "beep" here means its file would not play.
+    val played = (s.tone as? MusicPlayer)?.outcome?.let { " played=$it" }.orEmpty()
     s.tone?.release()
     runCatching { s.vibrator.stop() }
     s.focus?.let { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(it) }
     restoreVolume(s)
     s.wakeLock?.takeIf { it.isHeld }?.release()
     ringState.set(null)
-    record(type, s.request.alarmId, s.request.scheduledAt, "$detail rangMs=${s.elapsedMillis()}")
+    record(type, s.request.alarmId, s.request.scheduledAt, "$detail rangMs=${s.elapsedMillis()}$played")
     // The day mode covered this ring and its snoozes; a ring that is over for good uses it up.
     val used = s.dayMode
     if (used != null && (type == RingEventType.DISMISSED || type == RingEventType.AUTO_STOPPED)) {

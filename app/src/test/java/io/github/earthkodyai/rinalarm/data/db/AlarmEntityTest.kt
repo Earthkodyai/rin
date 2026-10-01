@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.data.db
 
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -21,7 +22,7 @@ class AlarmEntityTest {
         repeatDays = RepeatDays.of(DayOfWeek.TUESDAY, DayOfWeek.SATURDAY),
         label = "Gym",
         enabled = false,
-        ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1),
+        ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1, sound = AlarmSound.Theme("cafe")),
         isTest = true,
         mission = MissionChoice.Only(MissionType.PADS),
       )
@@ -39,6 +40,14 @@ class AlarmEntityTest {
   }
 
   @Test
+  fun sounds_roundTrip_andUnknownValuesReadAsRinPicks() {
+    for (sound in listOf(AlarmSound.RinPicks, AlarmSound.Beep, AlarmSound.Theme("morning"))) {
+      assertEquals(sound, Alarm(time = LocalTime.NOON, ring = RingOptions(sound = sound)).toEntity().toAlarm().ring.sound)
+    }
+    assertEquals(AlarmSound.RinPicks, Alarm(time = LocalTime.NOON).toEntity().copy(sound = "Not an id!").toAlarm().ring.sound)
+  }
+
+  @Test
   fun entity_storesWallClockFieldsAndMask() {
     val entity = Alarm(time = LocalTime.of(23, 5), repeatDays = RepeatDays.WEEKEND).toEntity()
     assertEquals(23, entity.hour)
@@ -51,7 +60,7 @@ class AlarmEntityTest {
     // Rows migrated from schema 1 get the SQL defaults; they must be the same alarm a new one would be.
     val defaults = RingOptions()
     // Read what Room actually uses: the exported schema (unit tests run with the module as working directory).
-    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/4.json").readText()
+    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/5.json").readText()
     val sql =
       Regex(""""fieldPath": "(\w+)",[^}]*?"defaultValue": "([^"]*)"""")
         .findAll(schema)
@@ -63,5 +72,7 @@ class AlarmEntityTest {
     assertEquals("0", sql["isTest"])
     assertEquals("'${MissionChoice.DEFAULT_STORED}'", sql["mission"])
     assertEquals(MissionChoice.RinPicks, MissionChoice.fromStored(MissionChoice.DEFAULT_STORED))
+    assertEquals("'${AlarmSound.DEFAULT_STORED}'", sql["sound"])
+    assertEquals(defaults.sound, AlarmSound.fromStored(AlarmSound.DEFAULT_STORED))
   }
 }

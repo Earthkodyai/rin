@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
 import android.content.Intent
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.Instant
@@ -40,6 +41,7 @@ data class RingRequest(
       .putExtra(VIBRATE, options.vibrate)
       .putExtra(SNOOZE_MINUTES, options.snoozeMinutes)
       .putExtra(MAX_SNOOZES, options.maxSnoozes)
+      .putExtra(SOUND, options.sound.stored)
       .putExtra(MISSION, mission.stored)
       .putExtra(IS_TEST, isTest)
 
@@ -55,6 +57,7 @@ data class RingRequest(
     private const val VIBRATE = "ring.vibrate"
     private const val SNOOZE_MINUTES = "ring.snoozeMinutes"
     private const val MAX_SNOOZES = "ring.maxSnoozes"
+    private const val SOUND = "ring.sound"
     private const val MISSION = "ring.mission"
     private const val IS_TEST = "ring.isTest"
 
@@ -80,6 +83,7 @@ data class RingRequest(
                 vibrate = intent.getBooleanExtra(VIBRATE, defaults.vibrate),
                 snoozeMinutes = intent.getIntExtra(SNOOZE_MINUTES, defaults.snoozeMinutes),
                 maxSnoozes = intent.getIntExtra(MAX_SNOOZES, defaults.maxSnoozes),
+                sound = AlarmSound.fromStored(intent.getStringExtra(SOUND) ?: AlarmSound.DEFAULT_STORED),
               )
             }
             .getOrDefault(defaults),

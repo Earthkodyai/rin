@@ -205,6 +205,40 @@ val rinModel =
   }
 
 /**
+ * Copies the alarm themes (UX.7, D30) into generated assets at music/: `<id>.mp3` (44.1 kHz, looped as a whole) and
+ * `themes.json` (ids and names, in Rin's rotation order). Made with Eleven Music on the user's plan, so like the voice
+ * they never enter the public repo: `rin.music` in local.properties points at the folder. Builds without it beep.
+ */
+abstract class RinMusicCopy : DefaultTask() {
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val music: ConfigurableFileCollection
+
+  @get:Internal abstract val musicDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:Inject abstract val fs: FileSystemOperations
+
+  @TaskAction
+  fun copy() {
+    fs.sync {
+      from(musicDir) { include("*.mp3", "themes.json") }
+      into(outputDir.dir("music"))
+    }
+  }
+}
+
+val rinMusic =
+  localProperties.getProperty("rin.music")?.let { path ->
+    val dir = File(path)
+    require(dir.isDirectory) { "rin.music in local.properties points at $path, which is not a folder" }
+    tasks.register<RinMusicCopy>("copyRinMusic") {
+      musicDir.set(dir)
+      music.from(fileTree(dir) { include("*.mp3", "themes.json") })
+      outputDir.set(layout.buildDirectory.dir("generated/rinMusic"))
+    }
+  }
+
+/**
  * Copies Rin's voice pack (task 4.3, tools/voice/pack.mjs build) into generated assets at voice/rin: `<line id>.mp3`
  * and `repeat/<id>.mp3`, each with its `.mouth.json`. Like the model, the pack never enters the public repo:
  * `rin.voice` in local.properties points at the built folder on this PC. Builds without it (CI, clones) have no clips,
@@ -470,6 +504,7 @@ androidComponents {
     variant.sources.assets?.addGeneratedSourceDirectory(privacyNotice, PrivacyCopy::outputDir)
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
     rinVoice?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinVoiceCopy::outputDir) }
+    rinMusic?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinMusicCopy::outputDir) }
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
     if (variant.buildType == "debug") {
       devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }

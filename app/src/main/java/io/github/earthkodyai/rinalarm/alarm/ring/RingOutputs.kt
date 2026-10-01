@@ -65,11 +65,11 @@ val ALARM_AUDIO: AudioAttributes =
     .build()
 
 /**
- * A generated beep pattern on USAGE_ALARM. No media file, so it plays before the first unlock after a reboot; it stays
- * the fallback once Rin's voice pack arrives (Phase 4). USAGE_ALARM is also what keeps it audible under Android 17's
+ * A generated beep pattern on USAGE_ALARM. No media file, so nothing can stop it from playing: it rings when an alarm
+ * picks the beep, and in place of a theme that cannot play (MusicPlayer, UX.7). USAGE_ALARM is also what keeps it audible under Android 17's
  * background audio limits.
  */
-class TonePlayer {
+class TonePlayer : RingSound {
   private val pcm = tonePattern()
   private val track: AudioTrack =
     AudioTrack.Builder()
@@ -89,21 +89,21 @@ class TonePlayer {
         setLoopPoints(0, pcm.size, -1)
       }
 
-  fun setGain(gain: Float) {
+  override fun setGain(gain: Float) {
     track.setVolume(gain)
   }
 
-  fun play() = track.play()
+  override fun play() = track.play()
 
-  fun pause() = track.pause()
+  override fun pause() = track.pause()
 
-  fun release() {
+  override fun release() {
     runCatching { track.stop() }
     track.release()
   }
 
-  private companion object {
-    const val SAMPLE_RATE = 44_100
+  internal companion object {
+    private const val SAMPLE_RATE = 44_100
 
     /** A 1 s loop: two 880 Hz beeps, then a pause. Same pattern as the S1 spike. */
     fun tonePattern(): ShortArray {

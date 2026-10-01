@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.ui.editor
 
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -40,7 +41,9 @@ class AlarmEditorViewModelTest {
 
   private val moments = HomeMoments()
 
-  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments)
+  private var themes = emptyList<MusicTheme>()
+
+  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes })
 
   // --- mission (task 3.1) ---
 

@@ -7,8 +7,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
+import io.github.earthkodyai.rinalarm.alarm.ring.MusicCatalog
+import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -44,9 +47,11 @@ constructor(
   private val time: TimeSource,
   private val missionReadiness: MissionReadiness,
   private val moments: HomeMoments,
+  private val music: MusicCatalog,
 ) : ViewModel() {
   private val session = MutableStateFlow<Session>(Session.Loading)
   private val readiness = MutableStateFlow(readMissions())
+  private val themes = runCatching { music.themes() }.getOrDefault(emptyList())
 
   val uiState: StateFlow<AlarmEditorUiState> =
     combine(session, readiness, time.minuteTicks) { session, readiness, _ -> session.toUiState(readiness) }
@@ -78,6 +83,8 @@ constructor(
   fun setMaxSnoozes(value: Int) = editRing { it.copy(maxSnoozes = value) }
 
   fun setMission(value: MissionChoice) = edit { it.copy(mission = value) }
+
+  fun setSound(value: AlarmSound) = editRing { it.copy(sound = value) }
 
   /** Re-reads which missions can run: on resume, and after a permission answer (the user may change it in Settings). */
   fun refreshMissions() {
@@ -144,6 +151,7 @@ constructor(
           busy = busy,
           failed = failed,
           missionReadiness = readiness,
+          themes = themes,
         )
       is Session.Saved -> AlarmEditorUiState.Saved(ringsIn)
       Session.Deleted -> AlarmEditorUiState.Deleted
@@ -187,6 +195,7 @@ sealed interface AlarmEditorUiState {
    * @property busy a save or delete is running; edits are ignored until it finishes.
    * @property failed the last save or delete threw (e.g. disk full); the draft is kept so the user can retry.
    * @property missionReadiness which missions can run on this phone now; the editor explains the ones that can't.
+   * @property themes the alarm themes this build carries (UX.7); none in builds without the music, which only beep.
    */
   data class Editing(
     val draft: Alarm,
@@ -196,6 +205,7 @@ sealed interface AlarmEditorUiState {
     val busy: Boolean,
     val failed: Boolean = false,
     val missionReadiness: Map<MissionType, Readiness> = emptyMap(),
+    val themes: List<MusicTheme> = emptyList(),
   ) : AlarmEditorUiState {
     /** The missions this alarm could run that are not ready, and why (shown under the mission choice). */
     val missionProblems: Map<MissionType, Readiness>

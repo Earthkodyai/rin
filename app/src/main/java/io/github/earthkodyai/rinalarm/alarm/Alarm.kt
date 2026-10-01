@@ -34,12 +34,14 @@ data class Alarm(
  *
  * @property rampSeconds seconds from the quiet start to full volume; 0 = full volume at once.
  * @property maxSnoozes snoozes allowed per wake-up; once they are used up the Snooze button disappears.
+ * @property sound the theme or beep it plays (UX.7); Rin picks by default.
  */
 data class RingOptions(
   val rampSeconds: Int = DEFAULT_RAMP_SECONDS,
   val vibrate: Boolean = true,
   val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
   val maxSnoozes: Int = DEFAULT_MAX_SNOOZES,
+  val sound: AlarmSound = AlarmSound.RinPicks,
 ) {
   init {
     require(rampSeconds >= 0) { "rampSeconds must be >= 0: $rampSeconds" }

@@ -14,12 +14,13 @@ import java.io.File
  * 2. ring options on alarms, pending_rings, ring_events (task 1.2)
  * 3. alarms.isTest for the Diagnostics test alarm (task 1.4)
  * 4. alarms.mission (task 3.1)
+ * 5. alarms.sound (UX.7)
  */
 @Database(
   entities = [AlarmEntity::class, PendingRingEntity::class, RingEventEntity::class],
-  version = 4,
+  version = 5,
   exportSchema = true,
-  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
+  autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5)],
 )
 abstract class RinDatabase : RoomDatabase() {
   abstract fun alarmDao(): AlarmDao

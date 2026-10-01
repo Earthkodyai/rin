@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,7 +69,9 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -113,6 +116,8 @@ interface AlarmEditorActions {
   fun setMaxSnoozes(value: Int)
 
   fun setMission(value: MissionChoice)
+
+  fun setSound(value: AlarmSound)
 
   /** Makes [type] ready: asks for its permission, or opens Settings once Android won't ask again. */
   fun allowMission(type: MissionType)
@@ -163,6 +168,8 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
       override fun setMaxSnoozes(value: Int) = viewModel.setMaxSnoozes(value)
 
       override fun setMission(value: MissionChoice) = viewModel.setMission(value)
+
+      override fun setSound(value: AlarmSound) = viewModel.setSound(value)
 
       override fun allowMission(type: MissionType) {
         requestMissionPermission(type)
@@ -338,7 +345,7 @@ private fun EditorContent(
     MissionEditor(state, actions)
 
     SectionTitle(stringResource(R.string.editor_ringing))
-    RingOptionsEditor(draft.ring, actions)
+    RingOptionsEditor(draft.ring, state.themes, actions)
 
     if (!state.isNew) {
       // Outlined, not filled: never the button a thumb lands on by mistake; the dialog asks again.
@@ -446,11 +453,44 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
   }
 }
 
-/** How it rings, in one card: gentle start, vibrate, how many snoozes and how long each. */
+/**
+ * The alarm's sound (UX.7): Rin picks (a different theme each day), one theme, or the beep, as tiles two to a row. A
+ * pinned theme this build lacks still shows as chosen, so opening the editor never changes it silently.
+ */
 @Composable
-private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
+private fun SoundChooser(sound: AlarmSound, themes: List<MusicTheme>, onPick: (AlarmSound) -> Unit) {
+  val p = RinTheme.palette
+  val choices = listOf<AlarmSound>(AlarmSound.RinPicks) + themes.map { AlarmSound.Theme(it.id) } + AlarmSound.Beep
+  val rinPicks = stringResource(R.string.sound_rin_picks)
+  val beep = stringResource(R.string.sound_beep)
+  fun name(choice: AlarmSound) =
+    when (choice) {
+      AlarmSound.RinPicks -> rinPicks
+      AlarmSound.Beep -> beep
+      is AlarmSound.Theme -> themes.firstOrNull { it.id == choice.id }?.name ?: choice.id
+    }
+  OptionLabel(stringResource(R.string.editor_sound))
+  Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    choices.chunked(2).forEach { row ->
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        row.forEach { choice -> ChoiceTile(name(choice), sound == choice, { onPick(choice) }, Modifier.weight(1f)) }
+        if (row.size == 1) Spacer(Modifier.weight(1f))
+      }
+    }
+  }
+  if (sound == AlarmSound.RinPicks) {
+    Text(stringResource(R.string.sound_hint_rin_picks), style = MaterialTheme.typography.bodySmall, color = p.muted)
+  }
+}
+
+/** How it rings, in one card: the sound, gentle start, vibrate, how many snoozes and how long each. */
+@Composable
+private fun RingOptionsEditor(ring: RingOptions, themes: List<MusicTheme>, actions: AlarmEditorActions) {
   val p = RinTheme.palette
   Column(Modifier.fillMaxWidth().sticker(radius = 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // A build without the music only beeps: nothing to choose.
+    if (themes.isNotEmpty()) SoundChooser(ring.sound, themes, actions::setSound)
+
     OptionLabel(stringResource(R.string.editor_ramp))
     val rampOff = stringResource(R.string.ramp_off)
     PillChoiceRow(
@@ -548,6 +588,8 @@ private object PreviewActions : AlarmEditorActions {
   override fun setMaxSnoozes(value: Int) = Unit
 
   override fun setMission(value: MissionChoice) = Unit
+
+  override fun setSound(value: AlarmSound) = Unit
 
   override fun allowMission(type: MissionType) = Unit
 

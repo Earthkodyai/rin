@@ -114,6 +114,12 @@
     <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_allow">Allow</string>
 
+    <!-- Alarm editor: sound (UX.7). -->
+    <string name="editor_sound">Sound</string>
+    <string name="sound_rin_picks">Rin picks</string>
+    <string name="sound_beep">Beep</string>
+    <string name="sound_hint_rin_picks">Rin picks a different theme each day.</string>
+
     <!-- Missed-alarm notification. -->
     <string name="missed_title">Missed alarm at %1$s</string>
     <string name="missed_text">Your phone was off or asleep when it was due.</string>

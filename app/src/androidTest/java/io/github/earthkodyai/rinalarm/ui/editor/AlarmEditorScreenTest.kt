@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.espresso.Espresso
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -67,6 +68,10 @@ class AlarmEditorScreenTest {
 
       override fun setMission(value: MissionChoice) {
         calls += "mission ${value.stored}"
+      }
+
+      override fun setSound(value: AlarmSound) {
+        calls += "sound ${value.stored}"
       }
 
       override fun allowMission(type: MissionType) {
