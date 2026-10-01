@@ -2,7 +2,8 @@
 // Pictures for the alarm editor's tiles (UX.7): generate with Gemini's Flash Image model, pick by eye, build WebPs.
 //
 //   node tools/tiles/tiles.mjs plan                     the prompts (no API call)
-//   node tools/tiles/tiles.mjs gen [--only id,id]       missing takes into <root>/takes/<id>-<n>.png
+//   node tools/tiles/tiles.mjs gen [--only id,id]       missing takes into <root>/takes/<id>-<n>.jpg
+//   node tools/tiles/tiles.mjs sheet                    <root>/prompts.html: the prompts to make takes by hand (web app)
 //   node tools/tiles/tiles.mjs qa                       <root>/qa.html: every take, a pick per tile
 //   node tools/tiles/tiles.mjs build pads=2 cups=1 …    app/src/main/assets/tiles/<id>.webp (cropped to the tile, 3:1)
 //
@@ -53,7 +54,10 @@ export function findImage(node) {
   return null;
 }
 
-const takePath = (root, id, n) => join(root, 'takes', `${id}-${n}.png`);
+/** A take as the API saves it (.jpg), or as a web app downloads it (.png, .jpeg, .webp: the user's own takes). */
+const EXTS = ['jpg', 'png', 'jpeg', 'webp'];
+const takePath = (root, id, n) =>
+  EXTS.map((e) => join(root, 'takes', `${id}-${n}.${e}`)).find(existsSync) ?? join(root, 'takes', `${id}-${n}.jpg`);
 
 async function gen(root, only) {
   const apiKey = key();
@@ -70,7 +74,7 @@ async function gen(root, only) {
         body: JSON.stringify({
           model: SPEC.model,
           input: [{ type: 'text', text: prompt(SPEC, tile) }],
-          response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: SPEC.aspectRatio, image_size: '1K' },
+          response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: SPEC.aspectRatio, image_size: '1K' },
         }),
       });
       const text = await res.text();
@@ -92,7 +96,8 @@ function qa(root) {
       const takes = [];
       for (let n = 1; n <= SPEC.takes; n++) {
         if (!existsSync(takePath(root, t.id, n))) continue;
-        takes.push(`<label class="take"><input type="radio" name="${t.id}" value="${n}"><span class="tile"><img src="takes/${t.id}-${n}.png"><b>${t.label.split(': ')[1]}</b></span></label>`);
+        const src = 'takes/' + takePath(root, t.id, n).split(/[\/]/).pop();
+        takes.push(`<label class="take"><input type="radio" name="${t.id}" value="${n}"><span class="tile"><img src="${src}"><b>${t.label.split(': ')[1]}</b></span></label>`);
       }
       return `<section><h2>${t.label} <small>${t.id}</small></h2><div class="takes">${takes.join('') || '<p>No takes yet.</p>'}</div></section>`;
     })
@@ -111,6 +116,32 @@ ${rows}<div id="picks">Picks: none yet</div>
 document.addEventListener('change',()=>{const p=ids.map(id=>{const c=document.querySelector('input[name="'+id+'"]:checked');return c?id+'='+c.value:null}).filter(Boolean);document.getElementById('picks').textContent='Picks: '+(p.join(' ')||'none yet')})</script>`;
   writeFileSync(join(root, 'qa.html'), html);
   console.log(join(root, 'qa.html'));
+}
+
+/** The prompt sheet for making takes by hand in the Gemini web app: one prompt per tile, a copy button, the file name. */
+function sheet(root) {
+  mkdirSync(join(root, 'takes'), { recursive: true });
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const rows = SPEC.tiles
+    .map((t, i) => {
+      const text = `${prompt(SPEC, t)}
+
+Format: a wide landscape image, aspect ratio ${SPEC.aspectRatio}.`;
+      return `<section><h2>${i + 1}. ${t.label}</h2><pre id="p${i}">${esc(text)}</pre>
+<button onclick="navigator.clipboard.writeText(document.getElementById('p${i}').textContent);this.textContent='Copied'">Copy prompt</button>
+<p>Make it twice. Save as <code>${t.id}-1</code> and <code>${t.id}-2</code> (any of .png .jpg .webp) in <code>${esc(join(root, 'takes'))}</code></p></section>`;
+    })
+    .join('\n');
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tile prompts</title>
+<style>body{font:15px system-ui;max-width:820px;margin:24px auto;padding:0 16px;background:#fff4ea;color:#3a2a33}
+section{background:#fff;border-radius:18px;padding:12px 16px;margin:14px 0;box-shadow:0 3px 0 #f1d2c2}h2{margin:4px 0 8px}
+pre{white-space:pre-wrap;background:#fff4ea;border-radius:12px;padding:10px;font:13px system-ui;color:#3a2a33}
+button{background:#cc3169;color:#fff;border:0;border-radius:20px;padding:8px 16px;font-weight:bold;cursor:pointer}
+code{background:#ffe1e9;padding:1px 6px;border-radius:6px}p{color:#7a5a68;font-size:13px}</style>
+<h1>Tile pictures: ${SPEC.tiles.length} prompts</h1>
+<p>In gemini.google.com (or AI Studio), paste a prompt, generate, download. Two takes per tile. Then tell Claude.</p>${rows}`;
+  writeFileSync(join(root, 'prompts.html'), html);
+  console.log(join(root, 'prompts.html'));
 }
 
 async function build(root, picks) {
@@ -139,6 +170,9 @@ async function main() {
       break;
     case 'qa':
       qa(root);
+      break;
+    case 'sheet':
+      sheet(root);
       break;
     case 'build':
       await build(root, Object.fromEntries(a._.slice(1).map((p) => p.split('=')).map(([k, v]) => [k, Number(v)])));
