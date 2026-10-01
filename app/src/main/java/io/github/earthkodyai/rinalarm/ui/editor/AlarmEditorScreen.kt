@@ -433,9 +433,15 @@ private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, mod
     }
     Text(
       text,
-      style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold),
+      style =
+        MaterialTheme.typography.titleSmall.copy(
+          fontSize = 15.sp,
+          lineHeight = 17.sp,
+          fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold,
+        ),
       color = if (selected) p.primary else p.ink,
-      maxLines = 1,
+      // Two lines: the sound tiles sit in a card, and "Arcade morning" beside its badge does not fit one.
+      maxLines = 2,
       overflow = TextOverflow.Ellipsis,
       modifier = Modifier.weight(1f, fill = false),
     )
