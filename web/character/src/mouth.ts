@@ -31,7 +31,16 @@ export function isMouthTrack(value: unknown): value is MouthTrack {
 }
 
 /** A track's fully open frame (9) opens the mouth this far: VRoid's `aa` at 1 is a shout, not speech. */
-export const MAX_OPEN = 0.75;
+export const MAX_OPEN = 0.6;
+/**
+ * How a frame's openness (0..1) becomes the viseme weight: a square root, so the small openings of consonants and the
+ * full ones of loud vowels end up closer together. The tracks follow loudness, and lines start loud: across Rin's 191
+ * clips the first half second opened 12% wider than the rest, and the user saw her mouth flap at the start of each
+ * line (2026-10-01). Closed frames stay closed, so syllables still read.
+ */
+export function openWeight(open: number): number {
+  return open > 0 ? MAX_OPEN * Math.sqrt(Math.min(open, 1)) : 0;
+}
 
 export const closedMouth = (): MouthWeights => ({ aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 });
 
@@ -81,7 +90,7 @@ export class MouthPlayer {
       return null;
     }
     mouthAt(this.line.track, t, this.weights);
-    for (const v of VISEMES) this.weights[v] *= MAX_OPEN;
+    for (const v of VISEMES) this.weights[v] = openWeight(this.weights[v]);
     return this.weights;
   }
 }

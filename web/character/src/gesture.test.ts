@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation';
 import { buildVrma, poseAt, solveArm, validate, ARM_REST, SKELETON, type GestureDef } from '../scripts/vrma.mjs';
 import { Clip, FADE_IN_S, FADE_OUT_S, GESTURES, GesturePlayer, envelope, isGesture } from './gesture';
-import { GESTURE_HUSH, MAX_OPEN, MouthPlayer, TALK_EASE_S, gestureFace, isMouthTrack, mouthAt, talkEnvelope, trackSeconds } from './mouth';
+import { GESTURE_HUSH, MAX_OPEN, MouthPlayer, TALK_EASE_S, gestureFace, isMouthTrack, mouthAt, openWeight, talkEnvelope, trackSeconds } from './mouth';
 import { parseNative } from './bridge';
 import table from './gestures.json';
 
@@ -160,6 +160,16 @@ describe('mouth tracks', () => {
     player.speak(track, 1000);
     player.hush();
     expect(player.at(1100)).toBeNull();
+  });
+
+  it('even out how far the mouth opens: closed stays closed, small openings grow, full ones stay at the cap', () => {
+    expect(openWeight(0)).toBe(0);
+    expect(openWeight(1)).toBeCloseTo(MAX_OPEN, 9);
+    // A consonant's 1/9 opens a third of the way, not a ninth.
+    expect(openWeight(1 / 9) / MAX_OPEN).toBeCloseTo(1 / 3, 9);
+    // A loud start (8/9) and a normal vowel (5/9) end up 21% apart instead of 60%.
+    expect(openWeight(8 / 9) / openWeight(5 / 9)).toBeLessThan(1.27);
+    for (let o = 0.1; o < 1; o += 0.1) expect(openWeight(o + 0.1)).toBeGreaterThan(openWeight(o));
   });
 });
 

@@ -34,8 +34,8 @@ const num = (key: string, fallback: number) => {
   return q.has(key) && Number.isFinite(value) && value > 0 ? value : fallback;
 };
 const modelPath = q.get('model');
-/** The lights' default share of the original rig (see lightScale). */
-const LIGHT_SCALE = 0.8;
+/** The lights' default share of the original rig (see lightScale; the user picked 0.7 on the phone, 2026-10-01). */
+const LIGHT_SCALE = 0.7;
 let fpsCap = num('fps', 30);
 const prCap = num('pr', 2);
 const t0 = q.has('t0') ? Number(q.get('t0')) : null;
