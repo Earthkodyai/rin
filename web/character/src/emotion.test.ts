@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLEND_S, Blend, CHANNELS, MOODS, TapReaction, isMood, isTap, moodChannels } from './emotion';
+import { BLEND_S, Blend, CHANNELS, MOODS, TAP_TALK_HUSH, TapReaction, isMood, isTap, moodChannels } from './emotion';
 import { parseNative } from './bridge';
 
 const FRAME = 1 / 30;
@@ -86,6 +86,19 @@ describe('TapReaction', () => {
     r.step(TapReaction.HOLD_S + TapReaction.FADE_S);
     expect(r.weight).toBe(0);
     expect(r.apply(sulky)).toEqual(sulky);
+  });
+
+  it('raises the eyes-open smile instead of the open-mouthed joy, and steps back while she talks', () => {
+    const r = new TapReaction();
+    const cheerful = moodChannels('cheerful');
+    r.trigger();
+    r.step(TapReaction.RISE_S + 0.2);
+    const quiet = r.apply(cheerful, 'smile', 0);
+    expect(quiet.smile).toBe(1);
+    expect(quiet.happy).toBe(cheerful.happy); // Fcl_ALL_Joy stays where the mood had it
+    const talking = r.apply(cheerful, 'smile', 1);
+    expect(talking.smile).toBeLessThan(quiet.smile);
+    expect(talking.smile).toBeCloseTo(cheerful.smile + (1 - cheerful.smile) * (1 - TAP_TALK_HUSH), 9);
   });
 
   it('ignores taps during the cooldown', () => {

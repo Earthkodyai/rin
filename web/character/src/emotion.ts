@@ -88,6 +88,9 @@ export class Blend {
 }
 
 /** The head-tap reaction: a burst of joy with a small nod, then back to the mood. */
+/** How far the tap's face steps back while she talks (the same share as a gesture's face, mouth.ts GESTURE_HUSH). */
+export const TAP_TALK_HUSH = 0.75;
+
 export class TapReaction {
   static readonly RISE_S = 0.1;
   static readonly HOLD_S = 1.0;
@@ -126,12 +129,20 @@ export class TapReaction {
     return NOD_RAD * Math.sin((this.age / NOD_S) * 2 * Math.PI) ** 2;
   }
 
-  /** The mood's channels with the reaction mixed in: joy up, every other expression down, pose untouched. */
-  apply(mood: Readonly<Channels>): Channels {
-    const w = this.weight;
+  /**
+   * The mood's channels with the reaction mixed in: `joy` up, every other expression down, pose untouched.
+   *
+   * @param joy   the face it raises: `smile` (mouth and brows, eyes open) on a model that has it. VRoid's `happy` is
+   *              Fcl_ALL_Joy, eyes shut and mouth open wide, and a tap also starts her line: the user saw her mouth
+   *              gape at the start of every head-tap line (2026-10-01, their own Rin).
+   * @param hush  0..1, how much she is talking (Behaviour's envelope): the reaction steps back by GESTURE_HUSH like a
+   *              gesture's face, so it never covers her lips.
+   */
+  apply(mood: Readonly<Channels>, joy: 'happy' | 'smile' = 'happy', hush = 0): Channels {
+    const w = this.weight * (1 - TAP_TALK_HUSH * hush);
     const out = { ...mood };
     if (w <= 0) return out;
-    for (const e of EXPRESSIONS) out[e] = e === 'happy' ? mood.happy + (1 - mood.happy) * w : mood[e] * (1 - w);
+    for (const e of EXPRESSIONS) out[e] = e === joy ? mood[e] + (1 - mood[e]) * w : mood[e] * (1 - w);
     out.lid = mood.lid * (1 - w);
     return out;
   }

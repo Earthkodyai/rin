@@ -111,7 +111,7 @@ export class Behaviour {
     this.t += dt;
     const done = this.blend.step(dt);
     this.tap.step(dt);
-    const c = this.tap.apply(this.blend.values);
+    const c = this.tap.apply(this.blend.values, this.hasSmile ? 'smile' : 'happy', this.talk);
     this.gestures?.update(dt);
     this.look(dt, c.gaze, c.pitch);
     this.body(c.pitch + this.tap.nod, c.yaw, c.roll);
