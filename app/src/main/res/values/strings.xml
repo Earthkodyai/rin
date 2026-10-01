@@ -7,10 +7,13 @@
     <string name="editor_title_new">New alarm</string>
     <string name="editor_title_edit">Edit alarm</string>
     <string name="editor_back">Back</string>
-    <string name="editor_save">Save</string>
+    <string name="editor_save">Save alarm</string>
     <string name="editor_failed">Couldn\'t save the change. Try again.</string>
-    <string name="editor_pick_time">Set alarm time</string>
-    <string name="editor_ok">OK</string>
+    <string name="editor_wheel_hour">Hour</string>
+    <string name="editor_wheel_minute">Minute</string>
+    <string name="editor_wheel_am_pm">AM or PM</string>
+    <string name="editor_wheel_next">Next</string>
+    <string name="editor_wheel_previous">Previous</string>
     <string name="editor_cancel">Cancel</string>
     <string name="editor_repeat">Repeat</string>
     <string name="editor_label">Label</string>
@@ -104,11 +107,9 @@
     <string name="qr_light_on">Light</string>
     <string name="qr_light_off">Light off</string>
     <!-- Always visible on Rin (05e: AI disclosure). -->
-    <string name="character_ai_badge">AI</string>
-    <string name="character_ai_badge_description">Rin is an AI character</string>
 
     <!-- Alarm editor: mission (task 3.1). -->
-    <string name="editor_mission">Mission</string>
+    <string name="editor_mission">Game</string>
     <string name="mission_choice_rin_picks">Rin picks</string>
     <string name="mission_choice_pads">Pads</string>
     <string name="mission_choice_qr">QR</string>

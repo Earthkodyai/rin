@@ -8,7 +8,6 @@ import android.graphics.Color
 import android.os.SystemClock
 import android.os.UserManager
 import android.util.Log
-import android.view.HapticFeedbackConstants
 import android.view.View
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
@@ -24,11 +23,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -51,7 +46,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -109,7 +103,7 @@ private enum class Phase {
  * wrong here, the still image takes over and the rest of the app carries on. The page's canvas stays transparent
  * until Rin's first frame, so the still sits on top and fades out once she is drawn. The page stops rendering while
  * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
- * happy for a moment there, and the phone gives a light tick here. She greets the user when the app opens and
+ * happy for a moment there (no vibration: the user cut it in UX.3, too faint to feel). She greets the user when the app opens and
  * gestures now and then (GestureDirector), and plays each gesture from [cues] (the ring screen's mission moments).
  * [onHeadTap] hears each tap on her head, for the screen's own answer (her line on the home screen).
  * Voice lines play natively (VoicePlayer, here or in a game's [speech]) and only move her mouth here.
@@ -176,7 +170,6 @@ fun CharacterView(
     AnimatedVisibility(phase != Phase.READY, enter = fadeIn(tween(FADE_MS)), exit = fadeOut(tween(FADE_MS))) {
       Still(shown.first, stills)
     }
-    AiBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
   }
 
   LifecycleResumeEffect(host) {
@@ -240,24 +233,6 @@ private fun Still(mood: Mood, stills: Map<Mood, String>) {
         )
       null -> Unit // decoding (a few ms): nothing rather than a flash of the silhouette
     }
-  }
-}
-
-/** Plan 05e: Rin is marked as AI wherever she is on screen, the 3D page and the still alike. */
-@Composable
-private fun AiBadge(modifier: Modifier = Modifier) {
-  val description = stringResource(R.string.character_ai_badge_description)
-  Surface(
-    modifier.semantics { contentDescription = description },
-    shape = RoundedCornerShape(6.dp),
-    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-  ) {
-    Text(
-      stringResource(R.string.character_ai_badge),
-      Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-      style = MaterialTheme.typography.labelSmall,
-    )
   }
 }
 
@@ -349,7 +324,6 @@ private class CharacterHost {
         }
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")
-          webView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
           if (parsed.part == "head") onHeadTap()
         }
         is CharacterMessage.Error -> {

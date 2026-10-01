@@ -10,7 +10,7 @@ Android alarm app with one original 3D anime companion, "Rin" (friendly morning 
 - Offline-only. No backend, no live AI chat (cut in D21); running cost stays $0.
 - No API keys or secrets in the app or the repo. Treat the repo as public from the first commit; gitleaks must pass.
 - Photos: on-device ML Kit only, in memory, never saved or uploaded. Mic only during an active conversation, with a visible indicator.
-- Content: SFW, Rin is clearly an adult, AI disclosure always visible, crisis protocol (Thai hotline 1323), nothing carried between mornings (no streak, no Bond; ADR 0004).
+- Content: SFW, Rin is clearly an adult, AI disclosure in onboarding and Settings (no badge on her since D29), crisis protocol (Thai hotline 1323), nothing carried between mornings (no streak, no Bond; ADR 0004).
 - Ask the user before: elevated installs (UAC never prompts on this PC), persisting a Git identity, changing Claude settings or plugins, adding dependencies that need new permissions, anything that costs money.
 
 ## Stack

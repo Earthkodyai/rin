@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.ui.editor
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -123,6 +124,23 @@ class AlarmEditorScreenTest {
       listOf("day WEDNESDAY", "ramp 60", "vibrate false", "maxSnoozes 5", "snooze 10", "save"),
       calls,
     )
+  }
+
+  /** A screen reader's Next and Previous on a wheel; the minutes wrap from 59 to 00 within the same hour. */
+  private fun wheelAction(tag: String, label: Int) {
+    val node = composeTestRule.onNodeWithTag(tag).fetchSemanticsNode()
+    val action = node.config[SemanticsActions.CustomActions].single { it.label == string(label) }
+    composeTestRule.runOnIdle { action.action() }
+  }
+
+  @Test
+  fun wheels_nextAndPrevious_setTheTime() {
+    show(alarm.copy(time = LocalTime.of(6, 59)))
+
+    wheelAction(MINUTE_WHEEL_TAG, R.string.editor_wheel_next)
+    wheelAction(HOUR_WHEEL_TAG, R.string.editor_wheel_previous)
+
+    assertEquals(listOf("time 06:00", "time 05:59"), calls)
   }
 
   @Test

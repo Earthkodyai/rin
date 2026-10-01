@@ -55,6 +55,7 @@ import io.github.earthkodyai.rinalarm.setup.SetupChecks
 import io.github.earthkodyai.rinalarm.setup.rememberNotificationPermissionAction
 import io.github.earthkodyai.rinalarm.setup.rememberRuntimePermissionAction
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.ui.common.dateText
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import io.github.earthkodyai.rinalarm.ui.setup.CheckRow
@@ -63,8 +64,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -232,7 +231,7 @@ private fun ReliabilityRunPanel(run: ReliabilityRun, modifier: Modifier = Modifi
   }
 }
 
-private fun dayText(day: LocalDate): String = day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+private fun dayText(day: LocalDate): String = dateText(day)
 
 @Composable
 private fun reasonText(reason: ReliabilityRun.Reason): String =

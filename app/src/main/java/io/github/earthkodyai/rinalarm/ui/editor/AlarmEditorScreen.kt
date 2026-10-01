@@ -1,44 +1,41 @@
 package io.github.earthkodyai.rinalarm.ui.editor
 
-import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDialog
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,19 +44,26 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,11 +78,16 @@ import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
-import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
+import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
+import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
+import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalTime
@@ -186,19 +195,12 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, onSetUpQr: () -> Unit 
     }
   }
 
-  AlarmEditorScreen(state, actions, onClose, openTimePickerFirst = alarmId == AlarmEditorViewModel.NEW_ALARM_ID)
+  AlarmEditorScreen(state, actions, onClose)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AlarmEditorScreen(
-  state: AlarmEditorUiState,
-  actions: AlarmEditorActions,
-  onClose: () -> Unit,
-  openTimePickerFirst: Boolean = false,
-) {
+internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorActions, onClose: () -> Unit) {
   val editing = state as? AlarmEditorUiState.Editing
-  var showTimePicker by rememberSaveable { mutableStateOf(openTimePickerFirst) }
   var confirmDiscard by rememberSaveable { mutableStateOf(false) }
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
@@ -211,48 +213,36 @@ internal fun AlarmEditorScreen(
   }
   BackHandler(enabled = editing?.hasChanges == true) { confirmDiscard = true }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = {
-          Text(stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new))
-        },
-        navigationIcon = {
-          IconButton(onClick = leave) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.editor_back))
-          }
-        },
-        actions = {
-          TextButton(onClick = actions::save, enabled = editing != null && !editing.busy) {
-            Text(stringResource(R.string.editor_save))
-          }
-        },
-      )
+  val p = RinTheme.palette
+  Box(Modifier.fillMaxSize().background(p.ground)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+      Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        RoundIconButton(R.drawable.ic_arrow_back, stringResource(R.string.editor_back), leave)
+        Text(
+          stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new),
+          style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+          color = p.ink,
+          modifier = Modifier.padding(start = 12.dp).semantics { heading() },
+        )
+      }
+      if (editing != null) {
+        EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f))
+      } // else loading, or closing after a save/delete
     }
-  ) { padding ->
-    if (editing == null) {
-      Box(Modifier.fillMaxSize().padding(padding)) // Loading, or closing after a save/delete.
-      return@Scaffold
+    if (editing != null) {
+      // The ground fades in behind the pill, so the controls scrolling under it never show around it.
+      Box(
+        Modifier.align(Alignment.BottomCenter)
+          .fillMaxWidth()
+          .background(Brush.verticalGradient(0f to p.ground.copy(alpha = 0f), 0.3f to p.ground))
+          .navigationBarsPadding()
+          .padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 16.dp)
+      ) {
+        PillButton(stringResource(R.string.editor_save), actions::save, Modifier.fillMaxWidth(), enabled = !editing.busy)
+      }
     }
-    EditorContent(
-      state = editing,
-      actions = actions,
-      onPickTime = { showTimePicker = true },
-      onDelete = { confirmDelete = true },
-      modifier = Modifier.padding(padding),
-    )
   }
 
-  if (editing != null && showTimePicker) {
-    AlarmTimePickerDialog(
-      initial = editing.draft.time,
-      onConfirm = {
-        actions.setTime(it)
-        showTimePicker = false
-      },
-      onDismiss = { showTimePicker = false },
-    )
-  }
   if (confirmDiscard) {
     AlertDialog(
       onDismissRequest = { confirmDiscard = false },
@@ -276,14 +266,14 @@ internal fun AlarmEditorScreen(
     AlertDialog(
       onDismissRequest = { confirmDelete = false },
       title = { Text(stringResource(R.string.delete_title)) },
-      text = { Text(stringResource(R.string.delete_text, editing.draft.time.format(rememberTimeFormatter()))) },
+      text = { Text(stringResource(R.string.delete_text, rememberClockText()(editing.draft.time).toString())) },
       confirmButton = {
         TextButton(
           onClick = {
             confirmDelete = false
             actions.delete()
           },
-          colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+          colors = ButtonDefaults.textButtonColors(contentColor = p.danger),
         ) {
           Text(stringResource(R.string.delete_confirm))
         }
@@ -299,40 +289,40 @@ internal fun AlarmEditorScreen(
 private fun EditorContent(
   state: AlarmEditorUiState.Editing,
   actions: AlarmEditorActions,
-  onPickTime: () -> Unit,
   onDelete: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val p = RinTheme.palette
   val draft = state.draft
   Column(
-    modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    modifier
+      .fillMaxWidth()
+      .verticalScroll(rememberScrollState())
+      .padding(horizontal = 16.dp)
+      .padding(top = 8.dp, bottom = SAVE_BUTTON_ROOM)
+      .navigationBarsPadding(),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     if (state.failed) {
-      Text(
-        stringResource(R.string.editor_failed),
-        color = MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-      )
+      Text(stringResource(R.string.editor_failed), color = p.danger, style = MaterialTheme.typography.bodyMedium)
     }
 
-    TextButton(
-      onClick = onPickTime,
-      modifier = Modifier.align(Alignment.CenterHorizontally).testTag(TIME_BUTTON_TAG),
-    ) {
-      Text(draft.time.format(rememberTimeFormatter()), style = MaterialTheme.typography.displayLarge)
-    }
-    state.ringsIn?.let {
-      Text(
-        stringResource(R.string.rings_in, durationText(it)),
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-      )
+    // The time: the wheels in a card, and when it will ring.
+    Column(Modifier.fillMaxWidth().sticker(radius = 28.dp).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+      TimeWheels(draft.time, actions::setTime)
+      state.ringsIn?.let {
+        Text(
+          stringResource(R.string.rings_in, durationText(it)),
+          style = MaterialTheme.typography.bodyMedium,
+          color = p.muted,
+          modifier = Modifier.padding(top = 6.dp),
+        )
+      }
     }
 
     SectionTitle(stringResource(R.string.editor_repeat))
     RepeatDayPicker(draft.repeatDays, actions::toggleDay)
-    Text(repeatSummary(draft.repeatDays), style = MaterialTheme.typography.bodySmall)
+    Text(repeatSummary(draft.repeatDays), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(start = 4.dp))
 
     OutlinedTextField(
       value = draft.label,
@@ -342,47 +332,54 @@ private fun EditorContent(
         Text(stringResource(R.string.editor_label_count, draft.label.length, RingChoices.LABEL_MAX))
       },
       singleLine = true,
+      shape = RoundedCornerShape(18.dp),
+      colors =
+        OutlinedTextFieldDefaults.colors(
+          focusedContainerColor = p.card,
+          unfocusedContainerColor = p.card,
+          focusedBorderColor = p.primary,
+          unfocusedBorderColor = p.line,
+        ),
       keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
     )
 
-    HorizontalDivider()
     SectionTitle(stringResource(R.string.editor_mission))
     MissionEditor(state, actions)
 
-    HorizontalDivider()
     SectionTitle(stringResource(R.string.editor_ringing))
     RingOptionsEditor(draft.ring, actions)
 
     if (!state.isNew) {
-      HorizontalDivider()
-      OutlinedButton(
-        onClick = onDelete,
-        enabled = !state.busy,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-        modifier = Modifier.fillMaxWidth(),
+      // Outlined, not filled: never the button a thumb lands on by mistake; the dialog asks again.
+      val shape = RoundedCornerShape(26.dp)
+      Box(
+        Modifier.padding(top = 14.dp)
+          .fillMaxWidth()
+          .height(52.dp)
+          .clip(shape)
+          .border(2.dp, p.danger, shape)
+          .clickable(enabled = !state.busy, role = Role.Button, onClick = onDelete),
+        contentAlignment = Alignment.Center,
       ) {
-        Text(stringResource(R.string.editor_delete))
+        Text(stringResource(R.string.editor_delete), style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp), color = p.danger)
       }
     }
   }
 }
 
-/** Rin picks / each mission / None, what the choice means, and what stops it from running on this phone. */
+/** Rin picks / each game / None as tiles, two to a row, what the choice means, and what stops it on this phone. */
 @Composable
 private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEditorActions) {
+  val p = RinTheme.palette
   val choice = state.draft.mission
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    val options = RingChoices.MISSIONS
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-      options.forEachIndexed { index, option ->
-        SegmentedButton(
-          selected = option == choice,
-          onClick = { actions.setMission(option) },
-          shape = SegmentedButtonDefaults.itemShape(index, options.size),
-          icon = {},
-          label = { Text(missionChoiceName(option), maxLines = 1) },
-        )
+  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    RingChoices.MISSIONS.chunked(2).forEach { pair ->
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        pair.forEach { option ->
+          ChoiceTile(missionChoiceName(option), selected = option == choice, onClick = { actions.setMission(option) }, Modifier.weight(1f))
+        }
+        if (pair.size == 1) Spacer(Modifier.weight(1f))
       }
     }
     Text(
@@ -400,20 +397,50 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
         }
       ),
       style = MaterialTheme.typography.bodySmall,
+      color = p.muted,
+      modifier = Modifier.padding(start = 4.dp),
     )
     state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
     state.missionOffers.forEach { type -> MissionOffer(type, actions) }
   }
 }
 
+/** One choice of several: a tile with a thick pink ring when it is the one. */
+@Composable
+private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val p = RinTheme.palette
+  val shape = RoundedCornerShape(18.dp)
+  Box(
+    modifier
+      .height(60.dp)
+      .sticker(radius = 18.dp, depth = 3.dp, outline = null)
+      .border(if (selected) 3.dp else 2.dp, if (selected) p.primary else p.line, shape)
+      .clip(shape)
+      .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      text,
+      style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold),
+      color = if (selected) p.primary else p.ink,
+      maxLines = 1,
+    )
+  }
+}
+
 /** Not a problem: a mission Rin could add to her picks after its setup. */
 @Composable
 private fun MissionOffer(type: MissionType, actions: AlarmEditorActions) {
-  Row(Modifier.fillMaxWidth().testTag(MISSION_OFFER_TAG), verticalAlignment = Alignment.CenterVertically) {
-    Icon(painterResource(R.drawable.ic_info), contentDescription = null, modifier = Modifier.size(20.dp))
+  val p = RinTheme.palette
+  Row(
+    Modifier.fillMaxWidth().sticker(radius = 18.dp, depth = 3.dp).padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp).testTag(MISSION_OFFER_TAG),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(painterResource(R.drawable.ic_info), contentDescription = null, tint = p.muted, modifier = Modifier.size(20.dp))
     Text(
       stringResource(R.string.mission_offer_qr),
       style = MaterialTheme.typography.bodySmall,
+      color = p.ink,
       modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
     )
     TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_set_up)) }
@@ -422,13 +449,12 @@ private fun MissionOffer(type: MissionType, actions: AlarmEditorActions) {
 
 @Composable
 private fun MissionProblem(type: MissionType, readiness: Readiness, actions: AlarmEditorActions) {
-  Row(Modifier.fillMaxWidth().testTag(MISSION_PROBLEM_TAG), verticalAlignment = Alignment.CenterVertically) {
-    Icon(
-      painterResource(R.drawable.ic_warning),
-      contentDescription = null,
-      tint = MaterialTheme.colorScheme.error,
-      modifier = Modifier.size(20.dp),
-    )
+  val p = RinTheme.palette
+  Row(
+    Modifier.fillMaxWidth().sticker(radius = 18.dp, depth = 3.dp).padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp).testTag(MISSION_PROBLEM_TAG),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(painterResource(R.drawable.ic_warning), contentDescription = null, tint = p.danger, modifier = Modifier.size(20.dp))
     Text(
       stringResource(
         when (readiness) {
@@ -444,7 +470,8 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
         missionChoiceName(MissionChoice.Only(type)),
       ),
       style = MaterialTheme.typography.bodySmall,
-      modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+      color = p.ink,
+      modifier = Modifier.weight(1f).padding(horizontal = 8.dp).padding(vertical = 8.dp),
     )
     // The QR sticker's setup asks for the camera itself, so both of its problems lead there.
     when {
@@ -456,12 +483,14 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
   }
 }
 
+/** How it rings, in one card: gentle start, vibrate, how many snoozes and how long each. */
 @Composable
 private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text(stringResource(R.string.editor_ramp), style = MaterialTheme.typography.bodyMedium)
+  val p = RinTheme.palette
+  Column(Modifier.fillMaxWidth().sticker(radius = 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    OptionLabel(stringResource(R.string.editor_ramp))
     val rampOff = stringResource(R.string.ramp_off)
-    ChoiceRow(
+    PillChoiceRow(
       options = RingChoices.withCurrent(RingChoices.RAMP_SECONDS, ring.rampSeconds),
       selected = ring.rampSeconds,
       label = { if (it == 0) rampOff else stringResource(R.string.duration_seconds, it) },
@@ -469,12 +498,17 @@ private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
     )
 
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(stringResource(R.string.editor_vibrate), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-      Switch(checked = ring.vibrate, onCheckedChange = actions::setVibrate, modifier = Modifier.testTag(VIBRATE_TAG))
+      OptionLabel(stringResource(R.string.editor_vibrate), Modifier.weight(1f))
+      Switch(
+        checked = ring.vibrate,
+        onCheckedChange = actions::setVibrate,
+        colors = rinSwitchColors(),
+        modifier = Modifier.testTag(VIBRATE_TAG),
+      )
     }
 
-    Text(stringResource(R.string.editor_max_snoozes), style = MaterialTheme.typography.bodyMedium)
-    ChoiceRow(
+    OptionLabel(stringResource(R.string.editor_max_snoozes))
+    PillChoiceRow(
       options = RingChoices.withCurrent(RingChoices.MAX_SNOOZES, ring.maxSnoozes),
       selected = ring.maxSnoozes,
       label = { it.toString() },
@@ -483,12 +517,8 @@ private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
 
     // Length only matters while snoozing is allowed; greyed out rather than hidden so the layout stays put.
     val snoozeAllowed = ring.maxSnoozes > 0
-    Text(
-      stringResource(R.string.editor_snooze_length),
-      style = MaterialTheme.typography.bodyMedium,
-      color = if (snoozeAllowed) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    ChoiceRow(
+    OptionLabel(stringResource(R.string.editor_snooze_length), color = if (snoozeAllowed) p.ink else p.muted)
+    PillChoiceRow(
       options = RingChoices.withCurrent(RingChoices.SNOOZE_MINUTES, ring.snoozeMinutes),
       selected = ring.snoozeMinutes,
       label = { stringResource(R.string.duration_minutes, it) },
@@ -499,48 +529,64 @@ private fun RingOptionsEditor(ring: RingOptions, actions: AlarmEditorActions) {
 }
 
 @Composable
-private fun ChoiceRow(
+private fun OptionLabel(text: String, modifier: Modifier = Modifier, color: Color = RinTheme.palette.ink) {
+  Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp), color = color, modifier = modifier)
+}
+
+/** A row of pills, one of them filled pink; equal widths so five fit a narrow phone. */
+@Composable
+private fun PillChoiceRow(
   options: List<Int>,
   selected: Int,
   label: @Composable (Int) -> String,
   onSelect: (Int) -> Unit,
   enabled: Boolean = true,
 ) {
-  SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-    options.forEachIndexed { index, option ->
-      SegmentedButton(
-        selected = option == selected,
-        onClick = { onSelect(option) },
-        shape = SegmentedButtonDefaults.itemShape(index, options.size),
-        enabled = enabled,
-        icon = {}, // no check mark: five segments on a narrow phone need the room for their text
-        label = { Text(label(option), maxLines = 1) },
-      )
+  val p = RinTheme.palette
+  val shape = RoundedCornerShape(22.dp)
+  Row(Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.45f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    options.forEach { option ->
+      val on = option == selected
+      Box(
+        Modifier.weight(1f)
+          .height(44.dp)
+          .clip(shape)
+          .background(if (on) p.primary else p.card)
+          .border(2.dp, if (on) p.primary else p.line, shape)
+          .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) }),
+        contentAlignment = Alignment.Center,
+      ) {
+        Text(label(option), style = MaterialTheme.typography.labelLarge, color = if (on) p.onPrimary else p.ink, maxLines = 1)
+      }
     }
   }
 }
 
-/** Seven round toggles, starting on the locale's first day of the week. */
+/** Seven round toggles, starting on the locale's first day of the week; the alarm's days are filled pink. */
 @Composable
 private fun RepeatDayPicker(days: RepeatDays, onToggle: (DayOfWeek) -> Unit) {
+  val p = RinTheme.palette
   val firstDay = WeekFields.of(LocalLocale.current.platformLocale).firstDayOfWeek
   Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
     for (offset in 0L until 7L) {
       val day = firstDay.plus(offset)
       val selected = day in days
       val name = day.displayName(TextStyle.FULL)
-      Surface(
-        checked = selected,
-        onCheckedChange = { onToggle(day) },
-        shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor =
-          if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(40.dp).semantics { contentDescription = name },
+      Box(
+        Modifier.size(44.dp)
+          .clip(CircleShape)
+          .background(if (selected) p.primary else p.card)
+          .border(2.dp, if (selected) p.primary else p.line, CircleShape)
+          .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle(day) })
+          .semantics { contentDescription = name },
+        contentAlignment = Alignment.Center,
       ) {
-        Box(contentAlignment = Alignment.Center) {
-          Text(day.displayName(TextStyle.NARROW), Modifier.clearAndSetSemantics {})
-        }
+        Text(
+          day.displayName(TextStyle.NARROW),
+          style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+          color = if (selected) p.onPrimary else p.muted,
+          modifier = Modifier.clearAndSetSemantics {},
+        )
       }
     }
   }
@@ -548,29 +594,17 @@ private fun RepeatDayPicker(days: RepeatDays, onToggle: (DayOfWeek) -> Unit) {
 
 @Composable
 private fun SectionTitle(text: String) {
-  Text(text, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+  Text(
+    text,
+    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+    color = RinTheme.palette.ink,
+    modifier = Modifier.padding(start = 4.dp, top = 10.dp).semantics { heading() },
+  )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AlarmTimePickerDialog(initial: LocalTime, onConfirm: (LocalTime) -> Unit, onDismiss: () -> Unit) {
-  val pickerState =
-    rememberTimePickerState(initial.hour, initial.minute, is24Hour = DateFormat.is24HourFormat(LocalContext.current))
-  TimePickerDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.editor_pick_time)) },
-    confirmButton = {
-      TextButton(onClick = { onConfirm(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
-        Text(stringResource(R.string.editor_ok))
-      }
-    },
-    dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.editor_cancel)) } },
-  ) {
-    TimePicker(pickerState)
-  }
-}
+/** Room under the last control for the Save pill. */
+private val SAVE_BUTTON_ROOM = 110.dp
 
-internal const val TIME_BUTTON_TAG = "editor_time"
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
 internal const val MISSION_OFFER_TAG = "editor_mission_offer"
@@ -599,7 +633,7 @@ private object PreviewActions : AlarmEditorActions {
   override fun delete() = Unit
 }
 
-@Preview(showBackground = true, heightDp = 900)
+@Preview(heightDp = 900, widthDp = 390)
 @Composable
 private fun AlarmEditorPreview() {
   val alarm = Alarm(id = 1, time = LocalTime.of(6, 30), repeatDays = RepeatDays.WEEKDAYS, label = "Work")

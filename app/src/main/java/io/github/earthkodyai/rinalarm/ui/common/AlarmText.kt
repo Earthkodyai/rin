@@ -1,9 +1,9 @@
 package io.github.earthkodyai.rinalarm.ui.common
 
+import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import io.github.earthkodyai.rinalarm.R
@@ -12,25 +12,40 @@ import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import java.time.DayOfWeek
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
 // Text shared by the alarm list and the editor.
 
 /**
- * Formats times of day the way the phone's 12/24-hour setting asks. The locale alone is not enough: a Thai locale
- * with the 24-hour switch on must still show 07:00, and the time picker follows the same switch.
+ * The app is English only (one strings file), so its times, day names and dates are English too, whatever the phone's
+ * language (the user, 2026-10-01: a Thai phone showed "อา จ อ" and "07:00 น." among English words). Only the week's
+ * first day still follows the phone's region, since that is not text.
  */
+val AppLocale: Locale = Locale.ENGLISH
+
+/**
+ * Formats times of day the way the phone's 12/24-hour setting asks, in [AppLocale]: "07:00" or "7:00 AM". For code
+ * outside Compose (notifications); screens use [rememberTimeFormatter].
+ */
+fun timeFormatter(context: Context): DateTimeFormatter {
+  val is24Hour = DateFormat.is24HourFormat(context)
+  return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(AppLocale, if (is24Hour) "Hm" else "hm"), AppLocale)
+}
+
+/** A date as "Oct 1, 2026", in [AppLocale]. */
+fun dateText(date: LocalDate): String =
+  date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(AppLocale))
+
 @Composable
 fun rememberTimeFormatter(): DateTimeFormatter {
   val context = LocalContext.current
-  val locale = LocalLocale.current.platformLocale
   val is24Hour = DateFormat.is24HourFormat(context)
-  return remember(locale, is24Hour) {
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, if (is24Hour) "Hm" else "hm"), locale)
-  }
+  return remember(is24Hour) { timeFormatter(context) }
 }
 
 /**
@@ -45,10 +60,9 @@ data class ClockText(val digits: String, val amPm: String?) {
 @Composable
 fun rememberClockText(): (LocalTime) -> ClockText {
   val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
-  val locale = LocalLocale.current.platformLocale
-  return remember(is24Hour, locale) {
+  return remember(is24Hour) {
     val digits = DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm", Locale.ROOT)
-    val amPm = DateTimeFormatter.ofPattern("a", locale)
+    val amPm = DateTimeFormatter.ofPattern("a", AppLocale)
     val format: (LocalTime) -> ClockText = { ClockText(it.format(digits), if (is24Hour) null else it.format(amPm)) }
     format
   }
@@ -62,8 +76,7 @@ fun repeatSummary(days: RepeatDays): String =
     RepeatDays.WEEKDAYS -> stringResource(R.string.repeat_weekdays)
     RepeatDays.WEEKEND -> stringResource(R.string.repeat_weekend)
     else -> {
-      val locale = LocalLocale.current.platformLocale
-      days.days.joinToString(", ") { it.getDisplayName(TextStyle.SHORT, locale) }
+      days.days.joinToString(", ") { it.getDisplayName(TextStyle.SHORT, AppLocale) }
     }
   }
 
@@ -84,9 +97,8 @@ fun missionChoiceName(choice: MissionChoice): String =
     }
   )
 
-/** A weekday's name in the UI's current locale (observable, so a locale change recomposes). */
-@Composable
-fun DayOfWeek.displayName(style: TextStyle): String = getDisplayName(style, LocalLocale.current.platformLocale)
+/** A weekday's name in [AppLocale]. */
+fun DayOfWeek.displayName(style: TextStyle): String = getDisplayName(style, AppLocale)
 
 /** "7 h 20 min", "2 d 1 h", "1 min". Rounded up to the minute, so an alarm 30 s away never reads "0 min". */
 @Composable

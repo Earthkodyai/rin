@@ -66,9 +66,8 @@ import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import io.github.earthkodyai.rinalarm.ui.common.RinLine
+import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Full-screen ring UI over the lock screen (showWhenLocked + turnScreenOn in the manifest): Rin head to toe, the
@@ -186,7 +185,7 @@ internal fun RingScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Text(
-        request.time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)),
+        request.time.format(rememberTimeFormatter()),
         style = MaterialTheme.typography.displayMedium,
       )
       Text(

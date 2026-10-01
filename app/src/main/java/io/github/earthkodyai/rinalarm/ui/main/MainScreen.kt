@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -38,7 +38,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -49,8 +48,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -64,9 +73,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -86,11 +100,14 @@ import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.onSick
 import io.github.earthkodyai.rinalarm.theme.sickFill
+import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
+import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -99,6 +116,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
+import kotlin.math.ceil
 
 @Composable
 fun MainScreen(
@@ -187,7 +205,12 @@ internal fun MainScreen(
       ListHeader(state)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth())
     }
-    AddButton(onAdd, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 20.dp))
+    PillButton(
+      stringResource(R.string.alarm_add),
+      onAdd,
+      Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 20.dp),
+      icon = R.drawable.ic_add,
+    )
   }
 }
 
@@ -213,21 +236,6 @@ private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit) {
     RoundIconButton(R.drawable.ic_pulse, stringResource(R.string.diagnostics_title), onDiagnostics)
     Spacer(Modifier.size(10.dp))
     RoundIconButton(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings)
-  }
-}
-
-@Composable
-private fun RoundIconButton(icon: Int, description: String, onClick: () -> Unit) {
-  val p = RinTheme.palette
-  Box(
-    Modifier.size(48.dp)
-      .sticker(radius = 24.dp, depth = 3.dp)
-      .clip(CircleShape)
-      .clickable(onClickLabel = description, role = Role.Button, onClick = onClick)
-      .semantics { contentDescription = description },
-    contentAlignment = Alignment.Center,
-  ) {
-    Icon(painterResource(icon), contentDescription = null, tint = p.ink, modifier = Modifier.size(22.dp))
   }
 }
 
@@ -290,17 +298,69 @@ private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit) {
       enter = fadeIn() + scaleIn(initialScale = 0.85f),
       exit = fadeOut() + scaleOut(targetScale = 0.9f),
     ) {
-      Text(
-        shown.orEmpty(),
-        style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, lineHeight = 20.sp),
-        color = p.ink,
-        modifier =
-          Modifier.widthIn(max = 150.dp)
-            .sticker(fill = p.bubble, radius = 18.dp, depth = 3.dp)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-      )
+      Bubble(shown.orEmpty())
     }
+  }
+}
+
+/**
+ * Her line in a rounded bubble with two little dots trailing toward her (the user's pick, 2026-10-01, over tails; drafts
+ * in docs/ux/bubble-tails.png). As wide as its longest line, not its widest allowed width, so the padding is even on
+ * both sides and the text sits centred (the wrapped text had left a gap on the right).
+ */
+@Composable
+private fun Bubble(text: String) {
+  val p = RinTheme.palette
+  val style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
+  val measurer = rememberTextMeasurer()
+  val width =
+    with(LocalDensity.current) {
+      val layout = measurer.measure(text, style, constraints = Constraints(maxWidth = BUBBLE_TEXT_MAX.roundToPx()))
+      val widest = (0 until layout.lineCount).maxOfOrNull { layout.getLineRight(it) - layout.getLineLeft(it) } ?: 0f
+      ceil(widest).toDp()
+    }
+  Text(
+    text,
+    style = style,
+    color = p.ink,
+    modifier =
+      Modifier.drawBehind { bubbleDots(p.bubble, p.hardShadow, if (p.night) p.line else null) }
+        .sticker(fill = p.bubble, depth = 3.dp, shape = BubbleShape)
+        .padding(start = 14.dp, end = 14.dp + DOTS_WIDE, top = 11.dp, bottom = 11.dp + DOTS_LOW)
+        .width(width)
+        .semantics { liveRegion = LiveRegionMode.Polite },
+  )
+}
+
+private val BUBBLE_TEXT_MAX = 140.dp
+
+/** Room the dots take beside and below the box. */
+private val DOTS_WIDE = 18.dp
+private val DOTS_LOW = 3.dp
+
+/** The rounded box, leaving room at its right and bottom for the dots. */
+private object BubbleShape : Shape {
+  override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+    val d = density.density
+    val r = 18f * d
+    val box = RoundRect(0f, 0f, size.width - DOTS_WIDE.value * d, size.height - DOTS_LOW.value * d, CornerRadius(r, r))
+    // A path, not Outline.Rounded: border() draws a rounded outline at the node's full size, dots' room included.
+    return Outline.Generic(Path().apply { addRoundRect(box) })
+  }
+}
+
+/**
+ * The two dots off the box's lower right, toward her: a 4.5 dp one just off its side and a 2.8 dp one further out and
+ * lower. Their own light 1.5 dp drop, not the box's 3 dp, which made them look like buttons at night.
+ */
+private fun DrawScope.bubbleDots(fill: Color, shadow: Color, outline: Color?) {
+  val d = density
+  val bw = size.width - DOTS_WIDE.value * d
+  val bh = size.height - DOTS_LOW.value * d
+  for ((centre, radius) in listOf(Offset(bw + 6 * d, bh * 0.78f) to 4.5f * d, Offset(bw + 15 * d, bh * 0.98f) to 2.8f * d)) {
+    drawCircle(shadow, radius, centre + Offset(0f, 1.5f * d))
+    drawCircle(fill, radius, centre)
+    if (outline != null) drawCircle(outline, radius, centre, style = Stroke(1f * d))
   }
 }
 
@@ -497,15 +557,7 @@ private fun AlarmCard(alarm: Alarm, onEdit: () -> Unit, onToggle: (Boolean) -> U
     Switch(
       checked = alarm.enabled,
       onCheckedChange = onToggle,
-      colors =
-        SwitchDefaults.colors(
-          checkedThumbColor = p.onPrimary,
-          checkedTrackColor = p.primary,
-          checkedBorderColor = p.primary,
-          uncheckedThumbColor = if (p.night) p.line else p.card,
-          uncheckedTrackColor = if (p.night) p.ground else p.line,
-          uncheckedBorderColor = p.line,
-        ),
+      colors = rinSwitchColors(),
       modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = switchDescription },
     )
   }
@@ -551,29 +603,6 @@ private fun MissionTag(mission: MissionChoice) {
     color = p.onTag,
     modifier = Modifier.background(p.tag, RoundedCornerShape(10.dp)).padding(horizontal = 9.dp, vertical = 3.dp),
   )
-}
-
-/** The big pink pill at the bottom right: the screen's main action. */
-@Composable
-private fun AddButton(onAdd: () -> Unit, modifier: Modifier) {
-  val p = RinTheme.palette
-  Row(
-    modifier
-      .height(58.dp)
-      .sticker(fill = p.primary, radius = 29.dp, depth = 5.dp, shadow = p.primaryShadow, outline = null)
-      .clip(RoundedCornerShape(29.dp))
-      .clickable(role = Role.Button, onClick = onAdd)
-      .padding(start = 20.dp, end = 24.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(painterResource(R.drawable.ic_add), contentDescription = null, tint = p.onPrimary)
-    Text(
-      stringResource(R.string.alarm_add),
-      style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 17.sp),
-      color = p.onPrimary,
-      modifier = Modifier.padding(start = 8.dp),
-    )
-  }
 }
 
 private val previewRows: List<AlarmRow>

@@ -59,9 +59,8 @@ import io.github.earthkodyai.rinalarm.mission.QrSticker
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
+import io.github.earthkodyai.rinalarm.ui.common.dateText
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import kotlin.math.roundToInt
 
 /** Sticker setup for the QR mission (task 3.2). Every control is a tap target; nothing is typed. */
@@ -203,7 +202,7 @@ private fun Start(
           stringResource(
             R.string.qr_existing,
             formatName(existing.format),
-            existing.setAt.atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
+            dateText(existing.setAt.atZone(ZoneId.systemDefault()).toLocalDate()),
           ),
           style = MaterialTheme.typography.titleMedium,
         )

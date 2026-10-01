@@ -24,13 +24,15 @@ import io.github.earthkodyai.rinalarm.setup.fullScreenLostNotice
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import io.github.earthkodyai.rinalarm.ui.common.timeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AlarmNotifications @Inject constructor(@ApplicationContext private val context: Context) : MissedAlarmNotifier {
-  private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+  /** Read per use: the phone's 12/24-hour switch can change while the app runs. */
+  private val timeFormat: DateTimeFormatter
+    get() = timeFormatter(context)
 
   /** Called from Application.onCreate. Channels are cheap and idempotent. */
   fun createChannels() {
