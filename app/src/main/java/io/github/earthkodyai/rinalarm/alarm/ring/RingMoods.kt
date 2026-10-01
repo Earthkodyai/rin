@@ -35,7 +35,7 @@ object RingMoods {
     when (phase) {
       RingPhase.WAKING -> Gesture.WAVE
       RingPhase.WORKING -> Gesture.NOD
-      RingPhase.STALLED -> Gesture.POUT
+      RingPhase.STALLED -> Gesture.HUFF // pout's folded arms clip the user's Rin (Gesture.onRing)
       RingPhase.PASSED -> Gesture.CLAP
     }
 

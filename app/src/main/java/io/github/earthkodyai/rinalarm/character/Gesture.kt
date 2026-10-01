@@ -31,6 +31,13 @@ enum class Gesture(val wire: String) {
       else -> this
     }
 
+  /**
+   * This gesture as the ring screen (full body) plays it: a sulk is a huff there too. The user's own Rin folds her
+   * arms through her body and her flared skirt, on the way in and while folded, and no keyframe tuning cleared it
+   * without the pose turning into arms held straight out (2026-10-01, the user's pick). Pout stays for other models.
+   */
+  fun onRing(): Gesture = if (this == POUT) HUFF else this
+
   companion object {
     fun fromWire(wire: String): Gesture? = entries.firstOrNull { it.wire == wire }
   }

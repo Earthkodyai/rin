@@ -160,7 +160,7 @@ constructor(
 
   /** A gesture for Rin, unless it is a pouty one and she is [calm]. */
   private fun cue(gesture: Gesture) {
-    if (!(gesture.pouty && calm())) cueFlow.tryEmit(gesture)
+    if (!(gesture.pouty && calm())) cueFlow.tryEmit(gesture.onRing())
   }
 
   private fun pushHush() = ringState.setHush(maxOf(gameHush, speaker.hush.value))

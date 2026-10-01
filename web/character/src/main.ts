@@ -34,12 +34,19 @@ const num = (key: string, fallback: number) => {
   return q.has(key) && Number.isFinite(value) && value > 0 ? value : fallback;
 };
 const modelPath = q.get('model');
+/** The lights' default share of the original rig (see lightScale). */
+const LIGHT_SCALE = 0.8;
 let fpsCap = num('fps', 30);
 const prCap = num('pr', 2);
 const t0 = q.has('t0') ? Number(q.get('t0')) : null;
 let mood: Mood = isMood(q.get('mood')) ? (q.get('mood') as Mood) : 'relieved';
 let intensity = Math.min(num('intensity', 1), 1);
 const fullBody = q.get('frame') === 'full';
+/**
+ * How bright her lights are, as a share of the original rig (directional pi + ambient 0.4 pi). That rig washed the
+ * user's Rin's cream skin out to white (2026-10-01; VRoid Studio shows it shaded). `light=` overrides it to compare.
+ */
+const lightScale = num('light', LIGHT_SCALE);
 
 const fail = (e: unknown) =>
   send({ v: PROTOCOL, type: 'error', message: String((e as Error)?.stack ?? e).slice(0, 2000) });
@@ -57,9 +64,9 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 20);
-const light = new THREE.DirectionalLight(0xffffff, Math.PI);
+const light = new THREE.DirectionalLight(0xffffff, Math.PI * lightScale);
 light.position.set(1, 1.5, 1.5);
-const ambient = new THREE.AmbientLight(0xffffff, 0.4 * Math.PI);
+const ambient = new THREE.AmbientLight(0xffffff, 0.4 * Math.PI * lightScale);
 scene.add(light, ambient);
 
 /** The top of the model (hair included); framing hangs from it, so any model (the sample, Rin) sits the same way. */

@@ -51,6 +51,13 @@ export async function checkGestures({ pageDir, model, out, maxMm = 10, writeBody
   }
 }
 
+/**
+ * Gestures the app no longer plays on this model: still measured and listed, but they do not fail the check. pout's
+ * folded arms clip the user's Rin, so both screens play huff instead (Gesture.onStrip/onRing in the app, 2026-10-01).
+ * Take a gesture out of this list when the app plays it again.
+ */
+export const UNPLAYED = ['pout'];
+
 async function cli(argv) {
   const args = { out: 'build/gesture-check', maxMm: 10, writeBody: undefined, browser: undefined, software: false };
   const files = [];
@@ -75,10 +82,11 @@ async function cli(argv) {
     const w = r.worst;
     const where = w ? ` at ${w.t.toFixed(2)} s, ${w.bone} at ${JSON.stringify(w.at)}, torso there x ${JSON.stringify(w.torso.x)} z ${JSON.stringify(w.torso.z)}` : '';
     const frill = r.frill ? ` (frill ${r.frill.mm} mm at ${r.frill.t.toFixed(2)} s, ${r.frill.bone})` : '';
-    console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.gesture.padEnd(8)} ${String(r.mm).padStart(3)} mm${where}${frill}`);
+    const status = r.ok ? 'ok  ' : UNPLAYED.includes(r.gesture) ? 'skip' : 'FAIL';
+    console.log(`${status} ${r.gesture.padEnd(8)} ${String(r.mm).padStart(3)} mm${where}${frill}${status === 'skip' ? ' (not played)' : ''}`);
   }
   console.log(`sheets (front, left, right, above): ${path.resolve(args.out)}`);
-  if (rows.some((r) => !r.ok)) process.exit(1);
+  if (rows.some((r) => !r.ok && !UNPLAYED.includes(r.gesture))) process.exit(1);
 }
 
 if (process.argv[1]?.endsWith('check-gestures.mjs')) {

@@ -100,6 +100,9 @@ class ScriptTest {
   @Test
   fun onTheHomeStrip_pout_andClap_becomeGesturesThatReadFromHeadAndShoulders() {
     assertEquals(Gesture.HUFF, Gesture.POUT.onStrip())
+    // The ring screen too, since the user's Rin folds her arms through her skirt (2026-10-01).
+    assertEquals(Gesture.HUFF, Gesture.POUT.onRing())
+    assertEquals(Gesture.CLAP, Gesture.CLAP.onRing())
     assertEquals(Gesture.JOY, Gesture.CLAP.onStrip())
     assertEquals(Gesture.WAVE, Gesture.WAVE.onStrip())
   }

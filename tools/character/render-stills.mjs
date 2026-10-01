@@ -132,13 +132,13 @@ export async function openStillPage({ pageDir, model, width, height, browser, so
 /** A PNG data URL from the page, as bytes. */
 export const pngOf = (url) => Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
 
-export async function renderStills({ pageDir, model, outDir, height = 720, browser, software = false }) {
+export async function renderStills({ pageDir, model, outDir, height = 720, browser, software = false, extra = '' }) {
   const written = [];
   let loadedS = 0;
   for (const framing of FRAMINGS) {
     const h = Math.round(height * framing.scale);
     const out = path.join(outDir, framing.dir);
-    const set = await renderSet({ pageDir, model, outDir: out, height: h, aspect: framing.aspect, query: framing.query, browser, software });
+    const set = await renderSet({ pageDir, model, outDir: out, height: h, aspect: framing.aspect, query: framing.query + extra, browser, software });
     written.push(...set.written.map((w) => ({ ...w, framing: framing.name })));
     loadedS += set.loadedS;
   }
@@ -208,13 +208,14 @@ async function renderSet({ pageDir, model, outDir, height, aspect, query, browse
 }
 
 async function cli(argv) {
-  const args = { height: 720, browser: undefined, software: false };
+  const args = { height: 720, browser: undefined, software: false, extra: '' };
   const files = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--height') args.height = Number(argv[++i]);
     else if (a === '--browser') args.browser = argv[++i];
     else if (a === '--software') args.software = true;
+    else if (a === '--light') args.extra += `&light=${Number(argv[++i])}`; // compare lighting levels
     else files.push(a);
   }
   if (files.length !== 3 || !(args.height > 0)) {

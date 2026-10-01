@@ -23,6 +23,6 @@ class RingMoodsTest {
   @Test
   fun stalling_makesHerPout() {
     assertEquals(Mood.POUTY, RingMoods.mood(RingPhase.STALLED))
-    assertEquals(Gesture.POUT, RingMoods.cue(RingPhase.STALLED))
+    assertEquals(Gesture.HUFF, RingMoods.cue(RingPhase.STALLED))
   }
 }
