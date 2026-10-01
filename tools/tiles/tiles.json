@@ -1,0 +1,20 @@
+{
+  "_note": "Pictures behind the alarm editor's game and sound tiles (UX.7, the user 2026-10-02: AI-made, cute pastel anime, filling the tile with the name on a pill). One shared style so the ten match. Built files go to app/src/main/assets/tiles/<id>.webp.",
+  "model": "gemini-3.1-flash-image",
+  "aspectRatio": "21:9",
+  "takes": 2,
+  "style": "Cute pastel anime-style illustration for a mobile game button background. Soft rounded shapes, gentle cel shading, bright but soft pastel colours on a light cream background, warm morning light. Wide banner composition: the main objects sit on the left and right, with calmer, simpler space in the centre where a label will go. No people, no characters, no words, no logos, no watermark text.",
+  "tiles": [
+    { "id": "game_rin_picks", "label": "Game: Rin picks", "subject": "A cheerful mix of little game items: four small glossy square buttons in red, blue, yellow and green, a pink cup with a small yellow ball, wooden alphabet blocks, and tiny sparkles." },
+    { "id": "pads", "label": "Game: Pads", "subject": "Four big glossy rounded square game buttons in red, blue, yellow and green, softly glowing as if being pressed in order, with little light sparkles." },
+    { "id": "cups", "label": "Game: Cups", "subject": "Three pink upside-down cups on a wooden table, a small yellow ball peeking out from under one, with soft swirl trails showing the cups being shuffled." },
+    { "id": "speech", "label": "Game: Speak", "subject": "Colourful wooden alphabet blocks and floating cute speech bubbles, with soft sound-wave lines, as if someone is repeating a sentence out loud. Letters only on the blocks, no readable words." },
+    { "id": "none", "label": "Game: None", "subject": "A single big round pastel pink button on a soft cream surface, simple and calm, with a few faint sparkles." },
+    { "id": "sound_rin_picks", "label": "Sound: Rin picks", "subject": "Floating musical notes in many pastel colours around a small open music box, with tiny sparkles." },
+    { "id": "magic", "label": "Sound: Magic morning", "subject": "A magical morning: a sparkly star-tipped wand, a small open spell book with glowing pages, purple and gold stars and sparkles drifting in the air." },
+    { "id": "cafe", "label": "Sound: Sweet bistro", "subject": "A cute pastel patisserie table in a little Parisian bistro: macarons, a strawberry cupcake, wrapped candies and a small coffee cup with a heart in the foam." },
+    { "id": "arcade", "label": "Sound: Arcade morning", "subject": "Retro arcade game items in pastel pixel-art style: pixel hearts, shiny coins, a small arcade joystick and a little game cartridge." },
+    { "id": "nature", "label": "Sound: Forest morning", "subject": "A fresh morning in a forest: green leaves, small wild flowers, a little bird on a branch and soft sun rays through the trees by a stream." },
+    { "id": "beep", "label": "Sound: Beep", "subject": "A classic twin-bell alarm clock in pastel pink, ringing, with simple curved sound-wave lines around it." }
+  ]
+}
