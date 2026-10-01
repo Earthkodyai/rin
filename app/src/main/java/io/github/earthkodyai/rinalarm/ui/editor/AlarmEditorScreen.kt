@@ -5,7 +5,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -50,7 +50,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
@@ -63,6 +62,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -381,7 +381,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
             selected = option == choice,
             onClick = { actions.setMission(option) },
             Modifier.weight(1f),
-            art = TileArt.of(option),
+            mark = TileMark.of(option),
           )
         }
         if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -409,39 +409,36 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
 }
 
 /**
- * One choice of several: a tile with a thick pink ring when it is the one. With a picture ([art], tools/tiles) the
- * picture fills the tile and the name sits on a pill of the card colour, readable on any picture, by day and night.
+ * One choice of several: a tile with a thick pink ring when it is the one, its [mark] on a badge beside the name
+ * (minimal marks, the user 2026-10-02).
  */
 @Composable
-private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, art: String? = null) {
+private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, mark: TileMark? = null) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(18.dp)
-  val picture = art?.let { rememberTileArt(it) }
-  Box(
+  Row(
     modifier
       .height(60.dp)
       .sticker(radius = 18.dp, depth = 3.dp, outline = null)
+      .border(if (selected) 3.dp else 2.dp, if (selected) p.primary else p.line, shape)
       .clip(shape)
-      .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
-    contentAlignment = Alignment.Center,
+      .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+      .padding(horizontal = 10.dp),
+    horizontalArrangement = Arrangement.Center,
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    if (picture != null) {
-      Image(picture, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+    if (mark != null) {
+      TileBadge(mark)
+      Spacer(Modifier.width(8.dp))
     }
     Text(
       text,
       style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold),
       color = if (selected) p.primary else p.ink,
       maxLines = 1,
-      modifier =
-        if (picture != null) {
-          Modifier.background(p.card.copy(alpha = 0.92f), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 3.dp)
-        } else {
-          Modifier
-        },
+      overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.weight(1f, fill = false),
     )
-    // The ring on top, so the picture never covers it.
-    Box(Modifier.matchParentSize().border(if (selected) 3.dp else 2.dp, if (selected) p.primary else p.line, shape))
   }
 }
 
@@ -495,7 +492,7 @@ private fun SoundChooser(sound: AlarmSound, themes: List<MusicTheme>, onPick: (A
   Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
     choices.chunked(2).forEach { row ->
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        row.forEach { choice -> ChoiceTile(name(choice), sound == choice, { onPick(choice) }, Modifier.weight(1f), art = TileArt.of(choice)) }
+        row.forEach { choice -> ChoiceTile(name(choice), sound == choice, { onPick(choice) }, Modifier.weight(1f), mark = TileMark.of(choice)) }
         if (row.size == 1) Spacer(Modifier.weight(1f))
       }
     }
