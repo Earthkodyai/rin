@@ -7,25 +7,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,16 +26,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -59,12 +51,17 @@ import io.github.earthkodyai.rinalarm.mission.QrSticker
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
+import io.github.earthkodyai.rinalarm.ui.common.RinPage
 import io.github.earthkodyai.rinalarm.ui.common.dateText
+import io.github.earthkodyai.rinalarm.ui.common.rinCard
+import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /** Sticker setup for the QR mission (task 3.2). Every control is a tap target; nothing is typed. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QrSetupScreen(onClose: () -> Unit, viewModel: QrSetupViewModel = hiltViewModel()) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,23 +92,7 @@ fun QrSetupScreen(onClose: () -> Unit, viewModel: QrSetupViewModel = hiltViewMod
   val shareTitle = stringResource(R.string.qr_share_title)
   val share = { payload: String -> StickerImage.share(context, payload, caption, shareTitle) }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text(stringResource(R.string.qr_setup_title)) },
-        navigationIcon = {
-          IconButton(onClick = onClose) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.editor_back))
-          }
-        },
-      )
-    }
-  ) { padding ->
-    Column(
-      Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+  RinPage(stringResource(R.string.qr_setup_title), onClose) {
       when (state.step) {
         SetupStep.START -> Start(state, viewModel::makeSticker, viewModel::useExisting, viewModel::recheck, share)
         SetupStep.STICKER -> Sticker(checkNotNull(state.payload), { share(checkNotNull(state.payload)) }, viewModel::stickerPlaced)
@@ -136,12 +117,8 @@ fun QrSetupScreen(onClose: () -> Unit, viewModel: QrSetupViewModel = hiltViewMod
         }
         SetupStep.CONFIRM -> {
           Body(stringResource(R.string.qr_confirm, formatName(state.candidate?.format)))
-          Button(onClick = viewModel::confirmCandidate, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(stringResource(R.string.qr_confirm_use))
-          }
-          OutlinedButton(onClick = viewModel::rescan, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(stringResource(R.string.qr_confirm_rescan))
-          }
+          PillButton(stringResource(R.string.qr_confirm_use), viewModel::confirmCandidate, Modifier.fillMaxWidth())
+          QuietPillButton(stringResource(R.string.qr_confirm_rescan), viewModel::rescan, Modifier.fillMaxWidth())
         }
         SetupStep.BED_INTRO -> {
           if (state.bedSpot == 0) {
@@ -150,13 +127,12 @@ fun QrSetupScreen(onClose: () -> Unit, viewModel: QrSetupViewModel = hiltViewMod
           Text(
             stringResource(R.string.qr_bed_spot, state.bedSpot + 1, BedSpot.entries.size, bedSpotName(BedSpot.entries[state.bedSpot])),
             style = MaterialTheme.typography.titleLarge,
+            color = RinTheme.palette.ink,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
           )
           if (state.bedProblem) Hint(R.string.qr_bed_no_frames)
-          Button(onClick = viewModel::startBedCheck, modifier = Modifier.fillMaxWidth().height(64.dp).testTag(BED_START_TAG)) {
-            Text(stringResource(R.string.qr_bed_start), style = MaterialTheme.typography.titleMedium)
-          }
+          PillButton(stringResource(R.string.qr_bed_start), viewModel::startBedCheck, Modifier.fillMaxWidth().testTag(BED_START_TAG))
         }
         SetupStep.BED_RUNNING -> {
           Body(stringResource(R.string.qr_bed_running))
@@ -164,24 +140,22 @@ fun QrSetupScreen(onClose: () -> Unit, viewModel: QrSetupViewModel = hiltViewMod
           Text(
             state.bedSecondsLeft.toString(),
             style = MaterialTheme.typography.displayMedium,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            color = RinTheme.palette.primary,
+            modifier = Modifier.align(Alignment.CenterHorizontally).semantics { liveRegion = LiveRegionMode.Polite },
           )
         }
         SetupStep.BED_FAILED -> {
           Body(stringResource(R.string.qr_bed_failed, bedSpotName(BedSpot.entries[state.bedSpot])))
-          Button(onClick = viewModel::retryBedCheck, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text(stringResource(R.string.qr_bed_again))
-          }
+          PillButton(stringResource(R.string.qr_bed_again), viewModel::retryBedCheck, Modifier.fillMaxWidth())
         }
         SetupStep.SAVING -> Unit
         SetupStep.DONE -> {
           val saved = checkNotNull(state.saved)
           Body(stringResource(R.string.qr_done))
-          Text(measured(saved), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-          Button(onClick = onClose, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(stringResource(R.string.qr_done_close)) }
+          Text(measured(saved), style = MaterialTheme.typography.bodyMedium, color = RinTheme.palette.muted, modifier = Modifier.fillMaxWidth())
+          PillButton(stringResource(R.string.qr_done_close), onClose, Modifier.fillMaxWidth())
         }
       }
-    }
   }
 }
 
@@ -196,56 +170,52 @@ private fun Start(
   Body(stringResource(R.string.qr_intro))
   val existing = state.existing
   if (existing != null) {
-    Card(Modifier.fillMaxWidth()) {
-      Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
           stringResource(
             R.string.qr_existing,
             formatName(existing.format),
             dateText(existing.setAt.atZone(ZoneId.systemDefault()).toLocalDate()),
           ),
-          style = MaterialTheme.typography.titleMedium,
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+          color = RinTheme.palette.ink,
         )
-        Text(measured(existing), style = MaterialTheme.typography.bodySmall)
-        Button(onClick = onRecheck, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(stringResource(R.string.qr_moved)) }
-        existing.payload?.let { payload ->
-          OutlinedButton(onClick = { share(payload) }) { Text(stringResource(R.string.qr_share_again)) }
-        }
-      }
+        Text(measured(existing), style = MaterialTheme.typography.bodySmall, color = RinTheme.palette.muted)
+        PillButton(stringResource(R.string.qr_moved), onRecheck, Modifier.fillMaxWidth())
+        existing.payload?.let { payload -> QuietPillButton(stringResource(R.string.qr_share_again), { share(payload) }, height = 46.dp) }
     }
     // Nothing is replaced until the new code passes its bed check, so these need no confirmation.
     Body(stringResource(R.string.qr_replace_note))
   }
-  Button(onClick = onMake, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-    Text(stringResource(if (existing == null) R.string.qr_make else R.string.qr_make_new), style = MaterialTheme.typography.titleMedium)
-  }
-  OutlinedButton(onClick = onExisting, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-    Text(stringResource(if (existing == null) R.string.qr_use_existing else R.string.qr_use_other), style = MaterialTheme.typography.titleMedium)
-  }
+  PillButton(stringResource(if (existing == null) R.string.qr_make else R.string.qr_make_new), onMake, Modifier.fillMaxWidth())
+  QuietPillButton(stringResource(if (existing == null) R.string.qr_use_existing else R.string.qr_use_other), onExisting, Modifier.fillMaxWidth())
 }
 
 @Composable
-private fun Sticker(payload: String, onShare: () -> Unit, onPlaced: () -> Unit) {
+private fun ColumnScope.Sticker(payload: String, onShare: () -> Unit, onPlaced: () -> Unit) {
   val image = remember(payload) { StickerImage.bitmap(payload).asImageBitmap() }
-  Image(image, contentDescription = stringResource(R.string.qr_sticker_image), modifier = Modifier.size(240.dp), filterQuality = FilterQuality.None)
+  // White in both looks: the code is printed on white, and a scanner wants the quiet margin around it.
+  Box(Modifier.align(Alignment.CenterHorizontally).sticker(fill = Color.White, radius = 22.dp).padding(16.dp)) {
+    Image(image, contentDescription = stringResource(R.string.qr_sticker_image), modifier = Modifier.size(240.dp), filterQuality = FilterQuality.None)
+  }
   Body(stringResource(R.string.qr_sticker_where))
-  Button(onClick = onShare, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(stringResource(R.string.qr_share)) }
-  OutlinedButton(onClick = onPlaced, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(stringResource(R.string.qr_placed)) }
+  PillButton(stringResource(R.string.qr_share), onShare, Modifier.fillMaxWidth())
+  QuietPillButton(stringResource(R.string.qr_placed), onPlaced, Modifier.fillMaxWidth())
 }
 
 @Composable
 private fun Camera(allowed: Boolean, onAllow: () -> Unit, onCodes: (List<io.github.earthkodyai.rinalarm.mission.SeenCode>) -> Unit, onError: () -> Unit) {
   if (allowed) {
-    QrScanner(onCodes, Modifier.fillMaxWidth().height(320.dp).clip(RoundedCornerShape(12.dp)), onError = { onError() })
+    QrScanner(onCodes, Modifier.fillMaxWidth().height(320.dp).clip(RoundedCornerShape(22.dp)), onError = { onError() })
   } else {
     Body(stringResource(R.string.qr_camera_needed))
-    Button(onClick = onAllow, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text(stringResource(R.string.mission_allow)) }
+    PillButton(stringResource(R.string.mission_allow), onAllow, Modifier.fillMaxWidth())
   }
 }
 
 @Composable
 private fun Body(text: String) {
-  Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.fillMaxWidth())
+  Text(text, style = MaterialTheme.typography.bodyLarge, color = RinTheme.palette.ink, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
@@ -253,6 +223,7 @@ private fun Hint(text: Int) {
   Text(
     stringResource(text),
     style = MaterialTheme.typography.titleMedium,
+    color = RinTheme.palette.ink,
     textAlign = TextAlign.Center,
     modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
   )

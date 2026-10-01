@@ -1,54 +1,66 @@
 package io.github.earthkodyai.rinalarm.ui.setup
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.CheckResult
 import io.github.earthkodyai.rinalarm.setup.DeviceStatus
 import io.github.earthkodyai.rinalarm.setup.Severity
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.SmallPillButton
 
-/** One setup check: status icon, name, what it means right now, and a Fix/Open button when there is one. */
+/**
+ * One setup check: status icon, name, what it means right now, and a Fix/Open pill when there is one. Laid out for a
+ * row inside a card (Diagnostics' checks card).
+ */
 @Composable
-fun CheckRow(check: CheckResult, status: DeviceStatus, onFix: () -> Unit) {
-  ListItem(
-    leadingContent = { SeverityIcon(check.severity) },
-    headlineContent = { Text(checkTitle(check.id)) },
-    supportingContent = {
-      Column {
-        Text(checkText(check, status))
-        if (check.id == CheckId.FULL_SCREEN && check.severity != Severity.OK && status.xiaomiFamily) {
-          Text(stringResource(R.string.check_full_screen_xiaomi), style = MaterialTheme.typography.bodySmall)
-        }
+fun CheckRow(check: CheckResult, status: DeviceStatus, onFix: () -> Unit, modifier: Modifier = Modifier) {
+  val p = RinTheme.palette
+  Row(modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    SeverityIcon(check.severity)
+    Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(checkTitle(check.id), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = p.ink)
+      Text(checkText(check, status), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+      if (check.id == CheckId.FULL_SCREEN && check.severity != Severity.OK && status.xiaomiFamily) {
+        Text(stringResource(R.string.check_full_screen_xiaomi), style = MaterialTheme.typography.bodySmall, color = p.muted)
       }
-    },
-    trailingContent =
-      fixLabel(check)?.let { label -> { TextButton(onClick = onFix) { Text(stringResource(label)) } } },
-  )
+    }
+    fixLabel(check)?.let { label -> SmallPillButton(stringResource(label), onFix, Modifier.padding(start = 10.dp)) }
+  }
 }
 
 @Composable
 fun SeverityIcon(severity: Severity) {
+  val p = RinTheme.palette
   val (icon, tint, description) =
     when (severity) {
-      Severity.OK -> Triple(R.drawable.ic_check_circle, MaterialTheme.colorScheme.primary, R.string.check_status_ok)
-      Severity.INFO -> Triple(R.drawable.ic_info, MaterialTheme.colorScheme.onSurfaceVariant, R.string.check_status_info)
-      Severity.WARNING -> Triple(R.drawable.ic_warning, WARNING_AMBER, R.string.check_status_warning)
-      Severity.CRITICAL -> Triple(R.drawable.ic_error, MaterialTheme.colorScheme.error, R.string.check_status_critical)
+      Severity.OK -> Triple(R.drawable.ic_check_circle, p.mintText, R.string.check_status_ok)
+      Severity.INFO -> Triple(R.drawable.ic_info, p.muted, R.string.check_status_info)
+      Severity.WARNING -> Triple(R.drawable.ic_warning, if (p.night) NIGHT_AMBER else DAY_AMBER, R.string.check_status_warning)
+      // The setup banner's red by day; at night it is too dark on the navy card, so the light danger red.
+      Severity.CRITICAL -> Triple(R.drawable.ic_error, if (p.night) p.danger else p.alert, R.string.check_status_critical)
     }
   Icon(painterResource(icon), contentDescription = stringResource(description), tint = tint)
 }
 
-/** Material's amber 800: reads as "warning" on both light and dark surfaces, unlike the theme's tertiary. */
-private val WARNING_AMBER = Color(0xFFFF8F00)
+/** Amber that reads as "warning": deep enough by day to show on the white card, light at night on the navy one. */
+private val DAY_AMBER = Color(0xFFB86E00)
+private val NIGHT_AMBER = Color(0xFFFFC24D)
 
 private fun fixLabel(check: CheckResult): Int? =
   when {

@@ -4,25 +4,22 @@ import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.RinPage
+import io.github.earthkodyai.rinalarm.ui.common.rinCard
 
 /** One block of the privacy notice, as the screen draws it. */
 sealed interface PrivacyBlock {
@@ -57,30 +54,15 @@ object PrivacyText {
   const val ASSET = "privacy/PRIVACY.md"
 }
 
-/** "How Rin uses your data" (09-security-privacy): the same notice as on the web, readable offline. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** "How Rin uses your data" (09-security-privacy): the same notice as on the web, readable offline, on one card. */
 @Composable
 fun PrivacyScreen(onBack: () -> Unit) {
   val context = LocalContext.current
   val blocks = remember { PrivacyText.load(context) }
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text(stringResource(R.string.privacy_title)) },
-        navigationIcon = {
-          IconButton(onClick = onBack) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.editor_back))
-          }
-        },
-      )
-    }
-  ) { padding ->
-    Column(
-      Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+  RinPage(stringResource(R.string.privacy_title), onBack) {
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       if (blocks == null) {
-        Text(stringResource(R.string.privacy_missing), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.privacy_missing), style = MaterialTheme.typography.bodyMedium, color = RinTheme.palette.ink)
       } else {
         blocks.forEach { Block(it) }
       }
@@ -90,16 +72,22 @@ fun PrivacyScreen(onBack: () -> Unit) {
 
 @Composable
 private fun Block(block: PrivacyBlock) {
+  val p = RinTheme.palette
   when (block) {
     // The top bar already names the page.
     is PrivacyBlock.Title -> Unit
     is PrivacyBlock.Heading ->
-      Text(block.text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-    is PrivacyBlock.Paragraph -> Text(block.text, style = MaterialTheme.typography.bodyMedium)
+      Text(
+        block.text,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+        color = p.ink,
+        modifier = Modifier.padding(top = 8.dp).semantics { heading() },
+      )
+    is PrivacyBlock.Paragraph -> Text(block.text, style = MaterialTheme.typography.bodyMedium, color = p.ink)
     is PrivacyBlock.Bullet ->
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("•", style = MaterialTheme.typography.bodyMedium)
-        Text(block.text, style = MaterialTheme.typography.bodyMedium)
+        Text("•", style = MaterialTheme.typography.bodyMedium, color = p.primary)
+        Text(block.text, style = MaterialTheme.typography.bodyMedium, color = p.ink)
       }
   }
 }

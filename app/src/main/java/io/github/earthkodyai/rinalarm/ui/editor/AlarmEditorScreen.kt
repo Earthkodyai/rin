@@ -56,7 +56,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -80,8 +79,10 @@ import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
-import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
+import io.github.earthkodyai.rinalarm.ui.common.RinTopBar
+import io.github.earthkodyai.rinalarm.ui.common.SectionTitle
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
@@ -218,15 +219,7 @@ internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorAc
   Box(Modifier.fillMaxSize().background(p.ground)) {
     RinBackdrop(Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-      Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        RoundIconButton(R.drawable.ic_arrow_back, stringResource(R.string.editor_back), leave)
-        Text(
-          stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new),
-          style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-          color = p.ink,
-          modifier = Modifier.padding(start = 12.dp).semantics { heading() },
-        )
-      }
+      RinTopBar(stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new), leave)
       if (editing != null) {
         EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f))
       } // else loading, or closing after a save/delete
@@ -535,35 +528,6 @@ private fun OptionLabel(text: String, modifier: Modifier = Modifier, color: Colo
   Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp), color = color, modifier = modifier)
 }
 
-/** A row of pills, one of them filled pink; equal widths so five fit a narrow phone. */
-@Composable
-private fun PillChoiceRow(
-  options: List<Int>,
-  selected: Int,
-  label: @Composable (Int) -> String,
-  onSelect: (Int) -> Unit,
-  enabled: Boolean = true,
-) {
-  val p = RinTheme.palette
-  val shape = RoundedCornerShape(22.dp)
-  Row(Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.45f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-    options.forEach { option ->
-      val on = option == selected
-      Box(
-        Modifier.weight(1f)
-          .height(44.dp)
-          .clip(shape)
-          .background(if (on) p.primary else p.card)
-          .border(2.dp, if (on) p.primary else p.line, shape)
-          .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) }),
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(label(option), style = MaterialTheme.typography.labelLarge, color = if (on) p.onPrimary else p.ink, maxLines = 1)
-      }
-    }
-  }
-}
-
 /** Seven round toggles, starting on the locale's first day of the week; the alarm's days are filled pink. */
 @Composable
 private fun RepeatDayPicker(days: RepeatDays, onToggle: (DayOfWeek) -> Unit) {
@@ -592,16 +556,6 @@ private fun RepeatDayPicker(days: RepeatDays, onToggle: (DayOfWeek) -> Unit) {
       }
     }
   }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-  Text(
-    text,
-    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-    color = RinTheme.palette.ink,
-    modifier = Modifier.padding(start = 4.dp, top = 10.dp).semantics { heading() },
-  )
 }
 
 /** Room under the last control for the Save pill. */

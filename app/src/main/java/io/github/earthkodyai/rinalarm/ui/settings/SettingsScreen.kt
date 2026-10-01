@@ -1,28 +1,28 @@
 package io.github.earthkodyai.rinalarm.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,6 +34,12 @@ import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.data.ThemeMode
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
+import io.github.earthkodyai.rinalarm.ui.common.RinPage
+import io.github.earthkodyai.rinalarm.ui.common.rinCard
+import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
+import io.github.earthkodyai.rinalarm.ui.common.sticker
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,7 +77,6 @@ fun SettingsScreen(onBack: () -> Unit, onPrivacy: () -> Unit, viewModel: Setting
   )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsScreen(
   poutOff: Boolean,
@@ -81,69 +86,70 @@ internal fun SettingsScreen(
   onPrivacy: () -> Unit,
   onBack: () -> Unit,
 ) {
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text(stringResource(R.string.settings_title)) },
-        navigationIcon = {
-          IconButton(onClick = onBack) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.editor_back))
-          }
+  val p = RinTheme.palette
+  RinPage(stringResource(R.string.settings_title), onBack) {
+    // The app's own day or night look (UX phase): Auto follows the time of day, never the phone's dark mode.
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      CardText(stringResource(R.string.settings_look), stringResource(R.string.settings_look_summary))
+      PillChoiceRow(
+        options = ThemeMode.entries,
+        selected = themeMode,
+        label = { mode ->
+          stringResource(
+            when (mode) {
+              ThemeMode.AUTO -> R.string.settings_look_auto
+              ThemeMode.DAY -> R.string.settings_look_day
+              ThemeMode.NIGHT -> R.string.settings_look_night
+            }
+          )
         },
+        onSelect = onThemeMode,
       )
     }
-  ) { padding ->
-    Column(Modifier.fillMaxSize().padding(padding)) {
-      // The app's own day or night look (UX phase): Auto follows the time of day, never the phone's dark mode.
-      ListItem(
-        headlineContent = { Text(stringResource(R.string.settings_look)) },
-        supportingContent = { Text(stringResource(R.string.settings_look_summary)) },
-      )
-      SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
-        val modes = ThemeMode.entries
-        modes.forEachIndexed { i, mode ->
-          SegmentedButton(
-            selected = themeMode == mode,
-            onClick = { onThemeMode(mode) },
-            shape = SegmentedButtonDefaults.itemShape(i, modes.size),
-            modifier = Modifier.height(48.dp),
-          ) {
-            Text(
-              stringResource(
-                when (mode) {
-                  ThemeMode.AUTO -> R.string.settings_look_auto
-                  ThemeMode.DAY -> R.string.settings_look_day
-                  ThemeMode.NIGHT -> R.string.settings_look_night
-                }
-              )
-            )
-          }
-        }
-      }
-      HorizontalDivider()
-      // The whole row toggles: a bigger target than the switch alone (the user's slips, Phase 2).
-      ListItem(
-        headlineContent = { Text(stringResource(R.string.settings_pout)) },
-        supportingContent = { Text(stringResource(R.string.settings_pout_summary)) },
-        trailingContent = { Switch(checked = poutOff, onCheckedChange = null) },
-        modifier = Modifier.clickable { onPoutOff(!poutOff) },
-      )
-      HorizontalDivider()
-      ListItem(
-        headlineContent = { Text(stringResource(R.string.about_rin_title)) },
-        supportingContent = { Text(stringResource(R.string.about_rin)) },
-      )
-      HorizontalDivider()
-      ListItem(
-        headlineContent = { Text(stringResource(R.string.privacy_title)) },
-        supportingContent = { Text(stringResource(R.string.privacy_summary)) },
-        modifier = Modifier.clickable(onClick = onPrivacy),
+    // The whole card toggles: a bigger target than the switch alone (the user's slips, Phase 2).
+    Row(
+      Modifier.fillMaxWidth()
+        .sticker(radius = 22.dp)
+        .clip(RoundedCornerShape(22.dp))
+        .toggleable(value = poutOff, role = Role.Switch, onValueChange = onPoutOff)
+        .padding(16.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      CardText(stringResource(R.string.settings_pout), stringResource(R.string.settings_pout_summary), Modifier.weight(1f))
+      Switch(checked = poutOff, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 12.dp))
+    }
+    Column(Modifier.rinCard()) { CardText(stringResource(R.string.about_rin_title), stringResource(R.string.about_rin)) }
+    Row(
+      Modifier.fillMaxWidth()
+        .sticker(radius = 22.dp)
+        .clip(RoundedCornerShape(22.dp))
+        .clickable(role = Role.Button, onClick = onPrivacy)
+        .padding(16.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      CardText(stringResource(R.string.privacy_title), stringResource(R.string.privacy_summary), Modifier.weight(1f))
+      // The back arrow turned around: "opens a page".
+      Icon(
+        painterResource(R.drawable.ic_arrow_back),
+        contentDescription = null,
+        tint = p.muted,
+        modifier = Modifier.padding(start = 12.dp).size(20.dp).rotate(180f),
       )
     }
   }
 }
 
-@Preview(showBackground = true)
+/** A card's name and what it means. */
+@Composable
+private fun CardText(title: String, text: String, modifier: Modifier = Modifier) {
+  val p = RinTheme.palette
+  Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold), color = p.ink)
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
+  }
+}
+
+@Preview
 @Composable
 private fun SettingsScreenPreview() {
   RinAlarmTheme {
