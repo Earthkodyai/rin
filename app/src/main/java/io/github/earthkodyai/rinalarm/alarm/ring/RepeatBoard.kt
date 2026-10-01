@@ -5,20 +5,16 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -47,64 +43,98 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.ui.common.sticker
+import io.github.earthkodyai.rinalarm.theme.RinTheme
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import io.github.earthkodyai.rinalarm.mission.Feedback
 import io.github.earthkodyai.rinalarm.mission.RepeatPhase
 import io.github.earthkodyai.rinalarm.mission.RepeatState
 
 /**
- * Repeat after Rin (task 3.5) under Rin on the ring screen. The card keeps one height through the whole game: a card
- * that resized made her page stall (task 3.4). The sentence is always shown, so the game works with the sound off and
- * in release builds, which have no voice clips until Phase 4. The mic's state is always visible (CLAUDE.md), on top
- * of Android's own indicator.
+ * Repeat after Rin (task 3.5) on the ring screen, in two parts since UX.4: [RepeatCard] in the sheet (the intro and
+ * "Let's play", then "Hear again" and "Can't talk right now") and [RepeatPanel] floating over her chest (the sentence,
+ * whose turn it is, the mic and the word chips), so the sheet stays small and she stays big (the user, 2026-10-01).
+ * The sentence is always shown, so the game works with the sound off. The mic's state is always visible (CLAUDE.md),
+ * on top of Android's own indicator.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RepeatCard(
+internal fun RepeatCard(state: RepeatState?, onStart: () -> Unit, onHearAgain: () -> Unit, onCantTalk: () -> Unit) {
+  // After the pass the in-game row stays (inert, under "Nice work!"): the intro is taller, and switching back to it
+  // grew the sheet and shrank her just as she said goodbye (test ring, 2026-10-01).
+  if (state == null || state.phase == RepeatPhase.READY) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+      GameIntro(R.string.repeat_title, R.string.repeat_intro, onStart, REPEAT_START_TAG)
+      CantTalk(onCantTalk)
+    }
+    return
+  }
+  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    val canReplay = state.phase == RepeatPhase.LISTENING || state.phase == RepeatPhase.TAPPING
+    HearAgain(canReplay, onHearAgain)
+    Spacer(Modifier.weight(1f))
+    CantTalk(onCantTalk)
+  }
+}
+
+/** The sentence, whose turn it is and the word chips, on a sticker over her chest. */
+@Composable
+internal fun RepeatPanel(
   state: RepeatState?,
   rinSpeaking: Boolean,
   micLevel: Float,
-  onStart: () -> Unit,
-  onHearAgain: () -> Unit,
   onTapWord: (Int) -> Unit,
-  onCantTalk: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-  Box(Modifier.fillMaxWidth().height(CARD_HEIGHT)) {
+  state ?: return
+  val p = RinTheme.palette
+  CompositionLocalProvider(LocalContentColor provides p.ink) {
     Column(
-      Modifier.fillMaxSize(),
+      modifier.fillMaxWidth().sticker(fill = p.bubble, radius = 24.dp).padding(horizontal = 16.dp, vertical = 14.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      if (state == null || state.phase == RepeatPhase.READY || state.phase == RepeatPhase.PASSED) {
-        GameIntro(R.string.repeat_title, R.string.repeat_intro, onStart, REPEAT_START_TAG, enabled = state?.phase != RepeatPhase.PASSED)
-        Spacer(Modifier.weight(1f))
-        CantTalk(onCantTalk)
-        return@Column
-      }
       Sentence(state)
       Status(state, rinSpeaking, micLevel)
-      // Top-aligned and scrollable: a long sentence's chips must never end up out of reach (smoke ring, 2026-09-29:
-      // centred rows taller than this box lost their top row, and the sentence could not be finished).
-      Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
-        if (state.phase == RepeatPhase.TAPPING) Chips(state, onTapWord)
-      }
-      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        val canReplay = state.phase == RepeatPhase.LISTENING || state.phase == RepeatPhase.TAPPING
-        OutlinedButton(onClick = onHearAgain, enabled = canReplay, modifier = Modifier.height(48.dp).testTag(REPEAT_AGAIN_TAG)) {
-          Icon(painterResource(R.drawable.ic_volume), contentDescription = null, modifier = Modifier.size(18.dp))
-          Spacer(Modifier.size(6.dp))
-          Text(stringResource(R.string.repeat_hear_again))
-        }
-        Spacer(Modifier.weight(1f))
-        CantTalk(onCantTalk)
-      }
+      if (state.phase == RepeatPhase.TAPPING) Chips(state, onTapWord)
     }
+  }
+}
+
+/** Replays her line: an outlined pill, greyed while there is nothing to replay. */
+@Composable
+private fun HearAgain(enabled: Boolean, onHearAgain: () -> Unit) {
+  val p = RinTheme.palette
+  val shape = RoundedCornerShape(22.dp)
+  Row(
+    Modifier.height(44.dp)
+      .alpha(if (enabled) 1f else 0.45f)
+      .clip(shape)
+      .background(p.card)
+      .border(2.dp, p.line, shape)
+      .clickable(enabled = enabled, role = Role.Button, onClick = onHearAgain)
+      .padding(horizontal = 14.dp)
+      .testTag(REPEAT_AGAIN_TAG),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(painterResource(R.drawable.ic_volume), contentDescription = null, tint = p.ink, modifier = Modifier.size(18.dp))
+    Spacer(Modifier.size(6.dp))
+    Text(stringResource(R.string.repeat_hear_again), style = MaterialTheme.typography.labelLarge, color = p.ink)
   }
 }
 
 @Composable
 private fun CantTalk(onCantTalk: () -> Unit) {
-  TextButton(onClick = onCantTalk, modifier = Modifier.heightIn(min = 48.dp).testTag(REPEAT_CANT_TALK_TAG)) {
-    Text(stringResource(R.string.repeat_cant_talk))
+  // Ink, not the theme's pink: pink text on the pink sheet was 4.1:1, under WCAG's 4.5.
+  TextButton(onClick = onCantTalk, modifier = Modifier.heightIn(min = 44.dp).testTag(REPEAT_CANT_TALK_TAG)) {
+    Text(stringResource(R.string.repeat_cant_talk), color = RinTheme.palette.ink, style = MaterialTheme.typography.labelLarge)
   }
 }
 
@@ -193,6 +223,8 @@ private fun ListenBar(state: RepeatState) {
   LinearProgressIndicator(
     progress = { if (listening) left.value else 0f },
     modifier = Modifier.fillMaxWidth().height(6.dp).alpha(if (listening) 1f else 0f),
+    color = RinTheme.palette.primary,
+    trackColor = RinTheme.palette.line,
   )
 }
 
@@ -224,9 +256,6 @@ private fun Chips(state: RepeatState, onTapWord: (Int) -> Unit) {
     }
   }
 }
-
-/** Fits two rows of chips under a two-line sentence (8 words at most, RepeatGameTest). */
-private val CARD_HEIGHT = 320.dp
 
 internal const val REPEAT_START_TAG = "ring_repeat_start"
 internal const val REPEAT_AGAIN_TAG = "ring_repeat_again"

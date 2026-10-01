@@ -102,3 +102,47 @@ val RinPalette.sickFill: Color
 
 val RinPalette.onSick: Color
   get() = if (night) ground else card
+
+/** The ring screen's wallpaper (ui/common/RinPattern.kt), by day and by night. */
+@Immutable
+data class PatternColors(
+  val base: Color,
+  val stripe: Color,
+  val heart: Color,
+  val clockFill: Color,
+  val clockLine: Color,
+  val star: Color,
+  val cup: Color,
+  val dash: Color,
+  /** Secondary text over it: [RinPalette.muted] was 3.8:1 on the day stripes. */
+  val muted: Color,
+)
+
+private val DayPattern =
+  PatternColors(
+    base = Color(0xFFFFCADB),
+    stripe = Color(0xFFFFBCD0),
+    heart = Color(0xFFFF7FA3),
+    clockFill = Color(0xFFFFFFFF),
+    clockLine = Color(0xFFF59AB4),
+    star = Color(0xFFFFC94D),
+    cup = Color(0xFFE8697A),
+    dash = Color(0xFFFFFFFF),
+    muted = Color(0xFF6A4A58),
+  )
+
+private val NightPattern =
+  PatternColors(
+    base = Color(0xFF262E63),
+    stripe = Color(0xFF2D3772),
+    heart = Color(0xFFFF8FB8),
+    clockFill = Color(0xFF3B4687),
+    clockLine = Color(0xFF8F97D6),
+    star = Color(0xFFFFE9A8),
+    cup = Color(0xFFC25A72),
+    dash = Color(0xFF4A56A0),
+    muted = Color(0xFFB9B3D9),
+  )
+
+val RinPalette.pattern: PatternColors
+  get() = if (night) NightPattern else DayPattern

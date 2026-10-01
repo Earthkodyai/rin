@@ -89,11 +89,11 @@ internal fun PadsBoard(
 ) {
   val rules = remember { PadsRules() }
   BoxWithConstraints(
-    // The ring screen's own colour, no panel: the pads sit on the page (the user's pick; cream or navy since UX.4).
-    modifier.clipToBounds().background(RinTheme.palette.ground).testTag(PADS_BOARD_TAG),
+    // Nothing of its own behind the pads: they sit on the ring screen's patterned surface, joined to the sheet (UX.4).
+    modifier.clipToBounds().testTag(PADS_BOARD_TAG),
     contentAlignment = Alignment.Center,
   ) {
-    val side = minOf(maxWidth, maxHeight)
+    val side = minOf(maxWidth, maxHeight) - PANEL_MARGIN * 2
     val gap = 12.dp
     val pad = (side - gap) / 2
     val left = (maxWidth - side) / 2
@@ -293,5 +293,8 @@ private val PAD_NAMES = mapOf(Pad.RED to R.string.pad_red, Pad.BLUE to R.string.
 
 internal const val PADS_BOARD_TAG = "pads_board"
 internal const val PADS_START_TAG = "pads_start"
+
+/** Room around the pads on their surface. */
+private val PANEL_MARGIN = 12.dp
 
 internal fun padTag(pad: Pad) = "pad_${pad.name.lowercase()}"

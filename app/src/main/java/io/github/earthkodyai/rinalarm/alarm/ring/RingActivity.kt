@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,6 +41,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -83,12 +87,14 @@ import io.github.earthkodyai.rinalarm.mission.RepeatPhase
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.theme.pattern
 import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import io.github.earthkodyai.rinalarm.ui.common.BubbleDots
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
+import io.github.earthkodyai.rinalarm.ui.common.rinPattern
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.LocalTime
 
@@ -224,6 +230,16 @@ internal fun RingScreen(
     if (p.night) Stars(Modifier.fillMaxSize())
     // Created once both are measured, so her page starts framed for them.
     if (topPx > 0 && sheetPx > 0) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
+    // The pads game: one patterned surface from under the time down through the sheet, the pads on it (the user:
+    // the pads' panel and the sheet joined). It covers her while the pads are up and fades when they step aside.
+    val padsUp = pads?.phase == PadsPhase.DEMO || pads?.phase == PadsPhase.INPUT
+    AnimatedVisibility(padsUp, enter = fadeIn(), exit = fadeOut()) {
+      Box(
+        Modifier.fillMaxSize()
+          .padding(top = top + 4.dp)
+          .rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true)
+      )
+    }
 
     Column(Modifier.fillMaxSize()) {
       Spacer(Modifier.height(top))
@@ -238,6 +254,16 @@ internal fun RingScreen(
           // Her page's cups once it shows them; until then (or if it never does) the native board.
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d }
           if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
+        }
+        // Repeat after Rin: the sentence floats over her chest, so the sheet stays small and she stays big (the user).
+        if (game == MissionType.SPEECH && playing && started) {
+          RepeatPanel(
+            state.repeat,
+            state.rinSpeaking,
+            state.micLevel,
+            onTapWord,
+            Modifier.align(BiasAlignment(0f, 0.45f)).padding(horizontal = 20.dp),
+          )
         }
         RinBubble(
           state.line?.text,
@@ -258,6 +284,7 @@ internal fun RingScreen(
     )
     Sheet(
       Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { sheetPx = it.height },
+      joined = padsUp,
     ) {
       // After a pass, a snooze or the emergency stop, the game section and the controls stay as invisible, inert
       // space, so the sheet keeps its height while she claps or says her last line.
@@ -271,8 +298,7 @@ internal fun RingScreen(
             game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
             // The cups keep their line visible through the pass: she claps behind the table.
             game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
-            game == MissionType.SPEECH ->
-              RepeatCard(state.repeat, state.rinSpeaking, state.micLevel, onStartGame, onHearAgain, onTapWord, onCantTalk)
+            game == MissionType.SPEECH -> RepeatCard(state.repeat, onStartGame, onHearAgain, onCantTalk)
           }
         }
         if (state.passed && game != MissionType.CUPS) Passed()
@@ -372,22 +398,25 @@ private fun Stars(modifier: Modifier) {
 private val STARS = listOf(0.08f to 0.06f, 0.9f to 0.04f, 0.16f to 0.32f, 0.82f to 0.4f, 0.06f to 0.55f, 0.5f to 0.02f)
 
 /**
- * The white sheet at the bottom: the game's part and the controls, over her view. It sets the text colour itself:
+ * The sheet at the bottom, compact and on the ring screen's patterned wallpaper (the user: the white one was too big
+ * and flat; their reference, a pink striped wallpaper of small cute things): the game's part and the controls, over
+ * her view. It sets the text colour itself:
  * the games' texts once took it from the Material cards they sat in, and without them fell back to black, which
  * vanished on the night sheet (Repeat after Rin's sentence, UX.4 test ring).
  */
 @Composable
-private fun Sheet(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun Sheet(modifier: Modifier, joined: Boolean, content: @Composable ColumnScope.() -> Unit) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
   CompositionLocalProvider(LocalContentColor provides p.ink) {
     Column(
       modifier
-        .background(p.card, shape)
-        .let { if (p.night) it.border(1.dp, p.line, shape) else it }
+        // Joined: the pads' surface behind already runs through here, so the sheet draws nothing of its own.
+        .then(if (joined) Modifier else Modifier.rinPattern(shape, drift = true))
+        .let { if (p.night && !joined) it.border(1.dp, p.line, shape) else it }
         .navigationBarsPadding()
-        .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp),
-      verticalArrangement = Arrangement.spacedBy(14.dp),
+        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
       content = content,
     )
   }
@@ -404,7 +433,7 @@ private fun Controls(
   if (state.plainDismiss) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       if (request.snoozesLeft > 0) SnoozeButton(request, onSnooze, Modifier.fillMaxWidth())
-      PillButton(stringResource(R.string.ring_dismiss), onDismiss, Modifier.fillMaxWidth().height(72.dp))
+      PillButton(stringResource(R.string.ring_dismiss), onDismiss, Modifier.fillMaxWidth().height(64.dp))
     }
     return
   }
@@ -412,7 +441,7 @@ private fun Controls(
     if (request.snoozesLeft > 0) SnoozeButton(request, onSnooze, Modifier.weight(1f))
     HoldToStopButton(
       onEmergencyStop,
-      (if (request.snoozesLeft > 0) Modifier.width(HOLD_WIDTH) else Modifier.fillMaxWidth()).height(52.dp),
+      (if (request.snoozesLeft > 0) Modifier.width(HOLD_WIDTH) else Modifier.fillMaxWidth()).height(CONTROL_HEIGHT),
     )
   }
 }
@@ -421,10 +450,10 @@ private fun Controls(
 @Composable
 private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: Modifier) {
   val p = RinTheme.palette
-  val shape = RoundedCornerShape(26.dp)
+  val shape = RoundedCornerShape(24.dp)
   Box(
     modifier
-      .height(52.dp)
+      .height(CONTROL_HEIGHT)
       .clip(shape)
       .background(p.card)
       .border(2.dp, p.line, shape)
@@ -443,6 +472,9 @@ private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: M
 }
 
 private val HOLD_WIDTH = 150.dp
+
+/** Snooze and the emergency hold: big enough for a sleepy thumb, small enough to leave her the screen. */
+private val CONTROL_HEIGHT = 48.dp
 
 /**
  * The QR mission (task 3.2): a big "Scan sticker" button until tapped, then the camera with a hint about what it sees.
@@ -477,18 +509,19 @@ private fun QrSection(state: RingUiState, onOpenCamera: () -> Unit, scanner: @Co
 
 internal const val QR_SCANNER_TAG = "ring_qr_scanner"
 
+/** Compact, so it fits in the game row it covers and the sheet keeps its height at the pass. */
 @Composable
 private fun Passed() {
   val p = RinTheme.palette
   Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
     Text(
       stringResource(R.string.mission_passed),
-      style = MaterialTheme.typography.headlineSmall,
+      style = MaterialTheme.typography.titleLarge,
       color = p.ink,
       textAlign = TextAlign.Center,
       modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
     )
-    Text(stringResource(R.string.ring_tap_to_close), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+    Text(stringResource(R.string.ring_tap_to_close), style = MaterialTheme.typography.bodySmall, color = p.pattern.muted)
   }
 }
 

@@ -28,6 +28,10 @@ class RinPaletteContrastTest {
       "tag text" to (p.onTag to p.tag),
       "sick day on" to (p.onSick to p.sickFill),
       "setup banner" to (p.onAlert to p.alert),
+      "ink on the pattern" to (p.ink to p.pattern.base),
+      "ink on the pattern's stripes" to (p.ink to p.pattern.stripe),
+      "secondary text on the pattern" to (p.pattern.muted to p.pattern.base),
+      "secondary text on the pattern's stripes" to (p.pattern.muted to p.pattern.stripe),
     )
 
   @Test
