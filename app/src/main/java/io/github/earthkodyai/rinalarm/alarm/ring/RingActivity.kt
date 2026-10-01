@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.character.CharacterView
@@ -62,6 +63,8 @@ import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.QrScanner
 import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.theme.RinThemedContent
+import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import io.github.earthkodyai.rinalarm.ui.common.RinLine
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -77,13 +80,14 @@ import java.time.format.FormatStyle
 @AndroidEntryPoint
 class RingActivity : ComponentActivity() {
   private val viewModel: RingViewModel by viewModels()
+  @Inject lateinit var themeClock: ThemeClock
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     setContent {
-      RinAlarmTheme {
+      RinThemedContent(themeClock) {
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         LaunchedEffect(state.finished) { if (state.finished) finish() }
         LaunchedEffect(viewModel) {

@@ -17,7 +17,8 @@ import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.alarm.ring.RingActivity
 import io.github.earthkodyai.rinalarm.alarm.ring.RingState
 import io.github.earthkodyai.rinalarm.di.AppScope
-import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.theme.RinThemedContent
+import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
   @Inject lateinit var engine: AlarmEngine
   @Inject @AppScope lateinit var appScope: CoroutineScope
   @Inject lateinit var ringState: RingState
+  @Inject lateinit var themeClock: ThemeClock
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -42,7 +44,9 @@ class MainActivity : ComponentActivity() {
 
     enableEdgeToEdge()
     setContent {
-      RinAlarmTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      RinThemedContent(themeClock) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() }
+      }
     }
   }
 }

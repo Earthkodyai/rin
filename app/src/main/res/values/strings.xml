@@ -296,6 +296,11 @@
     <string name="day_rest_on">Next alarm: no game, and Rin keeps it gentle. Tap again to cancel.</string>
     <string name="day_sick_on">Next alarm: no game and a softer ring. Tap again to cancel.</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_look">Look</string>
+    <string name="settings_look_summary">Auto turns to night at 19:00 and back to day at 06:00.</string>
+    <string name="settings_look_auto">Auto</string>
+    <string name="settings_look_day">Day</string>
+    <string name="settings_look_night">Night</string>
     <string name="settings_pout">No pouting</string>
     <string name="settings_pout_summary">Rin stays calm when you snooze or miss in a game, and skips her teasing lines.</string>
 </resources>

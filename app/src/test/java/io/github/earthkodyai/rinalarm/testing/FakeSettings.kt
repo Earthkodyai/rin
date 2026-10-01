@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.testing
 import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.data.DayMode
 import io.github.earthkodyai.rinalarm.data.DayModeKind
+import io.github.earthkodyai.rinalarm.data.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** [AppSettings] in memory. */
@@ -28,5 +29,11 @@ class FakeSettings(poutOff: Boolean = false, dayMode: DayMode? = null) : AppSett
 
   override suspend fun endDayMode(used: DayMode) {
     if (dayMode.value == used) dayMode.value = null
+  }
+
+  override val themeMode = MutableStateFlow(ThemeMode.AUTO)
+
+  override suspend fun setThemeMode(mode: ThemeMode) {
+    themeMode.value = mode
   }
 }

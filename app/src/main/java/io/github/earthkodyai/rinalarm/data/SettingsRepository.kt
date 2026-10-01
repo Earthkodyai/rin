@@ -31,6 +31,11 @@ interface AppSettings {
 
   /** A ring used [used] up: cleared, unless the user has tapped a new one since. */
   suspend fun endDayMode(used: DayMode)
+
+  /** Day, night, or by the time of day (the app's own look, not the phone's dark mode). */
+  val themeMode: Flow<ThemeMode>
+
+  suspend fun setThemeMode(mode: ThemeMode)
 }
 
 /** [AppSettings] in a Preferences DataStore in device-protected storage. */
@@ -71,6 +76,12 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     }
   }
 
+  override val themeMode: Flow<ThemeMode> = store.data.map { ThemeMode.fromStored(it[THEME_MODE]) }
+
+  override suspend fun setThemeMode(mode: ThemeMode) {
+    store.edit { it[THEME_MODE] = mode.stored }
+  }
+
   private fun Preferences.dayMode(): DayMode? {
     val kind = DayModeKind.fromStored(this[DAY_MODE]) ?: return null
     return DayMode(kind, this[DAY_MODE_AT] ?: return null)
@@ -81,5 +92,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     val POUT_OFF = booleanPreferencesKey("pout_off")
     val DAY_MODE = stringPreferencesKey("day_mode")
     val DAY_MODE_AT = longPreferencesKey("day_mode_at")
+    val THEME_MODE = stringPreferencesKey("theme_mode")
   }
 }

@@ -1,50 +1,82 @@
 package io.github.earthkodyai.rinalarm.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 
-private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
+/** The palette in effect: [RinAlarmTheme] provides it, screens read it as `RinTheme.palette`. */
+val LocalRinPalette = staticCompositionLocalOf { DayPalette }
 
-private val LightColorScheme =
-  lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+object RinTheme {
+  val palette: RinPalette
+    @Composable @ReadOnlyComposable get() = LocalRinPalette.current
+}
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-  )
-
+/**
+ * RinAlarm's look (UX phase): a fixed palette, day or [night], never the wallpaper's (dynamic colour is off) nor the
+ * phone's dark mode; ThemeClock decides [night] from the user's setting and the time of day. Material components get
+ * the palette through the colour scheme, the app's own shapes through [RinTheme.palette].
+ */
 @Composable
-fun RinAlarmTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
-  content: @Composable () -> Unit,
-) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+fun RinAlarmTheme(night: Boolean = false, content: @Composable () -> Unit) {
+  val p = if (night) NightPalette else DayPalette
+  val scheme =
+    if (night) {
+      darkColorScheme(
+        primary = p.primary,
+        onPrimary = p.onPrimary,
+        secondary = p.mint,
+        onSecondary = p.ground,
+        tertiary = p.glow,
+        background = p.ground,
+        onBackground = p.ink,
+        surface = p.ground,
+        onSurface = p.ink,
+        surfaceVariant = p.card,
+        onSurfaceVariant = p.muted,
+        surfaceContainer = p.card,
+        surfaceContainerHigh = p.card,
+        surfaceContainerHighest = p.card,
+        surfaceContainerLow = p.card,
+        outline = p.line,
+        outlineVariant = p.line,
+        secondaryContainer = p.rinCard,
+        onSecondaryContainer = p.ink,
+        primaryContainer = p.primary,
+        onPrimaryContainer = p.onPrimary,
+        errorContainer = p.card,
+        onErrorContainer = p.danger,
+      )
+    } else {
+      lightColorScheme(
+        primary = p.primary,
+        onPrimary = p.onPrimary,
+        secondary = p.mintText,
+        onSecondary = p.card,
+        tertiary = p.glow,
+        background = p.ground,
+        onBackground = p.ink,
+        surface = p.ground,
+        onSurface = p.ink,
+        surfaceVariant = p.card,
+        onSurfaceVariant = p.muted,
+        surfaceContainer = p.card,
+        surfaceContainerHigh = p.card,
+        surfaceContainerHighest = p.card,
+        surfaceContainerLow = p.card,
+        outline = p.line,
+        outlineVariant = p.line,
+        secondaryContainer = p.rinCard,
+        onSecondaryContainer = p.ink,
+        primaryContainer = p.rinCard,
+        onPrimaryContainer = p.ink,
+      )
     }
-
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  CompositionLocalProvider(LocalRinPalette provides p) {
+    MaterialTheme(colorScheme = scheme, typography = Typography, content = content)
+  }
 }
