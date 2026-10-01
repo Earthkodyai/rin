@@ -1,6 +1,7 @@
 # เฟส 9 — จัดพอร์ต (ทำคู่ขนานตั้งแต่เฟส 1 และเก็บงานสุดท้าย ≈ 3–4 วัน)
 
 > อ่านประกอบเมื่อจำเป็น: [01-decisions.md](01-decisions.md) · [02-market.md](02-market.md)
+> **9.1 ✅ 2026-10-01** README + ADR 0005/0006 · **9.2 ข้ามตาม D27:** ไม่ทำวิดีโอ/GIF ตอนนี้ เดโมด้วยแอปจริง ถ้าทำภายหลังให้ทำหลังโมเดลรินของคุณและเฟส UI/UX (shot list ใน docs/demo/shot-list.md ยังใช้ได้ แต่ฉากปลุกต้องอัดเสียงด้วยไมค์ เพราะ Android ไม่ให้อัดสตรีมปลุก)
 > **ตาม D25 (พรุ่งนี้):** 9.1 = README + ADR 0005 (D25) · 9.2 = วิดีโอเดโม 60–90 วินาที (Claude เขียน shot list คุณอัดจอ) + GIF ใน README · เรื่องเล่าสัมภาษณ์ทำหลังส่ง · README ต้องมีหัวข้อ "Known limits / not done" ที่ระบุงานที่เลื่อนตาม D25 ตรงๆ · README และท้ายวิดีโอต้องให้เครดิต "AvatarSample_O © pixiv VRoid Project" (meta ของโมเดลตั้ง `creditNotation: required`) และบอกว่าเป็นโมเดลชั่วคราว ห้ามแจกต่อ (`allowRedistribution: false`, `personalNonProfit`)
 
 - README ภาษาอังกฤษ: ปัญหา → แนวทาง → GIF/วิดีโอเดโม → แผนภาพสถาปัตยกรรม → ความท้าทายเชิงวิศวกรรม (ความน่าเชื่อถือของการปลุกข้ามยี่ห้อ, offline-first, graceful degradation, emotion engine, ความเป็นส่วนตัวในเครื่อง, ~~AI ที่คุมงบ~~ ตัดตาม D21) → ตัวเลขที่วัดได้ → badge ของ test/CI → ลิงก์ ADR และ threat model → สิ่งที่จะทำต่อ
