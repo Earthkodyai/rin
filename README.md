@@ -97,7 +97,7 @@ All on the Xiaomi 14T unless noted. Methods and raw logs are in [`docs/spikes`](
 This is a v0.1 built against a deadline ([ADR 0005](docs/adr/0005-finish-by-deadline.md)). Everything below was deferred or failed a bar, and is listed rather than hidden.
 
 - **Not on Google Play.** Phase 8 needs a developer account and a closed test with 12 people for 14 days.
-- **No testers besides the developer.** Limited distribution waits for the developer's own Rin model, because the sample model's licence forbids redistribution (below).
+- **No testers besides the developer yet.** Rin's own model went in on 1 October 2026; limited distribution to testers is the next step.
 - **The 14-night real-world alarm run has not started.** Reliability rests on spike S1, the simulated run and one real morning.
 - **One phone, one speaker.** Everything was measured on one Xiaomi 14T and one tester's voice. Repeat after Rin reached 75% on the recorded held-out set against an 80% bar; 2 or 3 other speakers should record it.
 - **Untested:** an incoming call during a ring, overnight Doze with the latest build, a time-zone change, dark-room rings for the cup and speech games.
@@ -116,7 +116,7 @@ A clone builds and runs without Rin's model or voice: she shows as a silhouette 
 
 | Key | Purpose |
 |---|---|
-| `rin.model` | A VRM model; the build compresses it with KTX2 |
+| `rin.model` | A VRM model; the build compresses it with KTX2. Check it first with the `vroid-check` skill (`.claude/skills/vroid-check`) |
 | `rin.voice` | The voice pack built by `tools/voice/pack.mjs` |
 | `rin.signing` | `keystore.properties` for a signed release build |
 
@@ -135,6 +135,6 @@ RinAlarm keeps alarms, settings and a ring log on the phone, uses the microphone
 ## Credits and licences
 
 - Code: [MIT](LICENSE).
-- The demo model is **AvatarSample_O © pixiv VRoid Project**, used on the developer's phone only under its personal, non-profit terms. It is not in this repository and is never distributed.
+- Rin's model was made by the developer in VRoid Studio from its built-in presets, which pixiv licenses for use in apps ([VRoid Studio guidelines](https://vroid.com/en/studio/guidelines)). The model file is not in this repository. Earlier development used VRoid's **AvatarSample_O © pixiv VRoid Project** on the developer's phone only; it was never distributed.
 - Rin's voice was generated with ElevenLabs during a paid plan, which allows commercial use. The clips are not in this repository.
 - [three.js](https://threejs.org) and [three-vrm](https://github.com/pixiv/three-vrm) (MIT), [Vosk](https://alphacephei.com/vosk/) and its small English model (Apache 2.0), Google ML Kit barcode scanning, AndroidX and Jetpack Compose (Apache 2.0).
