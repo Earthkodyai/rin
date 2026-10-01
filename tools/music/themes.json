@@ -1,0 +1,28 @@
+{
+  "_note": "UX.7 alarm themes (D30). Prompts name genre, instruments, tempo and mood only: never a game, a song or an artist. The order is Rin's rotation order. Generated audio stays outside the repo (rin.music).",
+  "model": "music_v2_5",
+  "lengthMs": 60000,
+  "takes": 3,
+  "themes": [
+    {
+      "id": "morning",
+      "name": "Candy morning",
+      "prompt": "Instrumental cute anime morning theme for an alarm clock. It opens softly with a twinkling music box and glockenspiel melody, then builds with bright piano, pizzicato strings, light hand claps and a bouncy pop drum beat into a cheerful, sparkly chorus. Major key, about 120 BPM, sweet and energetic but friendly. No vocals."
+    },
+    {
+      "id": "cafe",
+      "name": "Sweet bistro",
+      "prompt": "Instrumental whimsical cafe music for a cute bakery and candy shop in a little Parisian bistro. Bouncy accordion melody, pizzicato strings, celesta and glockenspiel sparkles, a playful clarinet, and a light swing rhythm with brushed drums and upright bass. Sweet, cozy and charming, major key, about 125 BPM. No vocals."
+    },
+    {
+      "id": "arcade",
+      "name": "Arcade morning",
+      "prompt": "Instrumental upbeat chiptune for a morning mini game: a catchy 8-bit square-wave lead melody, quick arpeggios, punchy retro drums and bass, bright and playful like a cheerful video game level. Major key, about 140 BPM. No vocals."
+    },
+    {
+      "id": "sunny",
+      "name": "Sunny walk",
+      "prompt": "Instrumental sunny acoustic morning: strummed ukulele and acoustic guitar, a glockenspiel and xylophone melody, hand claps and a light kick drum. Warm, fresh and optimistic, like a walk outside on a bright morning. Major key, about 110 BPM. No vocals."
+    }
+  ]
+}
