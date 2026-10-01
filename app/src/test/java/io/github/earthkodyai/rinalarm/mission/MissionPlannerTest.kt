@@ -33,17 +33,8 @@ class MissionPlannerTest {
   }
 
   @Test
-  fun hiddenQr_isNeverPlanned_evenWhenReady() {
-    assertFalse(MissionFlags.QR_STICKER)
-    val both = padsReady + (MissionType.QR to Readiness.READY)
-    val picks = (0L..3L).map { (MissionPlanner.plan(MissionChoice.RinPicks, both, day.plusDays(it)) as MissionPlan.Run).type }
-    assertEquals(setOf(MissionType.PADS), picks.toSet())
-    assertEquals(MissionPlan.Unavailable("pads=no_permission cups=no_sensor speech=no_sensor"), MissionPlanner.plan(MissionChoice.RinPicks, padsDenied + (MissionType.QR to Readiness.READY), day))
-  }
-
-  @Test
-  fun storedWalkAndHiddenQr_readAsRinPicks() {
-    // Walking was removed in 3.3; the QR sticker is behind MissionFlags.QR_STICKER.
+  fun storedWalkAndQr_readAsRinPicks() {
+    // Walking was removed in 3.3, the QR sticker in UX.7 (D31).
     assertEquals(MissionChoice.RinPicks, MissionChoice.fromStored("walk"))
     assertEquals(MissionChoice.RinPicks, MissionChoice.fromStored("qr"))
     assertNull(MissionType.fromStored("qr"))

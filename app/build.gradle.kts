@@ -546,14 +546,6 @@ dependencies {
   implementation(libs.androidx.webkit)
   implementation(libs.kotlinx.serialization.json)
 
-  // QR mission (task 3.2): CameraX preview + analysis, ML Kit's bundled scanner (in the APK, so it works offline
-  // from the first launch; the Play Services variant downloads its model later), and qrcodegen to draw the sticker.
-  implementation(libs.androidx.camera.camera2)
-  implementation(libs.androidx.camera.lifecycle)
-  implementation(libs.androidx.camera.compose)
-  implementation(libs.mlkit.barcode.scanning)
-  implementation(libs.qrcodegen)
-
   // Repeat after Rin (task 3.5): Vosk, offline speech recognition limited to each sentence's words (S3, O10). Its
   // native library comes through JNA's Android build (the aar, as vosk-android's own pom asks).
   implementation(libs.vosk.android)

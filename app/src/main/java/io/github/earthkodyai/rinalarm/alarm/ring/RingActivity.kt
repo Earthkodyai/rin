@@ -85,9 +85,7 @@ import io.github.earthkodyai.rinalarm.mission.Miss
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
 import io.github.earthkodyai.rinalarm.mission.PadsState
-import io.github.earthkodyai.rinalarm.mission.QrScanner
 import io.github.earthkodyai.rinalarm.mission.RepeatPhase
-import io.github.earthkodyai.rinalarm.mission.ScanVerdict
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.pattern
@@ -134,7 +132,6 @@ class RingActivity : ComponentActivity() {
           onSnooze = viewModel::snooze,
           onDismiss = viewModel::dismiss,
           onEmergencyStop = viewModel::emergencyStop,
-          onOpenCamera = viewModel::openCamera,
           onStartGame = viewModel::startGame,
           onTapPad = viewModel::tapPad,
           onPickCup = viewModel::pickCup,
@@ -162,9 +159,6 @@ class RingActivity : ComponentActivity() {
             )
           },
           hand = { modifier -> RinHand(modifier) },
-          scanner = { modifier ->
-            QrScanner(viewModel::onScan, modifier, onTorch = viewModel::onTorch, onError = viewModel::onCameraError)
-          },
         )
       }
     }
@@ -189,7 +183,6 @@ internal fun RingScreen(
   onDismiss: () -> Unit,
   onEmergencyStop: () -> Unit,
   modifier: Modifier = Modifier,
-  onOpenCamera: () -> Unit = {},
   onStartGame: () -> Unit = {},
   onTapPad: (Pad) -> Unit = {},
   onPickCup: (Int) -> Unit = {},
@@ -197,9 +190,8 @@ internal fun RingScreen(
   onTapWord: (Int) -> Unit = {},
   onCantTalk: () -> Unit = {},
   onClose: () -> Unit = {},
-  // Slots, so previews and UI tests run without a WebView or a camera.
+  // Slots, so previews and UI tests run without a WebView.
   character: @Composable (Modifier, CharacterInsets) -> Unit = { _, _ -> },
-  scanner: @Composable (Modifier) -> Unit = {},
   hand: @Composable (Modifier) -> Unit = { DrawnHand(it) },
 ) {
   val ring = state.ring ?: return
@@ -307,7 +299,6 @@ internal fun RingScreen(
         Box(if (over && game != MissionType.CUPS) inert else Modifier) {
           when {
             state.plainDismiss -> Unit
-            game == MissionType.QR -> QrSection(state, onOpenCamera, scanner)
             game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
             // The cups keep their line visible through the pass: she claps behind the table.
             game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
@@ -490,39 +481,6 @@ private val HOLD_WIDTH = 176.dp
 /** Snooze and the emergency hold: big enough for a sleepy thumb, small enough to leave her the screen. */
 private val CONTROL_HEIGHT = 48.dp
 
-/**
- * The QR mission (task 3.2): a big "Scan sticker" button until tapped, then the camera with a hint about what it sees.
- * It closes itself after QrScanPolicy.CAMERA_IDLE without a sighting or a step; the button opens it again.
- */
-@Composable
-private fun QrSection(state: RingUiState, onOpenCamera: () -> Unit, scanner: @Composable (Modifier) -> Unit) {
-  val p = RinTheme.palette
-  Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-    Text(stringResource(R.string.mission_qr_title), style = MaterialTheme.typography.titleLarge, color = p.ink, textAlign = TextAlign.Center)
-    if (state.cameraOpen) {
-      scanner(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp)).testTag(QR_SCANNER_TAG))
-      Text(
-        stringResource(
-          when (state.scanHint) {
-            ScanVerdict.TOO_FAR -> R.string.mission_qr_closer
-            ScanVerdict.OTHER -> R.string.mission_qr_other
-            else -> R.string.mission_qr_aim
-          }
-        ),
-        style = MaterialTheme.typography.titleMedium,
-        color = p.ink,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-      )
-    } else {
-      Text(stringResource(R.string.mission_qr_walk), style = MaterialTheme.typography.bodyMedium, color = p.muted, textAlign = TextAlign.Center)
-      PillButton(stringResource(R.string.mission_qr_open), onOpenCamera, Modifier.fillMaxWidth())
-    }
-  }
-}
-
-internal const val QR_SCANNER_TAG = "ring_qr_scanner"
-
 /** Compact, so it fits in the game row it covers and the sheet keeps its height at the pass. */
 @Composable
 private fun Passed() {
@@ -585,18 +543,6 @@ private fun RingScreenCups2dPreview() {
   }
 }
 
-@Preview
-@Composable
-private fun RingScreenQrPreview() {
-  RinAlarmTheme {
-    RingScreen(
-      RingUiState(PREVIEW_RING.copy(mission = MissionPlan.Run(MissionType.QR)), MissionProgress(0, 1), cameraOpen = true, scanHint = ScanVerdict.TOO_FAR),
-      {},
-      {},
-      {},
-    )
-  }
-}
 
 @Preview
 @Composable

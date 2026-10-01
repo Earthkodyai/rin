@@ -35,14 +35,10 @@ import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsMission
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
 import io.github.earthkodyai.rinalarm.mission.PadsState
-import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
 import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.mission.RepeatMission
 import io.github.earthkodyai.rinalarm.mission.RepeatPhase
 import io.github.earthkodyai.rinalarm.mission.RepeatState
-import io.github.earthkodyai.rinalarm.mission.ScanMission
-import io.github.earthkodyai.rinalarm.mission.ScanVerdict
-import io.github.earthkodyai.rinalarm.mission.SeenCode
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.LocalDate
@@ -125,13 +121,11 @@ constructor(
   /** Her line after a snooze or the emergency stop; the screen closes once it is over. */
   private var farewell: Job? = null
 
-  // Volatile: onScan reads it from the camera's analysis thread.
-  @Volatile private var mission: Mission? = null
+  private var mission: Mission? = null
   private var missionJob: Job? = null
   private var gameJob: Job? = null
   private var voiceJobs: List<Job> = emptyList()
   private var stallJob: Job? = null
-  private var cameraJob: Job? = null
   private var cupsWaitJob: Job? = null
   /** Why the cups went 2D, for the log (null: her page played them). */
   private var cups2dReason: String? = null
@@ -295,7 +289,7 @@ constructor(
     val from = mission as? RepeatMission ?: return
     if (state.value.passed) return
     val ready = runCatching { readiness.check() }.getOrDefault(emptyMap())
-    val others = MissionType.offeredEntries.filter { it != MissionType.SPEECH && ready[it] == Readiness.READY }
+    val others = MissionType.entries.filter { it != MissionType.SPEECH && ready[it] == Readiness.READY }
     val summary = from.summary()
     stopMission()
     if (others.isEmpty()) {
@@ -411,7 +405,6 @@ constructor(
     val before = state.value.progress
     state.update { it.copy(progress = progress) }
     if (before != null && (progress.done > before.done || progress.activity > before.activity)) {
-      if (state.value.cameraOpen) scheduleCameraClose()
       ringState.reportProgress(clock.now())
       refreshPhase()
       // No event marks the idle timeout, so a timer does: STALLED arrives when progress simply stops. Each step
@@ -427,7 +420,7 @@ constructor(
       MissionState.RUNNING -> Unit
       MissionState.PASSED -> {
         if (state.value.passed) return
-        state.update { it.copy(passed = true, cameraOpen = false, scanHint = null) }
+        state.update { it.copy(passed = true) }
         log(
           RingEventType.MISSION_PASSED,
           ring,
@@ -454,54 +447,6 @@ constructor(
   private fun summary(): String {
     val board = if (mission is CupsMission) " board=" + (cups2dReason?.let { "2d:$it" } ?: "3d") else ""
     return (mission?.summary()?.takeIf { it.isNotEmpty() }?.let { " $it" } ?: "") + board
-  }
-
-  /** "Scan sticker" (user decision: the camera opens on a tap, never by itself while the user is still in bed). */
-  fun openCamera() {
-    val scan = mission as? ScanMission ?: return
-    if (state.value.cameraOpen || state.value.passed) return
-    scan.cameraOpened()
-    state.update { it.copy(cameraOpen = true, scanHint = null) }
-    scheduleCameraClose()
-  }
-
-  fun closeCamera() {
-    cameraJob?.cancel()
-    cameraJob = null
-    state.update { it.copy(cameraOpen = false, scanHint = null) }
-  }
-
-  /** [QrScanPolicy.CAMERA_IDLE] after opening, or after the last sighting or step, the camera closes by itself. */
-  private fun scheduleCameraClose() {
-    cameraJob?.cancel()
-    cameraJob =
-      viewModelScope.launch {
-        delay(QrScanPolicy.CAMERA_IDLE.toMillis())
-        closeCamera()
-      }
-  }
-
-  /** From the camera's analysis thread: one frame's codes. */
-  fun onScan(codes: List<SeenCode>) {
-    val scan = mission as? ScanMission ?: return
-    val verdict = scan.onCodes(codes)
-    // The hint keeps the last thing seen; an empty frame between two sightings must not make it flicker.
-    if (verdict == ScanVerdict.TOO_FAR || verdict == ScanVerdict.OTHER) {
-      state.update { if (it.cameraOpen) it.copy(scanHint = verdict) else it }
-    }
-  }
-
-  fun onTorch(on: Boolean, auto: Boolean) {
-    (mission as? ScanMission)?.torchChanged(on, auto)
-  }
-
-  /** The camera could not start: the ring falls back to a plain Dismiss, as for any broken mission. */
-  fun onCameraError(error: Throwable) {
-    val ring = state.value.ring ?: return
-    if (state.value.passed || state.value.missionFailed) return
-    state.update { it.copy(missionFailed = true, cameraOpen = false) }
-    log(RingEventType.MISSION_FAILED, ring, "type=${mission?.type?.stored} reason=camera_${error.javaClass.simpleName}" + summary())
-    stopMission()
   }
 
   /** Her won line (her gesture for it, or a clap), then one closing remark; then the screen closes. */
@@ -584,8 +529,6 @@ constructor(
     gameJob = null
     stallJob?.cancel()
     stallJob = null
-    cameraJob?.cancel()
-    cameraJob = null
     cupsWaitJob?.cancel()
     cupsWaitJob = null
     voiceJobs.forEach(Job::cancel)
@@ -633,8 +576,6 @@ constructor(
  * @property progress the mission's, or null when there is no mission (plain Dismiss).
  * @property missionFailed the mission broke; a plain Dismiss takes over.
  * @property finished close the screen.
- * @property cameraOpen the QR mission's camera is on (it opens on a tap).
- * @property scanHint what the camera last saw that was not a pass: the sticker from too far, or another code.
  * @property pads the colour-pads game, when that is the mission.
  * @property missionType the game being played: the ring's planned one, or the one "Can't talk right now" switched to.
  * @property repeat Repeat after Rin, when that is the mission; [micLevel] the mic's level while it listens.
@@ -652,8 +593,6 @@ data class RingUiState(
   val passed: Boolean = false,
   val missionFailed: Boolean = false,
   val finished: Boolean = false,
-  val cameraOpen: Boolean = false,
-  val scanHint: ScanVerdict? = null,
   val pads: PadsState? = null,
   val cups: CupsState? = null,
   val cupsView: CupsView = CupsView.Pending,

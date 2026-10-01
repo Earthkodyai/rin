@@ -49,7 +49,7 @@ enum class RingEventType {
   MISSION_STARTED,
   /** Mission done: the ring stops (DISMISSED source=mission follows). detail = type, progress, time taken. */
   MISSION_PASSED,
-  /** The mission broke mid-ring (sensor gone, camera taken); a plain Dismiss took over. */
+  /** The mission broke mid-ring (the mic taken, the speech model failed); a plain Dismiss took over. */
   MISSION_FAILED,
   /** No mission could run (chosen None, permission denied, no sensor); plain Dismiss. detail = reasons. */
   MISSION_UNAVAILABLE,

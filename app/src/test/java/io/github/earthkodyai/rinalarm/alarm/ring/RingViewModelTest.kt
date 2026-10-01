@@ -30,11 +30,6 @@ import io.github.earthkodyai.rinalarm.mission.MissionPlanner
 import io.github.earthkodyai.rinalarm.mission.RepeatMission
 import io.github.earthkodyai.rinalarm.mission.RepeatPhase
 import io.github.earthkodyai.rinalarm.mission.RepeatState
-import io.github.earthkodyai.rinalarm.mission.CodeFormat
-import io.github.earthkodyai.rinalarm.mission.QrScanPolicy
-import io.github.earthkodyai.rinalarm.mission.ScanMission
-import io.github.earthkodyai.rinalarm.mission.ScanVerdict
-import io.github.earthkodyai.rinalarm.mission.SeenCode
 import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.dialogue.pouty
 import io.github.earthkodyai.rinalarm.testing.FakeLineVoice
@@ -70,7 +65,7 @@ class RingViewModelTest {
   private val log = RecordingLog()
   private val mission = FakeMission()
   private var clockMs = 1_000L
-  private val readiness = MissionReadiness { MissionType.offeredEntries.associateWith { Readiness.READY } }
+  private val readiness = MissionReadiness { MissionType.entries.associateWith { Readiness.READY } }
   private val time = FixedTimeSource(Instant.parse("2026-09-29T00:00:00Z"), ZoneOffset.UTC)
   private val request =
     RingRequest(4, LocalTime.of(6, 30), "Work", Instant.parse("2026-09-27T23:30:00Z"), 0, 3, late = false, RingOptions())
@@ -165,99 +160,16 @@ class RingViewModelTest {
       assertEquals(listOf(RingCommand.Dismiss(RingService.SOURCE_EMERGENCY)), commands)
     }
 
-  // --- QR (task 3.2) ---
-
-  private val scan = FakeScanMission()
-
-  private fun TestScope.qrRingScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
-    ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.QR)))
-    val viewModel = RingViewModel(ringState, { scan }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
-    val commands = mutableListOf<RingCommand>()
-    backgroundScope.launch { viewModel.commands.collect { commands += it } }
-    runCurrent()
-    return viewModel to commands
-  }
-
   @Test
-  fun qr_theCameraOpensOnlyOnATap_andClosesItselfWhenIdle() =
-    runTest(main.dispatcher) {
-      val (viewModel, _) = qrRingScreen()
-      assertFalse(viewModel.uiState.value.cameraOpen)
-      assertEquals(0, scan.opens)
-
-      viewModel.openCamera()
-      runCurrent()
-      assertTrue(viewModel.uiState.value.cameraOpen)
-      assertEquals(1, scan.opens)
-
-      // A step on the way restarts the idle timer.
-      advanceTimeBy(QrScanPolicy.CAMERA_IDLE.toMillis() - 1_000)
-      scan.state.value = MissionProgress(0, 1, activity = 1)
-      runCurrent()
-      advanceTimeBy(QrScanPolicy.CAMERA_IDLE.toMillis() - 1_000)
-      assertTrue(viewModel.uiState.value.cameraOpen)
-      advanceTimeBy(2_000)
-      assertFalse(viewModel.uiState.value.cameraOpen)
-
-      viewModel.openCamera()
-      runCurrent()
-      assertEquals(2, scan.opens)
-    }
-
-  @Test
-  fun qr_activityQuietsTheTone_likeProgressDoes() =
-    runTest(main.dispatcher) {
-      val (viewModel, _) = qrRingScreen()
-      clockMs = 7_000
-      scan.state.value = MissionProgress(0, 1, activity = 1)
-      runCurrent()
-      assertEquals(7_000L, ringState.lastProgressAt)
-      assertEquals(RingPhase.WORKING, viewModel.uiState.value.phase)
-    }
-
-  @Test
-  fun qr_hintsWhatTheCameraSees_thenPassesAndLogsTheNumbers() =
-    runTest(main.dispatcher) {
-      val (viewModel, commands) = qrRingScreen()
-      viewModel.openCamera()
-      runCurrent()
-
-      scan.next = ScanVerdict.TOO_FAR
-      viewModel.onScan(listOf(SeenCode("x", CodeFormat.QR, 0.1f)))
-      assertEquals(ScanVerdict.TOO_FAR, viewModel.uiState.value.scanHint)
-      // An empty frame in between keeps the hint steady.
-      scan.next = ScanVerdict.NONE
-      viewModel.onScan(emptyList())
-      assertEquals(ScanVerdict.TOO_FAR, viewModel.uiState.value.scanHint)
-
-      scan.state.value = MissionProgress(1, 1, MissionState.PASSED)
-      runCurrent()
-      assertEquals(listOf(RingCommand.Dismiss(RingService.SOURCE_MISSION)), commands)
-      assertFalse(viewModel.uiState.value.cameraOpen)
-      assertTrue(log.details.last().endsWith(" opens=1 fake=yes"))
-    }
-
-  @Test
-  fun qr_aCameraThatWillNotStart_fallsBackToThePlainDismiss() =
-    runTest(main.dispatcher) {
-      val (viewModel, _) = qrRingScreen()
-      viewModel.openCamera()
-      viewModel.onCameraError(IllegalStateException("in use"))
-      runCurrent()
-
-      assertTrue(viewModel.uiState.value.plainDismiss)
-      assertFalse(viewModel.uiState.value.cameraOpen)
-      assertEquals(RingEventType.MISSION_FAILED, log.types.last())
-      assertTrue(log.details.last().contains("reason=camera_IllegalStateException"))
-    }
-
-  @Test
-  fun pads_hasNoCamera() =
+  fun activityQuietsTheTone_likeProgressDoes() =
     runTest(main.dispatcher) {
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       val (viewModel, _) = ringScreen()
-      viewModel.openCamera()
-      assertFalse(viewModel.uiState.value.cameraOpen)
+      clockMs = 7_000
+      mission.state.value = MissionProgress(0, 30, activity = 1)
+      runCurrent()
+      assertEquals(7_000L, ringState.lastProgressAt)
+      assertEquals(RingPhase.WORKING, viewModel.uiState.value.phase)
     }
 
   @Test
@@ -753,28 +665,6 @@ class RingViewModelTest {
     override fun tap(pad: Pad) {
       calls += "tap $pad"
     }
-  }
-
-  private class FakeScanMission : ScanMission {
-    override val type = MissionType.QR
-    val state = MutableStateFlow(MissionProgress(0, 1))
-    override val progress: StateFlow<MissionProgress> = state
-    var opens = 0
-    var next = ScanVerdict.NONE
-
-    override fun start() = Unit
-
-    override fun stop() = Unit
-
-    override fun onCodes(codes: List<SeenCode>) = next
-
-    override fun cameraOpened() {
-      opens++
-    }
-
-    override fun torchChanged(on: Boolean, auto: Boolean) = Unit
-
-    override fun summary() = "opens=$opens fake=yes"
   }
 
   private class FakeMission : Mission {

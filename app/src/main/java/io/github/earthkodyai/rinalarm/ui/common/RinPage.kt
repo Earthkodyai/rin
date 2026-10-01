@@ -40,7 +40,7 @@ import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 
 /**
- * The pages behind home (UX.5: settings, privacy, diagnostics, QR setup): the editor's look, a round back button and
+ * The pages behind home (UX.5: settings, privacy, diagnostics): the editor's look, a round back button and
  * the title over the ground, and the page's own content under it. [scroll] makes the content one scrolling column
  * with the usual side margins; a page with a long list passes false and lays it out itself.
  */

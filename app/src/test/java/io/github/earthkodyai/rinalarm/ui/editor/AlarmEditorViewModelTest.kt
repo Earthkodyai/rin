@@ -72,11 +72,7 @@ class AlarmEditorViewModelTest {
   }
 
   @Test
-  fun hiddenQr_isNeitherOfferedNorAProblem_norAChoice() = runTest {
-    missions = mapOf(MissionType.PADS to Readiness.READY, MissionType.QR to Readiness.NOT_SET_UP)
-    val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
-    assertEquals(emptyMap<MissionType, Readiness>(), editor.editing().missionProblems)
-    assertEquals(emptyList<MissionType>(), editor.editing().missionOffers)
+  fun missionChoices_areRinPicksTheThreeGamesAndNone() = runTest {
     assertEquals(
       listOf(
         MissionChoice.RinPicks,

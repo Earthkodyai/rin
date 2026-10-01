@@ -114,10 +114,7 @@ interface AlarmEditorActions {
 
   fun setMission(value: MissionChoice)
 
-  /**
-   * Makes [type] ready: asks for its permission (or opens Settings once Android won't ask again), or opens its setup
-   * (the QR sticker, whose setup asks for the camera itself).
-   */
+  /** Makes [type] ready: asks for its permission, or opens Settings once Android won't ask again. */
   fun allowMission(type: MissionType)
 
   fun save()
@@ -126,7 +123,7 @@ interface AlarmEditorActions {
 }
 
 @Composable
-fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, onSetUpQr: () -> Unit = {}) {
+fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
   val viewModel =
     hiltViewModel<AlarmEditorViewModel, AlarmEditorViewModel.Factory>(creationCallback = { it.create(alarmId) })
   val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -141,9 +138,7 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, onSetUpQr: () -> Unit 
     }
   val requestMissionPermission = { type: MissionType ->
     val permission = AndroidMissionReadiness.permissionFor(type)
-    if (type == MissionType.QR) {
-      onSetUpQr()
-    } else if (permission == null) {
+    if (permission == null) {
       viewModel.refreshMissions()
     } else if (askedPermission && activity?.shouldShowRequestPermissionRationale(permission) == false) {
       SettingsLinks.open(activity, CheckId.MISSIONS, xiaomiFamily = false)
@@ -386,7 +381,6 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
             when (choice.type) {
               MissionType.PADS -> R.string.mission_hint_pads
               MissionType.CUPS -> R.string.mission_hint_cups
-              MissionType.QR -> R.string.mission_hint_qr
               MissionType.SPEECH -> R.string.mission_hint_speech
             }
         }
@@ -396,7 +390,6 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
       modifier = Modifier.padding(start = 4.dp),
     )
     state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
-    state.missionOffers.forEach { type -> MissionOffer(type, actions) }
   }
 }
 
@@ -423,25 +416,6 @@ private fun ChoiceTile(text: String, selected: Boolean, onClick: () -> Unit, mod
   }
 }
 
-/** Not a problem: a mission Rin could add to her picks after its setup. */
-@Composable
-private fun MissionOffer(type: MissionType, actions: AlarmEditorActions) {
-  val p = RinTheme.palette
-  Row(
-    Modifier.fillMaxWidth().sticker(radius = 18.dp, depth = 3.dp).padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp).testTag(MISSION_OFFER_TAG),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(painterResource(R.drawable.ic_info), contentDescription = null, tint = p.muted, modifier = Modifier.size(20.dp))
-    Text(
-      stringResource(R.string.mission_offer_qr),
-      style = MaterialTheme.typography.bodySmall,
-      color = p.ink,
-      modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-    )
-    TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_set_up)) }
-  }
-}
-
 @Composable
 private fun MissionProblem(type: MissionType, readiness: Readiness, actions: AlarmEditorActions) {
   val p = RinTheme.palette
@@ -455,11 +429,9 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
         when (readiness) {
           Readiness.NO_SENSOR ->
             when (type) {
-              MissionType.QR -> R.string.mission_no_camera
               MissionType.SPEECH -> R.string.mission_no_mic
               else -> R.string.mission_no_sensor
             }
-          Readiness.NOT_SET_UP -> R.string.mission_not_set_up
           else -> R.string.mission_needs_permission
         },
         missionChoiceName(MissionChoice.Only(type)),
@@ -468,12 +440,8 @@ private fun MissionProblem(type: MissionType, readiness: Readiness, actions: Ala
       color = p.ink,
       modifier = Modifier.weight(1f).padding(horizontal = 8.dp).padding(vertical = 8.dp),
     )
-    // The QR sticker's setup asks for the camera itself, so both of its problems lead there.
-    when {
-      type == MissionType.QR && (readiness == Readiness.NO_PERMISSION || readiness == Readiness.NOT_SET_UP) ->
-        TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_set_up)) }
-      readiness == Readiness.NO_PERMISSION ->
-        TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_allow)) }
+    if (readiness == Readiness.NO_PERMISSION) {
+      TextButton(onClick = { actions.allowMission(type) }) { Text(stringResource(R.string.mission_allow)) }
     }
   }
 }
@@ -563,7 +531,6 @@ private val SAVE_BUTTON_ROOM = 110.dp
 
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
-internal const val MISSION_OFFER_TAG = "editor_mission_offer"
 
 private object PreviewActions : AlarmEditorActions {
   override fun setTime(value: LocalTime) = Unit

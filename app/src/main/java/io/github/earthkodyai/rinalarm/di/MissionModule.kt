@@ -4,8 +4,6 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.github.earthkodyai.rinalarm.data.SharedPrefsStickerStore
-import io.github.earthkodyai.rinalarm.data.StickerStore
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionFactory
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
@@ -17,6 +15,4 @@ abstract class MissionModule {
   @Binds abstract fun missionReadiness(impl: AndroidMissionReadiness): MissionReadiness
 
   @Binds abstract fun missionFactory(impl: AndroidMissionFactory): MissionFactory
-
-  @Binds abstract fun stickerStore(impl: SharedPrefsStickerStore): StickerStore
 }

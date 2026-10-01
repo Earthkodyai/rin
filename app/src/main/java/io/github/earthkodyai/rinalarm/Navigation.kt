@@ -19,7 +19,6 @@ import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorScreen
 import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorViewModel
 import io.github.earthkodyai.rinalarm.ui.main.MainScreen
 import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingScreen
-import io.github.earthkodyai.rinalarm.ui.qrsetup.QrSetupScreen
 import io.github.earthkodyai.rinalarm.ui.settings.PrivacyScreen
 import io.github.earthkodyai.rinalarm.ui.settings.SettingsScreen
 import javax.inject.Inject
@@ -74,13 +73,8 @@ private fun AppNavigation(first: NavKey) {
         }
         entry<AlarmEditor> { key ->
           // Guarded: a finished editor can ask to close again while its exit animation runs.
-          AlarmEditorScreen(
-            key.alarmId,
-            onClose = { if (backStack.lastOrNull() == key) backStack.removeLastOrNull() },
-            onSetUpQr = { if (backStack.lastOrNull() == key) backStack.add(QrSetup) },
-          )
+          AlarmEditorScreen(key.alarmId, onClose = { if (backStack.lastOrNull() == key) backStack.removeLastOrNull() })
         }
-        entry<QrSetup> { QrSetupScreen(onClose = { if (backStack.lastOrNull() == QrSetup) backStack.removeLastOrNull() }) }
         entry<Settings> {
           SettingsScreen(
             onBack = { if (backStack.lastOrNull() == Settings) backStack.removeLastOrNull() },

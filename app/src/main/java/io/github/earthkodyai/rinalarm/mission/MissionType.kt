@@ -2,34 +2,18 @@ package io.github.earthkodyai.rinalarm.mission
 
 /**
  * What stops an alarm (D17, ADR 0001): games with Rin. Task 3.3 added colour pads, 3.4 the cup shuffle, 3.5 repeat
- * after Rin (speech). The QR sticker (3.2) stays in the code behind [MissionFlags.QR_STICKER].
- * Walking (3.1) was removed in 3.3: a stored "walk" reads as Rin picks. Stored by [stored], so entries may be added but
- * never renamed. Rin picks rotates through them in this order.
+ * after Rin (speech). Walking (3.1) was removed in 3.3 and the QR sticker (3.2) in UX.7 (D31): a stored "walk" or "qr"
+ * reads as Rin picks. Stored by [stored], so entries may be added but never renamed. Rin picks rotates through them in
+ * this order.
  */
 enum class MissionType(val stored: String) {
   PADS("pads"),
-  QR("qr"),
   CUPS("cups"),
   SPEECH("speech");
 
-  /** Shown in the editor and planned for rings; a hidden type reads as Rin picks. */
-  val offered: Boolean
-    get() = this != QR || MissionFlags.QR_STICKER
-
   companion object {
-    val offeredEntries: List<MissionType>
-      get() = entries.filter { it.offered }
-
-    fun fromStored(value: String): MissionType? = entries.firstOrNull { it.stored == value && it.offered }
+    fun fromStored(value: String): MissionType? = entries.firstOrNull { it.stored == value }
   }
-}
-
-object MissionFlags {
-  /**
-   * The QR sticker mission (task 3.2) found no valid size bar and the setup was too much work (ADR 0001). Off until a
-   * placement passes its frozen rule; QrLabActivity (debug) still works.
-   */
-  const val QR_STICKER = false
 }
 
 /** What an alarm asks for (user decision D15: per alarm, "Rin picks" by default, None for naps and the test alarm). */
@@ -68,10 +52,6 @@ enum class Readiness(val reason: String) {
   READY("ready"),
   /** The runtime permission it needs was never granted, or was taken back. */
   NO_PERMISSION("no_permission"),
-  /** The phone lacks the sensor (e.g. no step counter). */
+  /** The phone lacks the sensor (no microphone) or the part it needs (the speech model). */
   NO_SENSOR("no_sensor"),
-  /** It needs a one-time setup first (the QR sticker: registered and checked from bed). */
-  NOT_SET_UP("not_set_up"),
-  /** The phone has not been unlocked since it booted, and the mission needs credential-protected parts. */
-  BEFORE_UNLOCK("before_unlock"),
 }

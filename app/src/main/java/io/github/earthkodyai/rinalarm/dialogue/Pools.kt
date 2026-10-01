@@ -52,7 +52,6 @@ object Pools {
       MissionType.PADS -> "game.intro.pads"
       MissionType.CUPS -> "game.intro.cups"
       MissionType.SPEECH -> "game.intro.speech"
-      MissionType.QR -> "game.intro"
     }
 
   fun padsScold(miss: Miss): String = if (miss == Miss.SLOW) "pads.slow" else "pads.wrong"

@@ -1,10 +1,8 @@
 package io.github.earthkodyai.rinalarm.mission
 
 import android.content.Context
-import android.hardware.SensorManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.earthkodyai.rinalarm.character.RinMouth
-import io.github.earthkodyai.rinalarm.data.StickerStore
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import javax.inject.Inject
 
@@ -17,7 +15,6 @@ class AndroidMissionFactory
 @Inject
 constructor(
   @ApplicationContext private val context: Context,
-  private val stickers: StickerStore,
   private val clock: ElapsedClock,
   private val vosk: VoskModels,
 ) : MissionFactory {
@@ -30,11 +27,5 @@ constructor(
       MissionType.CUPS -> CupShuffleMission(CupsRules(), System.nanoTime(), clock, quiet = RinMouth::awaitQuiet)
       MissionType.SPEECH ->
         RepeatAfterRinMission(RepeatRules(), sentences, System.nanoTime(), AndroidRinVoice(context), VoskListener(context, vosk), clock)
-      // No sticker (it was removed after the ring was planned): throws, and the ring screen offers a plain Dismiss.
-      MissionType.QR ->
-        QrMission(
-          checkNotNull(stickers.current()) { "no QR sticker" },
-          StepSensor(context.getSystemService(SensorManager::class.java)),
-        )
     }
 }

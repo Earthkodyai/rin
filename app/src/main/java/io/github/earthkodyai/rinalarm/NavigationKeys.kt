@@ -16,8 +16,5 @@ import kotlinx.serialization.Serializable
 /** How Rin uses your data: PRIVACY.md (6.3). */
 @Serializable data object Privacy : NavKey
 
-/** QR sticker setup for the QR mission (task 3.2). */
-@Serializable data object QrSetup : NavKey
-
 /** The alarm editor; [alarmId] 0 adds a new alarm. */
 @Serializable data class AlarmEditor(val alarmId: Long) : NavKey

@@ -25,12 +25,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- QR mission (task 3.2, approved in D15): asked in sticker setup, never at install. Frames stay in memory.
-         Not required: a phone without a camera still gets the other missions. -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="false" />
     <!-- Repeat after Rin (task 3.5, approved in D15): asked when the user picks the game (editor, Diagnostics). The mic
          is open only while the game listens, with an indicator; audio stays in memory (Vosk, offline). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -80,16 +74,6 @@
             android:turnScreenOn="true"
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
-        <!-- Shares the generated QR sticker image so it can be printed (task 3.2). -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.files"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
 
         <service
             android:name=".alarm.ring.RingService"

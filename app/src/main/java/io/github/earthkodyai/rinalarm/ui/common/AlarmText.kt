@@ -91,7 +91,6 @@ fun missionChoiceName(choice: MissionChoice): String =
         when (choice.type) {
           MissionType.PADS -> R.string.mission_choice_pads
           MissionType.CUPS -> R.string.mission_choice_cups
-          MissionType.QR -> R.string.mission_choice_qr
           MissionType.SPEECH -> R.string.mission_choice_speech
         }
     }

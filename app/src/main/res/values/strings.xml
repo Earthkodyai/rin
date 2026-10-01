@@ -97,86 +97,24 @@
     <string name="repeat_tap">Tap the words in order</string>
     <string name="repeat_hear_again">Hear again</string>
     <string name="repeat_mic_on">Microphone on</string>
-    <!-- Ring screen: QR mission (task 3.2). -->
-    <string name="mission_qr_title">Scan your QR sticker</string>
-    <string name="mission_qr_walk">Walk to your sticker, then tap below.</string>
-    <string name="mission_qr_open">Scan sticker</string>
-    <string name="mission_qr_aim">Hold the sticker in the middle, up close.</string>
-    <string name="mission_qr_closer">Closer! Fill the box with the sticker.</string>
-    <string name="mission_qr_other">That isn\'t your sticker.</string>
-    <string name="qr_light_on">Light</string>
-    <string name="qr_light_off">Light off</string>
-    <!-- Always visible on Rin (05e: AI disclosure). -->
-
     <!-- Alarm editor: mission (task 3.1). -->
     <string name="editor_mission">Game</string>
     <string name="mission_choice_rin_picks">Rin picks</string>
     <string name="mission_choice_pads">Pads</string>
-    <string name="mission_choice_qr">QR</string>
     <string name="mission_choice_cups">Cups</string>
     <string name="mission_choice_speech">Speak</string>
     <string name="mission_choice_none">None</string>
     <string name="mission_hint_rin_picks">Rin picks a different game each day.</string>
     <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
     <string name="mission_hint_pads">Watch Rin\'s hand, then tap the colours in the same order: 3 rounds.</string>
-    <string name="mission_hint_qr">Walk to your QR sticker and scan it up close.</string>
     <string name="mission_hint_speech">Rin says a short English sentence and you say it back: 3 sentences. The mic listens only during the game.</string>
     <string name="mission_hint_cups">Follow the ball as Rin shuffles the cups, then tap its cup: 3 in a row.</string>
     <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_mic">%1$s needs a microphone this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_sensor">%1$s needs motion sensors this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
-    <string name="mission_no_camera">%1$s needs a camera this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
-    <string name="mission_not_set_up">%1$s needs a sticker first. Until you set one up, this alarm uses another ready mission, or a plain Dismiss.</string>
-    <string name="mission_offer_qr">Rin can also pick the QR sticker once you set it up.</string>
     <string name="mission_allow">Allow</string>
-    <string name="mission_set_up">Set up</string>
 
-    <!-- QR sticker setup (task 3.2). -->
-    <string name="qr_setup_title">QR sticker</string>
-    <string name="qr_intro">Put a code far from your bed. To stop the alarm, you walk to it and scan it up close. The camera only reads codes: nothing is saved or sent.</string>
-    <string name="qr_existing">Set up: %1$s, %2$s</string>
-    <string name="qr_replace_note">Your current code keeps working until a new one passes its bed check.</string>
-    <string name="qr_make">Make my sticker</string>
-    <string name="qr_make_new">Make a new sticker</string>
-    <string name="qr_use_existing">Use a code I already have</string>
-    <string name="qr_use_other">Use a different code</string>
-    <string name="qr_sticker_image">Your QR sticker</string>
-    <string name="qr_sticker_caption">RinAlarm · scan me to stop the alarm</string>
-    <string name="qr_sticker_where">Print it at least 5 cm wide and stick it outside your bedroom, such as on the bathroom door or in the kitchen. Can\'t print yet? Show it on another screen to try things out.</string>
-    <string name="qr_share">Share to print</string>
-    <string name="qr_share_again">Share the sticker again</string>
-    <string name="qr_share_title">Print or send your sticker</string>
-    <string name="qr_placed">It\'s up. Scan it</string>
-    <string name="qr_register_generated">Stand next to your sticker and scan it.</string>
-    <string name="qr_register_existing">Stand next to the code and scan it. Pick one outside your bedroom, and one you have only one of.</string>
-    <string name="qr_moved">I moved it: check again</string>
-    <string name="qr_register_moved">Stand next to your sticker at its new place and scan it.</string>
-    <string name="qr_register_not_new">That isn\'t the sticker you just made.</string>
-    <string name="qr_camera_needed">The QR mission needs the camera. It only reads codes: nothing is saved or sent.</string>
-    <string name="qr_confirm">Found a %1$s. Use this one?</string>
-    <string name="qr_confirm_use">Use it</string>
-    <string name="qr_confirm_rescan">Scan again</string>
-    <plurals name="qr_bed_intro">
-        <item quantity="one">Now make sure it can\'t be scanned from bed, from 3 spots. At each one, get there first, then tap Start and really try to scan the sticker for %1$d second.</item>
-        <item quantity="other">Now make sure it can\'t be scanned from bed, from 3 spots. At each one, get there first, then tap Start and really try to scan the sticker for %1$d seconds.</item>
-    </plurals>
-    <string name="qr_bed_spot">Spot %1$d of %2$d: %3$s</string>
-    <string name="qr_spot_lying">lying down, as you sleep</string>
-    <string name="qr_spot_sitting">sitting up in bed</string>
-    <string name="qr_spot_edge">sitting on the edge of the bed, feet on the floor</string>
-    <string name="qr_bed_start">Start bed check</string>
-    <string name="qr_bed_running">Aim at the sticker from your bed…</string>
-    <string name="qr_bed_no_frames">The camera didn\'t run long enough. Try again.</string>
-    <string name="qr_bed_failed">I could read it from your bed (%1$s). Move it out of the bedroom or out of sight, then check all 3 spots again.</string>
-    <string name="qr_bed_again">Check again</string>
-    <string name="qr_done">Your QR mission is ready. Rin can pick it, or choose QR for an alarm.</string>
-    <string name="qr_done_close">Done</string>
-    <string name="qr_measured">Up close: %1$d%% · from bed: %2$s (it must be %3$d%% to count)</string>
-    <string name="qr_bed_seen">seen at %1$d%%</string>
-    <string name="qr_bed_not_seen">not seen</string>
-    <string name="qr_kind_qr">QR code</string>
-    <string name="qr_kind_barcode">barcode</string>
-    <string name="qr_kind_other">code</string>
+    <!-- Missed-alarm notification. -->
     <string name="missed_title">Missed alarm at %1$s</string>
     <string name="missed_text">Your phone was off or asleep when it was due.</string>
 
