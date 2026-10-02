@@ -7,7 +7,7 @@ Android alarm app with one original 3D anime companion, "Rin" (friendly morning 
 
 ## Hard rules
 - The ring path is native-only (AlarmManager.setAlarmClock -> foreground service / full-screen intent -> USAGE_ALARM audio). It must never depend on network, WebView or AI.
-- Offline-only. No backend, no live AI chat (cut in D21); running cost stays $0.
+- Offline-only, except the tournament leaderboard (Firebase Spark, ADR 0008), which nothing else may depend on. No live AI chat (cut in D21); running cost stays $0.
 - No API keys or secrets in the app or the repo. Treat the repo as public from the first commit; gitleaks must pass.
 - Photos: on-device ML Kit only, in memory, never saved or uploaded. Mic only during an active conversation, with a visible indicator.
 - Content: SFW, Rin is clearly an adult, AI disclosure in onboarding and Settings (no badge on her since D29), crisis protocol (Thai hotline 1323), nothing carried between mornings (no streak, no Bond; ADR 0004).

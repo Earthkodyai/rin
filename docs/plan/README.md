@@ -13,6 +13,7 @@
 | 3 ภารกิจ + เซนเซอร์ | [phase-3.md](phase-3.md) | 05c, 08 |
 | 4 เสียง + บทสนทนาออฟไลน์ | [phase-4.md](phase-4.md) | 05d |
 | 5 อารมณ์ในเช้าเดียว + ตั้งค่า (D22) | [phase-5.md](phase-5.md) | 05a, 05e |
+| G ระดับความยาก + ทัวร์นาเมนต์ (D33, ก่อน 6.9) | [phase-games.md](phase-games.md) | phase-3, ADR 0008 |
 | 6 Hardening + v1.0 | [phase-6.md](phase-6.md) | 09, 10 |
 | ~~7 คุยสดกับ AI (v1.1)~~ ยกเลิก (D21) | [phase-7.md](phase-7.md) | — |
 | 8 Google Play (v1.2) | [phase-8.md](phase-8.md) | 10, 09 |
