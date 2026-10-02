@@ -268,13 +268,13 @@ private fun bubblePath(): Path {
 }
 
 /**
- * The TOP1 bubble: pink by day, white by night, halftone dots that grow toward its edge, a thick ink outline and
+ * The TOP1 bubble: white with black letters (a manga shout), grey screentone dots that grow toward its edge, a thick ink outline and
  * a soft drop shadow. [shown] springs it out of the trophy with a wiggle; hiding sinks it back in, faster as it goes
  * (the user: it should come out of the cup and go back into it). [from] is that point in the cup, as a fraction of
  * this box (below it, so past 1); drawn behind the trophy, the bubble is hidden by the cup while it is small.
  */
 @Composable
-internal fun ShoutBubble(shown: Boolean, night: Boolean, text: String, from: TransformOrigin, modifier: Modifier = Modifier) {
+internal fun ShoutBubble(shown: Boolean, text: String, from: TransformOrigin, modifier: Modifier = Modifier) {
   val pop = remember { Animatable(0f) }
   val wiggle = remember { Animatable(0f) }
   LaunchedEffect(shown) {
@@ -303,9 +303,10 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, text: String, from: Tra
       pop.animateTo(0f, tween(SHOUT_SINK_MS.toInt(), easing = FastOutLinearInEasing))
     }
   }
-  val fill = if (night) Color.White else Color(0xFFEC5A8C)
-  val dots = if (night) Color(0xFFD3CFE6) else Color(0xFFB8306A)
-  val letters = if (night) Color(0xFFEC5A8C) else Color.White
+  // A manga shout by day and by night (the user): white, inked, grey screentone toward the edge, black letters.
+  val fill = Color.White
+  val dots = Color(0xFFD2D0D4)
+  val letters = Ink
   val outline = remember { bubblePath() }
   Box(
     modifier
@@ -341,7 +342,6 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, text: String, from: Tra
     // University short names run from 2 letters (KU) to 6 (KMUTNB): the line shrinks to stay inside the bubble's body.
     val fit = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 15.sp, stepSize = 0.5.sp)
     Box(Modifier.fillMaxWidth(SHOUT_TEXT_WIDTH), contentAlignment = Alignment.Center) {
-      BasicText(text, style = style.copy(color = Ink, drawStyle = Stroke(width = 7f, join = StrokeJoin.Round)), maxLines = 1, autoSize = fit)
       BasicText(text, style = style.copy(color = letters), maxLines = 1, autoSize = fit)
     }
   }

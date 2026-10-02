@@ -348,7 +348,6 @@ private const val COLUMN_WIDTH = 0.48f
  */
 @Composable
 private fun TournamentColumn(line: String?, top1: String?, onTournament: () -> Unit, modifier: Modifier) {
-  val p = RinTheme.palette
   val speaking by rememberUpdatedState(line != null)
   var shout by remember { mutableStateOf(false) }
   LaunchedEffect(Unit) {
@@ -392,7 +391,7 @@ private fun TournamentColumn(line: String?, top1: String?, onTournament: () -> U
   val pressScale by animateFloatAsState(if (pressed) 0.95f else 1f, tween(90), label = "trophy press")
   Box(modifier) {
     PanelClock(Modifier.align(Alignment.TopCenter).padding(top = CLOCK_TOP).graphicsLayer { alpha = clockAlpha })
-    ShoutBubble(bubbleUp, p.night, "TOP1 IS ${top1 ?: "???"}!", ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
+    ShoutBubble(bubbleUp, "TOP1 IS ${top1 ?: "???"}!", ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
     Column(
       Modifier.align(Alignment.BottomCenter)
         .graphicsLayer {
