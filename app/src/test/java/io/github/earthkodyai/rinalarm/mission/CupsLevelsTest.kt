@@ -149,4 +149,46 @@ class CupsLevelsTest {
     val mid = CupsTimeline.frameAt(act, 300 + 115)
     assertFalse(mid.cups.all { it.z == 0f })
   }
+
+  @Test
+  fun aboveEasy_everyShuffleKeepsTheBallsCupBusy_andTouchesEveryCup() {
+    for (level in listOf(Difficulty.NORMAL, Difficulty.HARD, Difficulty.NIGHTMARE)) {
+      val rules = CupsRules.forLevel(level)
+      assertTrue(rules.balanced)
+      for (seed in 0L until 150) {
+        val g = CupsGame(rules, Random(seed))
+        g.start(0)
+        g.untilPick(0)
+        val shuffle = g.state.act as CupsAct.Shuffle
+        var at = shuffle.ball
+        var moves = 0
+        for ((p, q) in shuffle.swaps) {
+          if (at == p || at == q) moves++
+          at = if (at == p) q else if (at == q) p else at
+        }
+        assertTrue("$level seed $seed: $moves of ${shuffle.swaps.size}", 2 * moves >= shuffle.swaps.size)
+        val touched = shuffle.swaps.flatMap { listOf(it.first, it.second) }.toSet()
+        if (shuffle.swaps.size >= rules.cups) assertEquals((0 until rules.cups).toSet(), touched)
+      }
+    }
+    assertFalse(CupsRules.forLevel(Difficulty.EASY).balanced)
+  }
+
+  @Test
+  fun aBalancedShuffle_stillEndsAnywhere_withEvenOdds() {
+    // From every start, where the ball ends after Nightmare's first shuffle: a blind guess should do no better than 1 in 5.
+    val rules = CupsRules.forLevel(Difficulty.NIGHTMARE)
+    val ends = Array(5) { IntArray(5) }
+    for (seed in 0L until 3_000) {
+      val g = CupsGame(rules, Random(seed))
+      g.start(0)
+      g.untilPick(0)
+      val shuffle = g.state.act as CupsAct.Shuffle
+      ends[shuffle.ball][CupsTimeline.afterSwaps(shuffle.swaps, shuffle.ball)]++
+    }
+    for (row in ends) {
+      val best = row.max().toDouble() / row.sum()
+      assertTrue("best blind guess $best", best < 0.27)
+    }
+  }
 }
