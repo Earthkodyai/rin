@@ -1,12 +1,13 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -213,6 +214,8 @@ internal fun MainScreen(
   onTourSkip: () -> Unit = {},
   onTourAdd: () -> Unit = {},
   onTournament: () -> Unit = {},
+  /** The leading university's short name for the TOP1 bubble; null until the leaderboard has one (G.6). */
+  topUniversity: String? = null,
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable (Modifier) -> Unit = {},
 ) {
@@ -223,7 +226,7 @@ internal fun MainScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       TopBar(onDiagnostics, onSettings, targets)
       if (setupIssue) SetupBanner(onDiagnostics)
-      RinPanel(rinLine, character, onTournament, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
+      RinPanel(rinLine, character, topUniversity, onTournament, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
       DayModeRow(dayMode, onDayMode, Modifier.spotTarget(targets, TourTarget.DAY_MODE, radius = Spot.PILL, depth = 3.dp))
       ListHeader(state)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth(), targets)
@@ -300,7 +303,13 @@ private fun SetupBanner(onClick: () -> Unit) {
  * time and date, which fade out while she speaks and her line sits there in a bubble (the mockups).
  */
 @Composable
-private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, onTournament: () -> Unit, modifier: Modifier = Modifier) {
+private fun RinPanel(
+  line: String?,
+  character: @Composable (Modifier) -> Unit,
+  top1: String?,
+  onTournament: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(28.dp)
   Box(
@@ -320,7 +329,7 @@ private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, o
       Box(Modifier.align(Alignment.TopEnd).offset(x = 24.dp, y = (-28).dp).size(120.dp).background(p.glow, CircleShape))
     }
     character(Modifier.align(Alignment.BottomEnd).fillMaxWidth(RIN_WIDTH).fillMaxHeight().padding(top = 8.dp))
-    TournamentColumn(line, onTournament, Modifier.align(Alignment.TopStart).fillMaxWidth(COLUMN_WIDTH).fillMaxHeight())
+    TournamentColumn(line, top1, onTournament, Modifier.align(Alignment.TopStart).fillMaxWidth(COLUMN_WIDTH).fillMaxHeight())
     RinBubble(line, Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp))
   }
 }
@@ -331,12 +340,14 @@ private const val CLOCK_FADE_MS = 300
 private const val COLUMN_WIDTH = 0.48f
 
 /**
- * The clock, the TOURNAMENT! bubble and the trophy on one centre line (G.5, the user's layout 1). The bubble comes
- * [SHOUT_SHOWN_MS] in every [SHOUT_HIDDEN_MS] and never while Rin speaks; while it is gone the clock slides down to the
- * middle of the space above the trophy. The clock fades while she speaks, as before; the trophy always stays.
+ * The clock, the TOP1 bubble and the trophy on one centre line (G.5, the user's layout 1, redesigned 2026-10-03): the
+ * trophy stands on a wooden base lettered TOURNAMENT in gold, and the two together are the way into the tournament.
+ * The bubble comes [SHOUT_SHOWN_MS] in every [SHOUT_HIDDEN_MS], never while Rin speaks, and names the university
+ * that leads ([top1], or ??? before there is a leaderboard); while it is up the clock is gone, and the bubble has the
+ * space above the trophy to itself. The clock also fades while she speaks, as before; the trophy always stays.
  */
 @Composable
-private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: Modifier) {
+private fun TournamentColumn(line: String?, top1: String?, onTournament: () -> Unit, modifier: Modifier) {
   val p = RinTheme.palette
   val speaking by rememberUpdatedState(line != null)
   var shout by remember { mutableStateOf(false) }
@@ -355,72 +366,69 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
     }
   }
   val shown = shout && !speaking
-  // All on one beat: the clock makes room while the bubble is still inside the cup, the trophy is knocked as the
-  // bubble bursts out and again as it lands back in, and the clock starts down just after the bubble starts to sink.
-  var clockUp by remember { mutableStateOf(false) }
+  // All on one beat: the clock fades out while the bubble is still inside the cup, the trophy is knocked as the bubble
+  // bursts out and again as it lands back in, and the clock comes back once it has landed.
+  var clockOut by remember { mutableStateOf(false) }
   var bubbleUp by remember { mutableStateOf(false) }
   var kicks by remember { mutableIntStateOf(0) }
   LaunchedEffect(shown) {
     if (shown) {
-      clockUp = true
+      clockOut = true
       bubbleUp = true
       delay(SHOUT_PEEK_MS)
       kicks++
     } else if (bubbleUp) {
       bubbleUp = false
-      delay(CLOCK_DOWN_AFTER_MS)
-      clockUp = false
-      delay(SHOUT_LAND_MS - CLOCK_DOWN_AFTER_MS)
+      delay(SHOUT_LAND_MS)
       kicks++
+      clockOut = false
     }
   }
-  val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
-  val clockTop by animateDpAsState(if (clockUp) CLOCK_TOP_UP else CLOCK_TOP_DOWN, tween(CLOCK_SLIDE_MS), label = "clock slide")
-  // Up, the clock shrinks a little so the bubble has room to breathe between it and the trophy.
-  val clockScale by animateFloatAsState(if (clockUp) CLOCK_SCALE_UP else 1f, tween(CLOCK_SLIDE_MS), label = "clock scale")
+  val clockAlpha by
+    animateFloatAsState(if (line == null && !clockOut) 1f else 0f, tween(if (clockOut) CLOCK_OUT_MS else CLOCK_FADE_MS), label = "panel clock")
   val label = stringResource(R.string.home_tournament)
+  val press = remember { MutableInteractionSource() }
+  val pressed by press.collectIsPressedAsState()
+  val pressScale by animateFloatAsState(if (pressed) 0.95f else 1f, tween(90), label = "trophy press")
   Box(modifier) {
-    PanelClock(
-      // Moved by its layer, not its padding, so the slide never lays the panel out again each frame.
-      Modifier.align(Alignment.TopCenter).graphicsLayer {
-        translationY = clockTop.toPx()
-        alpha = clockAlpha
-        scaleX = clockScale
-        scaleY = clockScale
-        transformOrigin = TransformOrigin(0.5f, 0f)
-      }
-    )
-    ShoutBubble(bubbleUp, p.night, ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
-    TournamentTrophy(
-      kicks,
-      TrophySize.align(Alignment.BottomCenter)
-        .clickable(role = Role.Button, onClickLabel = label) { onTournament() }
-        .semantics { contentDescription = label }
-    )
+    PanelClock(Modifier.align(Alignment.TopCenter).padding(top = CLOCK_TOP).graphicsLayer { alpha = clockAlpha })
+    ShoutBubble(bubbleUp, p.night, "TOP1 IS ${top1 ?: "???"}!", ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
+    Column(
+      Modifier.align(Alignment.BottomCenter)
+        .graphicsLayer {
+          scaleX = pressScale
+          scaleY = pressScale
+          transformOrigin = TransformOrigin(0.5f, 1f)
+        }
+        .clickable(press, indication = null, role = Role.Button, onClickLabel = label) { onTournament() }
+        .semantics(mergeDescendants = true) { contentDescription = label },
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      TournamentTrophy(kicks, TrophySize)
+      TrophyPlinth(PlinthSize)
+    }
   }
 }
 
 /** How long to wait for Rin's hello to start (her page loads first), and the pause after her line before the pop. */
 private const val HELLO_WAIT_MS = 5_000L
 private const val SHOUT_AFTER_LINE_MS = 800L
-private const val CLOCK_SLIDE_MS = 260
-/** The clock starts down this far into the bubble's sink, once the bubble has begun to drop away from it. */
-private const val CLOCK_DOWN_AFTER_MS = 60L
+/** The clock's quick fade as the bubble comes (it is gone before the bubble leaves the cup). */
+private const val CLOCK_OUT_MS = 140
+
 /**
- * Measured on the 14T: the bubble sits halfway between the date and the trophy, by the nearest points of their ink
- * (9.5 dp each way at 64.2 dp; the user's ask). Up, the clock shrinks to 80%; down, its ink is centred on the 132 dp
- * above the trophy (84 dp, its foot on the panel's edge).
+ * The space above the trophy (216 dp panel, 30 dp base, 80 dp trophy whose handles start 7 dp down) is 113 dp. The
+ * clock's ink (11 to 76 dp below its top, measured on the 14T) is centred in it; so is the bubble (82 dp, its spikes
+ * ±34 dp from its middle), which leaves ~22 dp to the panel's top and to the handles.
  */
-private val CLOCK_TOP_UP = 0.dp
-private const val CLOCK_SCALE_UP = 0.8f
-private val CLOCK_TOP_DOWN = 22.dp
-private val SHOUT_TOP = 64.2.dp
+private val CLOCK_TOP = 13.dp
+private val SHOUT_TOP = 15.5.dp
 
 /**
  * Where the bubble comes out of: the middle of the trophy's bowl (90 of its 252 units down), as a fraction of the
- * bubble's box. The panel is 216 dp, the trophy 84 dp on its edge, the bubble 76 dp tall from SHOUT_TOP.
+ * bubble's box.
  */
-private val ShoutFrom = TransformOrigin(0.5f, ((216f - 84f + 84f * 90f / 252f) - 64.2f) / 76f)
+private val ShoutFrom = TransformOrigin(0.5f, ((216f - 30f - 80f + 80f * 90f / 252f) - 15.5f) / 82f)
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the

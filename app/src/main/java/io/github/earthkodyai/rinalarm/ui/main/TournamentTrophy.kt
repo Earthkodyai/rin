@@ -14,16 +14,21 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
@@ -31,6 +36,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
@@ -262,13 +268,13 @@ private fun bubblePath(): Path {
 }
 
 /**
- * The TOURNAMENT! bubble: pink by day, white by night, halftone dots that grow toward its edge, a thick ink outline and
+ * The TOP1 bubble: pink by day, white by night, halftone dots that grow toward its edge, a thick ink outline and
  * a soft drop shadow. [shown] springs it out of the trophy with a wiggle; hiding sinks it back in, faster as it goes
  * (the user: it should come out of the cup and go back into it). [from] is that point in the cup, as a fraction of
  * this box (below it, so past 1); drawn behind the trophy, the bubble is hidden by the cup while it is small.
  */
 @Composable
-internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, modifier: Modifier = Modifier) {
+internal fun ShoutBubble(shown: Boolean, night: Boolean, text: String, from: TransformOrigin, modifier: Modifier = Modifier) {
   val pop = remember { Animatable(0f) }
   val wiggle = remember { Animatable(0f) }
   LaunchedEffect(shown) {
@@ -299,7 +305,7 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
   }
   val fill = if (night) Color.White else Color(0xFFEC5A8C)
   val dots = if (night) Color(0xFFD3CFE6) else Color(0xFFB8306A)
-  val text = if (night) Color(0xFFEC5A8C) else Color.White
+  val letters = if (night) Color(0xFFEC5A8C) else Color.White
   val outline = remember { bubblePath() }
   Box(
     modifier
@@ -328,13 +334,16 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
       TextStyle(
         fontFamily = RinRounded,
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 12.5.sp,
-        letterSpacing = (-0.6).sp,
+        letterSpacing = (-0.4).sp,
         // A forward lean for the comic shout.
         textGeometricTransform = TextGeometricTransform(skewX = -0.18f),
       )
-    Text("TOURNAMENT!", style = style.copy(color = Ink, drawStyle = Stroke(width = 7f, join = StrokeJoin.Round)))
-    Text("TOURNAMENT!", style = style.copy(color = text))
+    // University short names run from 2 letters (KU) to 6 (KMUTNB): the line shrinks to stay inside the bubble's body.
+    val fit = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 15.sp, stepSize = 0.5.sp)
+    Box(Modifier.fillMaxWidth(SHOUT_TEXT_WIDTH), contentAlignment = Alignment.Center) {
+      BasicText(text, style = style.copy(color = Ink, drawStyle = Stroke(width = 7f, join = StrokeJoin.Round)), maxLines = 1, autoSize = fit)
+      BasicText(text, style = style.copy(color = letters), maxLines = 1, autoSize = fit)
+    }
   }
 }
 
@@ -363,6 +372,68 @@ private fun DrawScope.drawBubble(outline: Path, fill: Color, dots: Color) {
   }
 }
 
-/** The trophy's size on the home panel, and the bubble's. */
-internal val TrophySize = Modifier.size(width = 67.dp, height = 84.dp)
-internal val ShoutSize = Modifier.size(width = 164.dp, height = 76.dp)
+/** The part of the bubble's width the text may use: its body, inside the valleys between the spikes. */
+private const val SHOUT_TEXT_WIDTH = 0.6f
+
+/** The trophy's size on the home panel, the bubble's, and the wooden base's. */
+internal val TrophySize = Modifier.size(width = 64.dp, height = 80.dp)
+internal val ShoutSize = Modifier.size(width = 176.dp, height = 82.dp)
+internal val PlinthSize = Modifier.size(width = 124.dp, height = 30.dp)
+
+private val WoodTop = Color(0xFFA7744B)
+private val WoodLight = Color(0xFF8A5A36)
+private val WoodDark = Color(0xFF5A341D)
+private val WoodEdge = Color(0xFF3E2313)
+
+/**
+ * The trophy's wooden base with TOURNAMENT in gold (the user's redesign): a slab with a lit top bevel, a grained front,
+ * a thin gold inlay and the gold letters pressed in (a dark line under them).
+ */
+@Composable
+internal fun TrophyPlinth(modifier: Modifier = Modifier) {
+  Box(
+    modifier.drawBehind {
+      val r = CornerRadius(4.dp.toPx())
+      val bevel = 5.dp.toPx()
+      drawRoundRect(WoodEdge, cornerRadius = r)
+      drawRoundRect(Brush.verticalGradient(listOf(WoodLight, WoodDark)), Offset(0f, bevel), Size(size.width, size.height - bevel - 1.dp.toPx()), r)
+      drawRoundRect(WoodTop, size = Size(size.width, bevel + r.x), cornerRadius = r)
+      drawRect(WoodLight, Offset(0f, bevel), Size(size.width, 1.dp.toPx()))
+      // Grain: a few long, faint, slightly wavy lines across the front.
+      val grain = Color.Black.copy(alpha = .16f)
+      for ((i, y) in listOf(.42f, .6f, .78f).withIndex()) {
+        val yy = size.height * y
+        val wave = path {
+          moveTo(0f, yy)
+          cubicTo(size.width * .3f, yy - 2f + i, size.width * .6f, yy + 2f, size.width, yy - 1f)
+        }
+        drawPath(wave, grain, style = Stroke(1.dp.toPx()))
+      }
+      // A thin gold inlay framing the letters.
+      val inset = 4.dp.toPx()
+      drawRoundRect(
+        GoldShade.copy(alpha = .8f),
+        Offset(inset, bevel + inset * .6f),
+        Size(size.width - 2 * inset, size.height - bevel - inset * 1.6f),
+        CornerRadius(2.dp.toPx()),
+        style = Stroke(1.dp.toPx()),
+      )
+    },
+    contentAlignment = Alignment.Center,
+  ) {
+    BasicText(
+      "TOURNAMENT",
+      Modifier.padding(top = 4.dp),
+      style =
+        TextStyle(
+          fontFamily = RinRounded,
+          fontWeight = FontWeight.ExtraBold,
+          fontSize = 12.sp,
+          letterSpacing = 1.2.sp,
+          brush = Brush.verticalGradient(listOf(GoldLight, Gold, GoldShade)),
+          shadow = Shadow(WoodEdge, Offset(0f, 1.5f), 0f),
+        ),
+      maxLines = 1,
+    )
+  }
+}
