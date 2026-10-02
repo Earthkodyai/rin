@@ -401,14 +401,14 @@ private const val CLOCK_SLIDE_MS = 350
 /** ShoutBubble's shrink when it hides. */
 private const val SHOUT_OUT_MS = 180L
 /**
- * Measured on the 14T, the clock's ink runs from 11 to 76 dp below its top. Up at 80% it ends near 61 dp; the bubble
- * (76 dp, spikes ±31 dp from its middle at 96 dp) clears it by a few dp and ends ~5 dp above the trophy (84 dp, its
- * foot on the panel's edge, so its top at 132 dp). Down, the clock's ink is centred on the 132 dp above the trophy.
+ * Measured on the 14T: the bubble sits halfway between the date and the trophy, by the nearest points of their ink
+ * (9.5 dp each way at 64.2 dp; the user's ask). Up, the clock shrinks to 80%; down, its ink is centred on the 132 dp
+ * above the trophy (84 dp, its foot on the panel's edge).
  */
 private val CLOCK_TOP_UP = 0.dp
 private const val CLOCK_SCALE_UP = 0.8f
 private val CLOCK_TOP_DOWN = 22.dp
-private val SHOUT_TOP = 58.dp
+private val SHOUT_TOP = 64.2.dp
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the

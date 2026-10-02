@@ -54,9 +54,9 @@ import kotlinx.coroutines.launch
  * Both are drawn from simple shapes in a fixed design space (the mockup's), so they scale to any size.
  */
 
-/** How long the bubble stays up, then how long it is gone (the user's pick). */
-internal const val SHOUT_SHOWN_MS = 6_000L
-internal const val SHOUT_HIDDEN_MS = 45_000L
+/** How long the bubble stays up, then how long it is gone: up 3 s once every 10 s (the user's pick, 2026-10-03). */
+internal const val SHOUT_SHOWN_MS = 3_000L
+internal const val SHOUT_HIDDEN_MS = 7_000L
 
 private val Gold = Color(0xFFFCB918)
 private val GoldShade = Color(0xFFEAA012)
