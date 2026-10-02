@@ -66,6 +66,8 @@
     <string name="ring_hold_to_stop">Hold 3 s to stop</string>
     <string name="mission_passed">Nice work! Alarm off.</string>
     <string name="ring_tap_to_close">Tap anywhere to close</string>
+    <!-- G.1: the switch that shows while Rin scolds a miss. -->
+    <string name="ring_scold_switch">Rin scolds</string>
     <!-- Ring screen: colour pads (task 3.3). -->
     <string name="pads_title">Copy Rin\'s colours</string>
     <string name="pads_intro">Watch her hand, then tap the same colours in order. Three rounds.</string>
@@ -108,6 +110,17 @@
     <string name="mission_hint_none">No mission: a plain Dismiss button.</string>
     <string name="mission_hint_pads">Watch Rin\'s hand, then tap the colours in the same order: 3 rounds.</string>
     <string name="mission_hint_speech">Rin says a short English sentence and you say it back: 3 sentences. The mic listens only during the game.</string>
+    <!-- G.1: the game's level and the scold switch in the editor. -->
+    <string name="editor_level">Level</string>
+    <string name="level_easy">Easy</string>
+    <string name="level_normal">Normal</string>
+    <string name="level_hard">Hard</string>
+    <string name="level_nightmare">Nightmare</string>
+    <string name="level_one">Repeat after Rin has one level.</string>
+    <string name="level_rin_picks">Pads and cups use this level; Repeat after Rin has one.</string>
+    <string name="level_nightmare_warning">Nightmare is made to beat most people. As an alarm it may ring until you give up and hold the emergency stop.</string>
+    <string name="editor_scold">Rin scolds</string>
+    <string name="editor_scold_summary">She pouts and teases when you miss. Off: she stays calm and quiet.</string>
     <string name="mission_hint_cups">Follow the ball as Rin shuffles the cups, then tap its cup: 3 in a row.</string>
     <string name="mission_needs_permission">%1$s needs a permission. Until you allow it, this alarm uses another ready mission, or a plain Dismiss.</string>
     <string name="mission_no_mic">%1$s needs a microphone this phone doesn\'t have, so this alarm uses another ready mission, or a plain Dismiss.</string>
@@ -250,8 +263,6 @@
     <string name="settings_look_auto">Auto</string>
     <string name="settings_look_day">Day</string>
     <string name="settings_look_night">Night</string>
-    <string name="settings_pout">No pouting</string>
-    <string name="settings_pout_summary">Rin stays calm when you snooze or miss in a game, and skips her teasing lines.</string>
     <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
     <string name="tour_hello">I\'m Rin! Let me show you around.</string>
     <string name="tour_add">Let\'s set your first alarm. Tap Add alarm!</string>

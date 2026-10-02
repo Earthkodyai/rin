@@ -22,6 +22,9 @@ interface PadsMission : Mission {
   fun begin()
 
   fun tap(pad: Pad)
+
+  /** A tap while Rin scolds a miss (G.1): the next try starts now; ignored at any other time. */
+  fun skipScold()
 }
 
 /**
@@ -73,6 +76,12 @@ class ColourPadsMission(
     val right = after.phase != PadsPhase.SCOLD && after.flash != before.flash
     if (right) rightTaps++
     apply(after, activity = right)
+  }
+
+  override fun skipScold() {
+    if (scope == null) return
+    val after = play.skipScold(clock.now())
+    if (after != gameState.value) apply(after, activity = false)
   }
 
   private fun apply(next: PadsState, activity: Boolean) {

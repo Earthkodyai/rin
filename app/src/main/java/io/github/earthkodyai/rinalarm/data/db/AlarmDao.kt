@@ -25,4 +25,7 @@ interface AlarmDao {
   @Upsert suspend fun upsert(alarm: AlarmEntity): Long
 
   @Query("DELETE FROM alarms WHERE id = :id") suspend fun delete(id: Long)
+
+  /** The scold switch (G.1): one column, so a ring in progress never re-arms anything. */
+  @Query("UPDATE alarms SET scold = :scold WHERE id = :id") suspend fun setScold(id: Long, scold: Boolean)
 }

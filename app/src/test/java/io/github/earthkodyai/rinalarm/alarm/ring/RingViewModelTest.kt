@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
@@ -15,6 +16,7 @@ import io.github.earthkodyai.rinalarm.mission.CupsState
 import io.github.earthkodyai.rinalarm.mission.Feedback
 import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.Mission
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionProgress
@@ -34,6 +36,7 @@ import io.github.earthkodyai.rinalarm.mission.RepeatState
 import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.dialogue.pouty
 import io.github.earthkodyai.rinalarm.testing.FakeLineVoice
+import io.github.earthkodyai.rinalarm.testing.FakeAlarms
 import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
@@ -74,9 +77,10 @@ class RingViewModelTest {
   private var book = quietLineBook
   private val voice = FakeLineVoice()
   private val settings = FakeSettings()
+  private val alarms = FakeAlarms()
 
   private fun TestScope.ringScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
-    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
+    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -177,7 +181,7 @@ class RingViewModelTest {
   fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
     runTest(main.dispatcher) {
       val pads = FakePadsMission()
-      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
@@ -202,7 +206,7 @@ class RingViewModelTest {
     }
 
   private fun TestScope.cupsScreen(cups: FakeCupsMission): Pair<RingViewModel, MutableList<Gesture>> {
-    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
+    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
@@ -306,6 +310,10 @@ class RingViewModelTest {
     override fun pick(slot: Int) {
       calls += "pick $slot"
     }
+
+    override fun skipScold() {
+      calls += "skip"
+    }
   }
 
   @Test
@@ -314,7 +322,7 @@ class RingViewModelTest {
       val repeat = FakeRepeatMission()
       val pads = FakePadsMission()
       val viewModel =
-        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
+        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.SPEECH)))
@@ -369,7 +377,7 @@ class RingViewModelTest {
     faceUp: Boolean = true,
   ): Triple<RingViewModel, MutableList<RingCommand>, MutableList<Gesture>> {
     book = realLineBook()
-    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
+    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
     if (faceUp) viewModel.onCharacterVisible()
     val commands = mutableListOf<RingCommand>()
     val cues = mutableListOf<Gesture>()
@@ -457,21 +465,19 @@ class RingViewModelTest {
     }
 
   @Test
-  fun poutOff_aSnoozeAfterTheFirst_isQuiet_andTheLastSnoozesReturnHasNoPoutyLine() =
+  fun scoldOff_aSnoozeAfterTheFirst_isQuiet_andTheLastSnoozesReturnHasNoPoutyLine() =
     runTest(main.dispatcher) {
-      settings.poutOff.value = true
-      val again = request.copy(snoozeCount = 3, snoozesLeft = 0)
+      val again = request.copy(snoozeCount = 3, snoozesLeft = 0, scold = false)
       val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(again, MissionPlan.Run(MissionType.PADS)))
       // back.last is all pouty lines: she says nothing rather than pout.
       assertNull(viewModel.line)
     }
 
   @Test
-  fun poutOff_aMissedPadsRound_getsNoHuff_noScold_andACalmFace() =
+  fun scoldOff_aMissedPadsRound_getsNoHuff_noScold_andACalmFace() =
     runTest(main.dispatcher) {
-      settings.poutOff.value = true
       val pads = FakePadsMission()
-      val (viewModel, _, cues) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      val (viewModel, _, cues) = talkingScreen({ pads }, ActiveRing(request.copy(scold = false), MissionPlan.Run(MissionType.PADS)))
       untilSaid(viewModel)
       viewModel.startGame()
       runCurrent()
@@ -666,7 +672,191 @@ class RingViewModelTest {
     override fun tap(pad: Pad) {
       calls += "tap $pad"
     }
+
+    override fun skipScold() {
+      calls += "skip"
+    }
   }
+
+  // --- Skipping her lines and the scold switch (G.1) ---
+
+  /** A pads ring past "Let's play" and her intro, then a wrong tap: she scolds. */
+  private fun TestScope.scoldedPads(scold: Boolean = true): Triple<RingViewModel, FakePadsMission, MutableList<Gesture>> {
+    val pads = FakePadsMission()
+    val (viewModel, _, cues) = talkingScreen({ pads }, ActiveRing(request.copy(scold = scold), MissionPlan.Run(MissionType.PADS)))
+    untilSaid(viewModel)
+    viewModel.startGame()
+    runCurrent()
+    untilSaid(viewModel)
+    pads.game.value = PadsState(PadsPhase.SCOLD, miss = Miss.WRONG)
+    runCurrent()
+    return Triple(viewModel, pads, cues)
+  }
+
+  @Test
+  fun aTapDuringHerIntro_cutsIt_andTheGameStartsAtOnce() =
+    runTest(main.dispatcher) {
+      val pads = FakePadsMission()
+      val (viewModel, _, _) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      untilSaid(viewModel)
+      viewModel.startGame()
+      runCurrent()
+      assertTrue(checkNotNull(viewModel.line).pool.startsWith("game.intro"))
+      assertTrue("the game waits for her intro", pads.calls.isEmpty())
+
+      viewModel.skip()
+      runCurrent()
+      assertNull(viewModel.line)
+      assertEquals(listOf("begin"), pads.calls)
+    }
+
+  @Test
+  fun letsPlay_cutsHerOpeningLine_forTheIntro() =
+    runTest(main.dispatcher) {
+      val pads = FakePadsMission()
+      val (viewModel, _, _) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      assertEquals("ring.cheerful", viewModel.line?.pool)
+      viewModel.startGame()
+      runCurrent()
+      assertTrue(checkNotNull(viewModel.line).pool.startsWith("game.intro"))
+    }
+
+  @Test
+  fun aTapDuringHerScold_cutsIt_andTheNextTryStartsNow() =
+    runTest(main.dispatcher) {
+      val (viewModel, pads, _) = scoldedPads()
+      assertEquals("pads.wrong", viewModel.line?.pool)
+      assertTrue(viewModel.uiState.value.scolding)
+      assertTrue(viewModel.uiState.value.showScoldSwitch)
+
+      viewModel.skip()
+      runCurrent()
+      assertNull(viewModel.line)
+      assertEquals(listOf("begin", "skip"), pads.calls)
+    }
+
+  @Test
+  fun aTapWithHerSilent_skipsTheScoldOfAnAlarmThatDoesNotScold() =
+    runTest(main.dispatcher) {
+      val (viewModel, pads, _) = scoldedPads(scold = false)
+      assertNull(viewModel.line)
+      assertFalse("no switch for an alarm already calm", viewModel.uiState.value.showScoldSwitch)
+      viewModel.skip()
+      assertEquals(listOf("begin", "skip"), pads.calls)
+    }
+
+  @Test
+  fun aGameButton_cutsHerLineShort() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, _, _) = talkingScreen({ cups }, ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
+      viewModel.onCupsView(CupsView.Unavailable)
+      viewModel.startGame()
+      runCurrent()
+      untilSaid(viewModel)
+      cups.game.value = CupsState(CupsPhase.REVEAL, right = false, picks = 1, mistakes = 1)
+      runCurrent()
+      assertEquals("cups.wrong", viewModel.line?.pool)
+
+      viewModel.pickCup(1)
+      runCurrent()
+      assertNull(viewModel.line)
+      assertEquals(listOf("begin", "pick 1"), cups.calls)
+    }
+
+  @Test
+  fun afterTheWin_aTapNeitherCutsHerWonLine_norSkipsAnything() =
+    runTest(main.dispatcher) {
+      val (viewModel, _, _) = talkingScreen({ mission }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      mission.state.value = MissionProgress(30, 30, MissionState.PASSED)
+      runCurrent()
+      viewModel.skip()
+      viewModel.tapPad(Pad.RED)
+      runCurrent()
+      assertEquals("won.clean", viewModel.line?.pool)
+    }
+
+  @Test
+  fun scoldSwitchOff_silencesHerAtOnce_andSticksToThisAlarmAndNewOnes() =
+    runTest(main.dispatcher) {
+      alarms.save(Alarm(id = request.alarmId, time = request.time))
+      val (viewModel, pads, cues) = scoldedPads()
+      assertTrue(viewModel.uiState.value.mood.pouty)
+
+      viewModel.setScold(false)
+      runCurrent()
+      assertNull(viewModel.line)
+      val state = viewModel.uiState.value
+      assertFalse(state.scold)
+      assertFalse(state.mood.pouty)
+      assertTrue("the switch stays for the rest of this scold", state.showScoldSwitch)
+      assertFalse(checkNotNull(alarms.get(request.alarmId)).scold)
+      assertFalse(settings.lastScold.value)
+      assertEquals("scold=false", log.details[log.types.indexOf(RingEventType.SCOLD_SWITCHED)])
+
+      // The next miss: no line, no huff, and no switch (it is off for this alarm now).
+      val huffs = cues.count { it == Gesture.HUFF.onRing() }
+      pads.game.value = PadsState(PadsPhase.DEMO, round = 1)
+      runCurrent()
+      pads.game.value = PadsState(PadsPhase.SCOLD, round = 1, miss = Miss.SLOW)
+      runCurrent()
+      assertNull(viewModel.line)
+      assertEquals(huffs, cues.count { it == Gesture.HUFF.onRing() })
+      assertFalse(viewModel.uiState.value.showScoldSwitch)
+    }
+
+  @Test
+  fun scoldSwitchBackOn_undoesIt() =
+    runTest(main.dispatcher) {
+      alarms.save(Alarm(id = request.alarmId, time = request.time))
+      val (viewModel, _, _) = scoldedPads()
+      viewModel.setScold(false)
+      viewModel.setScold(true)
+      runCurrent()
+      assertTrue(viewModel.uiState.value.scold)
+      assertTrue(checkNotNull(alarms.get(request.alarmId)).scold)
+      assertTrue(settings.lastScold.value)
+    }
+
+  @Test
+  fun theRing_logsItsLevel_andBuildsTheGameAtIt() =
+    runTest(main.dispatcher) {
+      val levels = mutableListOf<Difficulty>()
+      val missions =
+        object : MissionFactory {
+          override fun create(type: MissionType): Mission = error("the ring asks for its level")
+
+          override fun create(type: MissionType, difficulty: Difficulty): Mission = mission.also { levels += difficulty }
+        }
+      ringState.set(ActiveRing(request.copy(difficulty = Difficulty.HARD), MissionPlan.Run(MissionType.PADS)))
+      RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
+      runCurrent()
+      assertEquals(listOf(Difficulty.HARD), levels)
+      assertTrue(log.details.first().contains("level=hard"))
+    }
+
+  @Test
+  fun aPracticeRound_playsTheEditorsLevel_orElseTheNewAlarmOne() =
+    runTest(main.dispatcher) {
+      val levels = mutableListOf<Difficulty>()
+      val missions =
+        object : MissionFactory {
+          override fun create(type: MissionType): Mission = error("a practice round never builds the real game")
+
+          override fun practice(type: MissionType, difficulty: Difficulty): Mission = FakeMission().also { levels += difficulty }
+        }
+      fun open(vararg extras: Pair<String, Any>) {
+        RingViewModel(
+          ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms,
+          SavedStateHandle(mapOf(RingViewModel.EXTRA_PRACTICE to MissionType.CUPS.stored, *extras)),
+        )
+        runCurrent()
+      }
+      open(RingViewModel.EXTRA_LEVEL to Difficulty.NIGHTMARE.stored, RingViewModel.EXTRA_SCOLD to false)
+      settings.lastDifficulty.value = Difficulty.HARD
+      open()
+      assertEquals(listOf(Difficulty.NIGHTMARE, Difficulty.HARD), levels)
+    }
 
   // --- Practice rounds (UX.8) ---
 
@@ -677,11 +867,11 @@ class RingViewModelTest {
       object : MissionFactory {
         override fun create(type: MissionType): Mission = error("a practice round never builds the real game")
 
-        override fun practice(type: MissionType): Mission = FakeMission().also { rounds += it }
+        override fun practice(type: MissionType, difficulty: Difficulty): Mission = FakeMission().also { rounds += it }
       }
     val viewModel =
       RingViewModel(
-        ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings,
+        ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms,
         SavedStateHandle(mapOf(RingViewModel.EXTRA_PRACTICE to MissionType.PADS.stored)),
       )
     viewModel.onCharacterVisible()

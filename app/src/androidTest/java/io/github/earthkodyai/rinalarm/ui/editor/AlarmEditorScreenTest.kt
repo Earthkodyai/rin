@@ -16,6 +16,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
@@ -68,6 +69,14 @@ class AlarmEditorScreenTest {
 
       override fun setMission(value: MissionChoice) {
         calls += "mission ${value.stored}"
+      }
+
+      override fun setDifficulty(value: Difficulty) {
+        calls += "level ${value.stored}"
+      }
+
+      override fun setScold(value: Boolean) {
+        calls += "scold $value"
       }
 
       override fun pickSound(value: AlarmSound) {

@@ -59,6 +59,11 @@ class FakeAlarms(initial: List<Alarm> = emptyList(), private val testTime: Local
     state.value += alarmId to alarm.copy(enabled = enabled)
   }
 
+  override suspend fun setScold(alarmId: Long, scold: Boolean) {
+    val alarm = state.value[alarmId] ?: return
+    state.value += alarmId to alarm.copy(scold = scold)
+  }
+
   override suspend fun delete(alarmId: Long) {
     gate?.await()
     failure?.let { throw it }

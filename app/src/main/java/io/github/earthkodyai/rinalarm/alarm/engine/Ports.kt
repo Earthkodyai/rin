@@ -19,6 +19,9 @@ interface AlarmWriter {
 
   suspend fun delete(alarmId: Long)
 
+  /** The scold switch (G.1): changes nothing else and re-arms nothing, as it may be flipped while [alarmId] rings. */
+  suspend fun setScold(alarmId: Long, scold: Boolean)
+
   /**
    * Replaces any earlier test alarm with a one-shot test alarm labelled [label], ringing at the first whole minute
    * at least a minute away (alarms are minute-precise). Returns when it will ring.

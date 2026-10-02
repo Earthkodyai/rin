@@ -4,6 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -68,6 +69,21 @@ class MigrationTest {
       // A test alarm left over from before the update: rings with Rin picks once, then is deleted as usual.
       it.moveToNext()
       assertEquals(MissionChoice.DEFAULT_STORED, it.getString(1))
+    }
+  }
+
+  @Test
+  fun v5to6_givesExistingAlarmsEasy_andRinStillScolds() {
+    helper.createDatabase(DB, 5).use {
+      it.execSQL("INSERT INTO alarms (id, hour, minute, repeatDays, label, enabled) VALUES (1, 6, 30, 31, 'Work', 1)")
+    }
+    val db = helper.runMigrationsAndValidate(DB, 6, true)
+
+    db.query("SELECT label, difficulty, scold FROM alarms WHERE id = 1").use {
+      it.moveToFirst()
+      assertEquals("Work", it.getString(0))
+      assertEquals(Difficulty.EASY.stored, it.getString(1))
+      assertEquals(1, it.getInt(2))
     }
   }
 

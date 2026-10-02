@@ -30,9 +30,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -97,6 +99,7 @@ import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rinPattern
+import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.LocalTime
 
@@ -158,6 +161,8 @@ internal fun RingRoute(viewModel: RingViewModel, onFinish: () -> Unit, onCommand
     onTapWord = viewModel::tapWord,
     onCantTalk = viewModel::cantTalk,
     onClose = viewModel::close,
+    onSkip = viewModel::skip,
+    onScold = viewModel::setScold,
     onPlayAgain = viewModel::playAgain,
     onEndPractice = viewModel::endPractice,
     character = { modifier, insets ->
@@ -197,6 +202,8 @@ internal fun RingScreen(
   onTapWord: (Int) -> Unit = {},
   onCantTalk: () -> Unit = {},
   onClose: () -> Unit = {},
+  onSkip: () -> Unit = {},
+  onScold: (Boolean) -> Unit = {},
   onPlayAgain: () -> Unit = {},
   onEndPractice: () -> Unit = {},
   // Slots, so previews and UI tests run without a WebView.
@@ -211,6 +218,8 @@ internal fun RingScreen(
   // moment later, closed the screen and cut her line off (the user, 2026-10-02).
   // A practice round's win keeps the screen for "Play again" or "Done".
   val closable = (state.passed && !state.practice) || state.leaving
+  // Before that, a tap outside the buttons skips her: her line, her intro (the game starts) or her scold (G.1).
+  val skippable = !closable && !state.passed && (state.line != null || state.scolding)
   // The game being played: the planned one, or the one "Can't talk right now" switched to.
   val game = state.missionType ?: ring.mission?.type
   val playing = !state.plainDismiss && !state.passed && !state.leaving
@@ -230,11 +239,16 @@ internal fun RingScreen(
     modifier
       .fillMaxSize()
       .background(p.ground)
-      .pointerInput(closable) { if (closable) detectTapGestures { onClose() } }
+      .pointerInput(closable) { detectTapGestures { if (closable) onClose() else onSkip() } }
       .semantics {
         if (closable) {
           onClick {
             onClose()
+            true
+          }
+        } else if (skippable) {
+          onClick {
+            onSkip()
             true
           }
         }
@@ -280,12 +294,13 @@ internal fun RingScreen(
             Modifier.align(BiasAlignment(0f, 0.45f)).padding(horizontal = 20.dp),
           )
         }
-        RinBubble(
-          state.line?.text,
-          Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 12.dp),
-          dots = BubbleDots.BELOW_LEFT,
-          textModifier = Modifier.testTag(RIN_LINE_TAG),
-        )
+        Column(Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 12.dp)) {
+          RinBubble(state.line?.text, dots = BubbleDots.BELOW_LEFT, textModifier = Modifier.testTag(RIN_LINE_TAG))
+          // Under her scolding line, clear of the bubble's dots (G.1).
+          AnimatedVisibility(state.showScoldSwitch, enter = fadeIn(), exit = fadeOut()) {
+            ScoldSwitch(state.scold, onScold, Modifier.padding(top = 30.dp))
+          }
+        }
       }
       Spacer(Modifier.height(bottom))
     }
@@ -465,6 +480,28 @@ private fun Controls(
   }
 }
 
+/**
+ * "Rin scolds" (G.1) while she scolds a miss: off, she is quiet and calm at once, for this alarm and new ones (the
+ * editor turns it back on). The whole sticker toggles, a bigger target than the switch alone.
+ */
+@Composable
+private fun ScoldSwitch(on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+  val p = RinTheme.palette
+  val shape = RoundedCornerShape(22.dp)
+  Row(
+    modifier
+      .sticker(radius = 22.dp, depth = 3.dp)
+      .clip(shape)
+      .toggleable(value = on, role = Role.Switch, onValueChange = onChange)
+      .padding(start = 16.dp, end = 10.dp, top = 4.dp, bottom = 4.dp)
+      .testTag(SCOLD_SWITCH_TAG),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(stringResource(R.string.ring_scold_switch), style = MaterialTheme.typography.labelLarge, color = p.ink)
+    Switch(checked = on, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 10.dp))
+  }
+}
+
 /** Snooze: an outlined pill, quieter than the game's "Let's play". */
 @Composable
 private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: Modifier) {
@@ -535,6 +572,7 @@ internal const val RING_SCREEN_TAG = "ring_screen"
 internal const val RIN_LINE_TAG = "rin_line"
 internal const val PRACTICE_AGAIN_TAG = "practice_again"
 internal const val PRACTICE_DONE_TAG = "practice_done"
+internal const val SCOLD_SWITCH_TAG = "scold_switch"
 
 private val PREVIEW_RING =
   ActiveRing(

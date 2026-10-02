@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /** Small app-wide flags. */
@@ -18,10 +20,25 @@ interface AppSettings {
 
   suspend fun setOnboardingCompleted(completed: Boolean)
 
-  /** "Pout off" (Phase 5): Rin keeps a calm face, and her pouty lines stay unsaid. */
-  val poutOff: Flow<Boolean>
+  /**
+   * The level the editor starts a new alarm at (G.1): the last one the user picked, [Difficulty.NEW_ALARM] until then.
+   */
+  val lastDifficulty: Flow<Difficulty>
 
-  suspend fun setPoutOff(off: Boolean)
+  suspend fun setLastDifficulty(difficulty: Difficulty)
+
+  /**
+   * Whether a new alarm has Rin scold (G.1): turned off by the scold switch on a ring, back on only from the editor.
+   * The home screen follows it too: off, her pouty head-tap line stays unsaid.
+   */
+  val lastScold: Flow<Boolean>
+
+  suspend fun setLastScold(scold: Boolean)
+
+  /** The "No pouting" switch Settings had until G.1; [LegacyPoutOff] turns it into scold off on every alarm. */
+  suspend fun legacyPoutOff(): Boolean
+
+  suspend fun clearLegacyPoutOff()
 
   /** The rest or sick day waiting for the next ring, whether or not it has lapsed ([DayMode.activeAt] tells). */
   val dayMode: Flow<DayMode?>
@@ -55,10 +72,23 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     store.edit { it[ONBOARDING_COMPLETED] = completed }
   }
 
-  override val poutOff: Flow<Boolean> = store.data.map { it[POUT_OFF] ?: false }
+  override val lastDifficulty: Flow<Difficulty> =
+    store.data.map { prefs -> prefs[LAST_DIFFICULTY]?.let(Difficulty::fromStored) ?: Difficulty.NEW_ALARM }
 
-  override suspend fun setPoutOff(off: Boolean) {
-    store.edit { it[POUT_OFF] = off }
+  override suspend fun setLastDifficulty(difficulty: Difficulty) {
+    store.edit { it[LAST_DIFFICULTY] = difficulty.stored }
+  }
+
+  override val lastScold: Flow<Boolean> = store.data.map { it[LAST_SCOLD] ?: true }
+
+  override suspend fun setLastScold(scold: Boolean) {
+    store.edit { it[LAST_SCOLD] = scold }
+  }
+
+  override suspend fun legacyPoutOff(): Boolean = store.data.first()[POUT_OFF] ?: false
+
+  override suspend fun clearLegacyPoutOff() {
+    store.edit { it.remove(POUT_OFF) }
   }
 
   override val dayMode: Flow<DayMode?> = store.data.map { it.dayMode() }
@@ -103,7 +133,10 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
 
   private companion object {
     val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+    /** Read once by [LegacyPoutOff], then removed. */
     val POUT_OFF = booleanPreferencesKey("pout_off")
+    val LAST_DIFFICULTY = stringPreferencesKey("last_difficulty")
+    val LAST_SCOLD = booleanPreferencesKey("last_scold")
     val DAY_MODE = stringPreferencesKey("day_mode")
     val DAY_MODE_AT = longPreferencesKey("day_mode_at")
     val THEME_MODE = stringPreferencesKey("theme_mode")

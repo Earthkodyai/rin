@@ -10,10 +10,14 @@ import javax.inject.Inject
 
 /** Builds the running [Mission] for a planned type. */
 fun interface MissionFactory {
+  /** [type] at [Difficulty.EASY]. */
   fun create(type: MissionType): Mission
 
-  /** A practice round of [type] (UX.8): one short round, no alarm sounding. */
-  fun practice(type: MissionType): Mission = create(type)
+  /** [type] at the alarm's [difficulty] (Phase G); Repeat after Rin has one level. */
+  fun create(type: MissionType, difficulty: Difficulty): Mission = create(type)
+
+  /** A practice round of [type] (UX.8): one short round at [difficulty], no alarm sounding. */
+  fun practice(type: MissionType, difficulty: Difficulty): Mission = create(type, difficulty)
 }
 
 class AndroidMissionFactory
@@ -25,7 +29,10 @@ constructor(
 ) : MissionFactory {
   private val sentences by lazy { context.assets.open(RepeatSentences.ASSET).use { RepeatSentences.parse(it.reader().readText()) } }
 
-  override fun create(type: MissionType): Mission =
+  override fun create(type: MissionType): Mission = create(type, Difficulty.EASY)
+
+  // G.1 carries the level this far; G.2 (pads) and G.3 (cups) give each level its own rules. Until then all play Easy.
+  override fun create(type: MissionType, difficulty: Difficulty): Mission =
     when (type) {
       // A fresh seed per ring, logged with the result so a game can be replayed.
       MissionType.PADS -> ColourPadsMission(PadsRules(), System.nanoTime(), AndroidPadNotes(), clock, quiet = RinMouth::awaitQuiet)
@@ -38,7 +45,7 @@ constructor(
    * The real game's first round only, at its frozen timings (3.3–3.5): pads of 3, one shuffle of 4 swaps, one
    * sentence. Its sounds go to the media stream, as nothing is ringing.
    */
-  override fun practice(type: MissionType): Mission =
+  override fun practice(type: MissionType, difficulty: Difficulty): Mission =
     when (type) {
       MissionType.PADS ->
         ColourPadsMission(

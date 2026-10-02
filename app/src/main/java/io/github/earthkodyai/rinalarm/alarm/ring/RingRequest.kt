@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.alarm.ring
 import android.content.Intent
 import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.Instant
 import java.time.LocalTime
@@ -15,6 +16,7 @@ import java.time.LocalTime
  * @property late true when the ring started more than a minute after [scheduledAt] (phone was off or asleep).
  * @property mission the alarm's choice; RingService turns it into a MissionPlan when ringing starts.
  * @property isTest the Diagnostics test alarm: it never uses up a rest or sick day meant for a real morning.
+ * @property difficulty the game's level (Phase G); [scold] whether Rin scolds a miss (G.1).
  */
 data class RingRequest(
   val alarmId: Long,
@@ -27,6 +29,8 @@ data class RingRequest(
   val options: RingOptions,
   val mission: MissionChoice = MissionChoice.RinPicks,
   val isTest: Boolean = false,
+  val difficulty: Difficulty = Difficulty.EASY,
+  val scold: Boolean = true,
 ) {
   fun putInto(intent: Intent): Intent =
     intent
@@ -44,6 +48,8 @@ data class RingRequest(
       .putExtra(SOUND, options.sound.stored)
       .putExtra(MISSION, mission.stored)
       .putExtra(IS_TEST, isTest)
+      .putExtra(DIFFICULTY, difficulty.stored)
+      .putExtra(SCOLD, scold)
 
   companion object {
     private const val ALARM_ID = "ring.alarmId"
@@ -60,6 +66,8 @@ data class RingRequest(
     private const val SOUND = "ring.sound"
     private const val MISSION = "ring.mission"
     private const val IS_TEST = "ring.isTest"
+    private const val DIFFICULTY = "ring.difficulty"
+    private const val SCOLD = "ring.scold"
 
     /**
      * Never fails: a malformed intent still produces a request that rings with defaults, because the service must
@@ -89,6 +97,8 @@ data class RingRequest(
             .getOrDefault(defaults),
         mission = MissionChoice.fromStored(intent.getStringExtra(MISSION) ?: MissionChoice.DEFAULT_STORED),
         isTest = intent.getBooleanExtra(IS_TEST, false),
+        difficulty = Difficulty.fromStored(intent.getStringExtra(DIFFICULTY)),
+        scold = intent.getBooleanExtra(SCOLD, true),
       )
     }
   }

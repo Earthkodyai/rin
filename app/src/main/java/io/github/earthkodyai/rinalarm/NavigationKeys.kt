@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Diagnostics : NavKey
 
-/** Pout off (Phase 5). */
+/** The look (day, night, by the time) and the home tour. */
 @Serializable data object Settings : NavKey
 
 /** "Try the games": a practice round of each game, no alarm (UX.8). */

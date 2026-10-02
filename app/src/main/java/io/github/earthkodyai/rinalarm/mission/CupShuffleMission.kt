@@ -21,6 +21,9 @@ interface CupsMission : Mission {
   fun begin()
 
   fun pick(slot: Int)
+
+  /** A tap while Rin scolds a miss (G.1): the next try starts now; ignored at any other time. */
+  fun skipScold()
 }
 
 /**
@@ -67,6 +70,12 @@ class CupShuffleMission(
     if (scope == null) return
     val after = play.pick(slot, clock.now())
     apply(after, activity = after.right == true && after.picks != gameState.value.picks)
+  }
+
+  override fun skipScold() {
+    if (scope == null) return
+    val after = play.skipScold(clock.now())
+    if (after != gameState.value) apply(after, activity = false)
   }
 
   private fun apply(next: CupsState, activity: Boolean) {

@@ -7,11 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,7 +36,6 @@ import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
-import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,15 +43,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Phase 5's settings (D25): Pout off. (The 1323 hotline was dropped by the user on 2026-10-01: no chat, D21.) */
+/**
+ * The app's settings: the look, the games and the tour (UX.8). Phase 5's "No pouting" became each alarm's scold switch
+ * in G.1; the 1323 hotline was dropped by the user on 2026-10-01 (no chat, D21).
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(private val settings: AppSettings) : ViewModel() {
-  val poutOff: StateFlow<Boolean> = settings.poutOff.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-  fun setPoutOff(off: Boolean) {
-    viewModelScope.launch { settings.setPoutOff(off) }
-  }
-
   val themeMode: StateFlow<ThemeMode> =
     settings.themeMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.AUTO)
 
@@ -78,11 +72,8 @@ fun SettingsScreen(
   onPractice: () -> Unit,
   viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-  val poutOff by viewModel.poutOff.collectAsStateWithLifecycle()
   val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
   SettingsScreen(
-    poutOff = poutOff,
-    onPoutOff = viewModel::setPoutOff,
     themeMode = themeMode,
     onThemeMode = viewModel::setThemeMode,
     onPrivacy = onPrivacy,
@@ -94,8 +85,6 @@ fun SettingsScreen(
 
 @Composable
 internal fun SettingsScreen(
-  poutOff: Boolean,
-  onPoutOff: (Boolean) -> Unit,
   themeMode: ThemeMode,
   onThemeMode: (ThemeMode) -> Unit,
   onPrivacy: () -> Unit,
@@ -121,18 +110,6 @@ internal fun SettingsScreen(
         },
         onSelect = onThemeMode,
       )
-    }
-    // The whole card toggles: a bigger target than the switch alone (the user's slips, Phase 2).
-    Row(
-      Modifier.fillMaxWidth()
-        .sticker(radius = 22.dp)
-        .clip(RoundedCornerShape(22.dp))
-        .toggleable(value = poutOff, role = Role.Switch, onValueChange = onPoutOff)
-        .padding(16.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      CardText(stringResource(R.string.settings_pout), stringResource(R.string.settings_pout_summary), Modifier.weight(1f))
-      Switch(checked = poutOff, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 12.dp))
     }
     // UX.8: the games without an alarm, and the home screen's tour again.
     LinkCard(stringResource(R.string.practice_title), stringResource(R.string.settings_practice_summary), onPractice)
@@ -179,6 +156,6 @@ private fun CardText(title: String, text: String, modifier: Modifier = Modifier)
 @Composable
 private fun SettingsScreenPreview() {
   RinAlarmTheme {
-    SettingsScreen(poutOff = true, onPoutOff = {}, themeMode = ThemeMode.AUTO, onThemeMode = {}, onPrivacy = {}, onBack = {})
+    SettingsScreen(themeMode = ThemeMode.AUTO, onThemeMode = {}, onPrivacy = {}, onBack = {})
   }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
+import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.CupsView
@@ -23,6 +24,7 @@ import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.mission.CupsMission
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.CupsState
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.Feedback
 import io.github.earthkodyai.rinalarm.mission.Hush
 import io.github.earthkodyai.rinalarm.mission.Mission
@@ -43,6 +45,7 @@ import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.mission.RepeatMission
 import io.github.earthkodyai.rinalarm.mission.RepeatPhase
 import io.github.earthkodyai.rinalarm.mission.RepeatState
+import io.github.earthkodyai.rinalarm.mission.hasLevels
 import io.github.earthkodyai.rinalarm.time.ElapsedClock
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.LocalDate
@@ -57,6 +60,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -77,6 +81,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * A practice round (UX.8, [EXTRA_PRACTICE] names the game) runs the same screen with no ring at all: no RingService,
  * no tone, nothing logged; the game's first round only ([MissionFactory.practice]), her voice on the media stream, and
  * after the win her won line, then "Play again" or "Done" ([RingUiState.practice]).
+ *
+ * G.1: every button works while she talks and cuts her line short ([cutLine]); a tap anywhere skips her intro or her
+ * scold ([skip]). While she scolds, a switch turns her scolding off ([setScold]) for this alarm and new ones.
  */
 @HiltViewModel
 class RingViewModel
@@ -91,11 +98,17 @@ constructor(
   private val time: TimeSource,
   book: LineBook,
   voices: LineVoiceFactory,
-  settings: AppSettings,
+  private val settings: AppSettings,
+  private val writer: AlarmWriter,
   savedState: SavedStateHandle,
 ) : ViewModel() {
   /** The game of a practice round, or null for a real ring. */
   private val practice: MissionType? = savedState.get<String>(EXTRA_PRACTICE)?.let(MissionType::fromStored)
+  /** A practice round's level and scold switch, as the editor's "Try this game" sent them (else the new-alarm ones). */
+  private val practiceLevel: Difficulty? = savedState.get<String>(EXTRA_LEVEL)?.let(Difficulty::fromStored)
+  private val practiceScold: Boolean? = savedState.get<Boolean>(EXTRA_SCOLD)
+  /** The game's level: the ring's, or the practice round's. */
+  private var level = Difficulty.EASY
   /** A practice round's last progress, which a real ring keeps in [RingState]. */
   private var practiceProgressAt: Long? = null
 
@@ -116,8 +129,8 @@ constructor(
   /** The clip Rin is saying (one of her lines, or a game's sentence in Repeat after Rin), for her mouth. */
   val speaking: StateFlow<Speaking?> = speakingFlow.asStateFlow()
 
-  /** Pout off (Phase 5), as last read from the settings. */
-  @Volatile private var poutOff = false
+  /** Rin scolds a miss (G.1): the alarm's switch, or the one flipped on this screen. */
+  @Volatile private var scold = true
   private val lines = PoutFilter(book) { calm() }
   private val speaker = RinSpeaker(voices.create(alarm = practice == null), viewModelScope)
   private var gameSpeaking: Speaking? = null
@@ -134,6 +147,8 @@ constructor(
   private var trouble = false
   /** Her line after a snooze or the emergency stop; the screen closes once it is over. */
   private var farewell: Job? = null
+  /** Her intro line after "Let's play", while she says it: a tap cuts it and the game starts. */
+  private var introLine: Job? = null
 
   private var mission: Mission? = null
   private var missionJob: Job? = null
@@ -147,14 +162,12 @@ constructor(
   private var missionStartedAt = 0L
 
   init {
-    viewModelScope.launch {
-      settings.poutOff.collect { off ->
-        poutOff = off
-        state.update { it.copy(calm = calm()) }
-      }
-    }
     if (practice != null) {
-      startPractice(practice)
+      viewModelScope.launch {
+        level = practiceLevel ?: settings.lastDifficulty.first()
+        scold = practiceScold ?: settings.lastScold.first()
+        startPractice(practice)
+      }
     } else {
       viewModelScope.launch {
         ringState.active.collect { ring ->
@@ -167,8 +180,8 @@ constructor(
     viewModelScope.launch { speaker.speaking.collect { publishSpeaking() } }
   }
 
-  /** No pouting: Pout off, or a rest or sick day's ring (it never scolds). */
-  private fun calm(): Boolean = poutOff || state.value.ring?.dayMode != null
+  /** No pouting: scold off, or a rest or sick day's ring (it never scolds). */
+  private fun calm(): Boolean = !scold || state.value.ring?.dayMode != null
 
   /** A gesture for Rin, unless it is a pouty one and she is [calm]. */
   private fun cue(gesture: Gesture) {
@@ -215,7 +228,10 @@ constructor(
     stopMission()
     cups2dReason = null
     trouble = false
-    state.value = RingUiState(ring = ring)
+    // Each ring reads the alarm afresh: a switch flipped before a snooze reaches the next ring through the database.
+    scold = ring.request.scold
+    level = ring.request.difficulty
+    state.value = RingUiState(ring = ring, scold = scold)
     state.update { it.copy(calm = calm()) }
     refreshPhase()
     val now = time.now().atZone(time.zone())
@@ -251,11 +267,12 @@ constructor(
     val now = time.now().atZone(time.zone())
     ringDay = now.toLocalDate()
     morning = PRACTICE_MORNING
-    val request = RingRequest(PRACTICE_ALARM_ID, now.toLocalTime(), "", null, 0, 0, late = false, RingOptions(), MissionChoice.Only(type))
+    val request =
+      RingRequest(PRACTICE_ALARM_ID, now.toLocalTime(), "", null, 0, 0, late = false, RingOptions(), MissionChoice.Only(type), difficulty = level, scold = scold)
     val ring = ActiveRing(request, MissionPlan.Run(type))
     practiceProgressAt = null
     // The cup table her page shows now (the round before): kept, or "Let's play" would wait for it to come back.
-    state.value = RingUiState(ring = ring, practice = true, cupsView = state.value.cupsView)
+    state.value = RingUiState(ring = ring, practice = true, cupsView = state.value.cupsView, scold = scold)
     state.update { it.copy(calm = calm()) }
     refreshPhase()
     run(ring, type, "")
@@ -273,7 +290,8 @@ constructor(
   }
 
   private fun run(ring: ActiveRing, type: MissionType, logExtra: String) {
-    val running = runCatching { (if (practice != null) missions.practice(type) else missions.create(type)).also(Mission::start) }.getOrNull()
+    val running =
+      runCatching { (if (practice != null) missions.practice(type, level) else missions.create(type, level)).also(Mission::start) }.getOrNull()
     if (running == null) {
       state.update { it.copy(missionFailed = true) }
       log(RingEventType.MISSION_FAILED, ring, "type=${type.stored} reason=create_failed")
@@ -284,7 +302,8 @@ constructor(
     introDone = false
     state.update { it.copy(missionType = type) }
     missionStartedAt = clock.now()
-    log(RingEventType.MISSION_STARTED, ring, "type=${type.stored} target=${running.progress.value.target}$logExtra")
+    val levelText = if (type.hasLevels) " level=${level.stored}" else ""
+    log(RingEventType.MISSION_STARTED, ring, "type=${type.stored} target=${running.progress.value.target}$levelText$logExtra")
     missionJob = viewModelScope.launch { running.progress.collect { onProgress(ring, it) } }
     (running as? PadsMission)?.let { pads -> gameJob = viewModelScope.launch { pads.game.collect(::onGame) } }
     (running as? CupsMission)?.let { cups -> gameJob = viewModelScope.launch { cups.game.collect(::onCups) } }
@@ -322,10 +341,12 @@ constructor(
   }
 
   fun hearAgain() {
+    cutLine()
     (mission as? RepeatMission)?.hearAgain()
   }
 
   fun tapWord(chip: Int) {
+    cutLine()
     (mission as? RepeatMission)?.tapWord(chip)
   }
 
@@ -338,6 +359,7 @@ constructor(
     if (practice != null) return
     val from = mission as? RepeatMission ?: return
     if (state.value.passed) return
+    cutLine()
     val ready = runCatching { readiness.check() }.getOrDefault(emptyMap())
     val others = MissionType.entries.filter { it != MissionType.SPEECH && ready[it] == Readiness.READY }
     val summary = from.summary()
@@ -355,7 +377,8 @@ constructor(
 
   private fun onCups(game: CupsState) {
     val before = state.value.cups
-    state.update { it.copy(cups = game) }
+    // A flipped scold switch stays in view for the rest of that scold only.
+    state.update { it.copy(cups = game, scoldSwitched = it.scoldSwitched && game.phase == CupsPhase.REVEAL && game.right == false) }
     if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) {
       // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
       cue(Gesture.HUFF)
@@ -414,12 +437,13 @@ constructor(
   }
 
   fun pickCup(slot: Int) {
+    cutLine()
     (mission as? CupsMission)?.pick(slot)
   }
 
   private fun onGame(game: PadsState) {
     val before = state.value.pads
-    state.update { it.copy(pads = game) }
+    state.update { it.copy(pads = game, scoldSwitched = it.scoldSwitched && game.phase == PadsPhase.SCOLD) }
     if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) {
       // The cut to Rin (D17): she sulks with a huff for the length of the scold.
       cue(Gesture.HUFF)
@@ -439,7 +463,11 @@ constructor(
     (running as? CupsMission)?.let(::startCups)
     introJob =
       viewModelScope.launch {
-        say(Pools.intro(running.type)).join()
+        // A tap anywhere cancels her intro (skip), and the game starts as if she had finished.
+        val intro = say(Pools.intro(running.type))
+        introLine = intro
+        intro.join()
+        introLine = null
         introDone = true
         (mission as? RepeatMission)?.begin()
         (mission as? PadsMission)?.begin()
@@ -448,7 +476,56 @@ constructor(
   }
 
   fun tapPad(pad: Pad) {
+    cutLine()
     (mission as? PadsMission)?.tap(pad)
+  }
+
+  /**
+   * Any button pressed while she talks cuts her line at once (G.1, the user: every button works at any time). Not once
+   * the ring is over: her won line, or her line after a snooze, is all the screen still shows.
+   */
+  private fun cutLine() {
+    val current = state.value
+    if (current.passed || current.leaving) return
+    opening?.cancel()
+    speaker.stop()
+  }
+
+  /**
+   * A tap anywhere on the screen, outside the buttons (G.1): skips her intro (the game starts now) or her scold (the
+   * next try starts now, once the miss has been seen), and otherwise just cuts her line. Once the ring is over a tap
+   * closes the screen instead ([close]).
+   */
+  fun skip() {
+    val current = state.value
+    if (current.passed || current.leaving) return
+    introLine?.cancel()
+    cutLine()
+    if (current.scolding) {
+      (mission as? PadsMission)?.skipScold()
+      (mission as? CupsMission)?.skipScold()
+    }
+  }
+
+  /**
+   * The scold switch on the ring screen (G.1): off, she goes quiet and calm at once, this alarm keeps it off, and so do
+   * new alarms, until the user turns it back on in the editor. On again (a slip of the thumb) undoes both.
+   */
+  fun setScold(on: Boolean) {
+    val ring = state.value.ring ?: return
+    if (scold == on) return
+    scold = on
+    if (!on) speaker.stop()
+    state.update { it.copy(scold = on, scoldSwitched = true, calm = calm()) }
+    val alarmId = ring.request.alarmId
+    // App scope: the screen may close right after the tap; the write must still land.
+    appScope.launch {
+      runCatching {
+        if (practice == null && alarmId > 0) writer.setScold(alarmId, on)
+        settings.setLastScold(on)
+      }
+    }
+    log(RingEventType.SCOLD_SWITCHED, ring, "scold=$on")
   }
 
   private fun onProgress(ring: ActiveRing, progress: MissionProgress) {
@@ -637,6 +714,10 @@ constructor(
     /** The intent extra (and saved-state key) naming a practice round's game by [MissionType.stored]. */
     const val EXTRA_PRACTICE = "practice"
 
+    /** A practice round's level by [Difficulty.stored], and its scold switch: the editor's draft (G.1). */
+    const val EXTRA_LEVEL = "practice.level"
+    const val EXTRA_SCOLD = "practice.scold"
+
     /** A practice round's stand-in alarm id: no stored alarm has it (ids start at 1). */
     const val PRACTICE_ALARM_ID = -2L
 
@@ -658,7 +739,9 @@ constructor(
  *   play" was tapped and the table is coming into view; the game starts once it is (and her intro is over).
  * @property line Rin's line on screen (the subtitle), or null.
  * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
- * @property calm no pouting (Pout off, or a rest or sick day): a pouty mood shows as cheerful.
+ * @property calm no pouting (scold off, or a rest or sick day): a pouty mood shows as cheerful.
+ * @property scold the scold switch's position (G.1); [scoldSwitched]: it was flipped on this screen, so it stays in view
+ *   for the rest of that scold even when off.
  * @property practice a practice round (UX.8): no ring behind it, "Done" instead of Snooze and the emergency hold.
  */
 data class RingUiState(
@@ -681,6 +764,8 @@ data class RingUiState(
   val leaving: Boolean = false,
   val calm: Boolean = false,
   val practice: Boolean = false,
+  val scold: Boolean = true,
+  val scoldSwitched: Boolean = false,
 ) {
   /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood
@@ -693,6 +778,14 @@ data class RingUiState(
   /** A wrong cup is up: Rin sulks and says one of her lines. */
   val cupsScold: Boolean
     get() = cups?.phase == CupsPhase.REVEAL && cups.right == false
+
+  /** Rin's beat after a miss in the pads or the cups: she scolds (unless scold is off), and a tap skips it. */
+  val scolding: Boolean
+    get() = !passed && !leaving && (pads?.phase == PadsPhase.SCOLD || cupsScold)
+
+  /** The scold switch shows during a scold of an alarm that scolds (G.1), and for the rest of that beat once flipped. */
+  val showScoldSwitch: Boolean
+    get() = scolding && (scold || scoldSwitched) && ring?.dayMode == null
 
   /** A plain Dismiss button instead of the mission and the emergency hold. */
   val plainDismiss: Boolean

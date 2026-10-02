@@ -168,6 +168,17 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
     }
   }
 
+  /**
+   * A tap while Rin scolds (G.1): the new sequence starts now instead of at the scold's end. Not in the first
+   * [SKIP_GUARD_MS], so a quick second tap meant for a pad does not skip a miss the user never saw.
+   */
+  fun skipScold(now: Long): PadsState {
+    val s = state
+    val end = s.nextAt ?: return s
+    if (s.phase != PadsPhase.SCOLD || now < end - rules.scoldMs + SKIP_GUARD_MS) return s
+    return beginDemo(s.round, now)
+  }
+
   private fun beginDemo(round: Int, now: Long): PadsState {
     demoStart = now
     flashUntil = null

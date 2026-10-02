@@ -189,6 +189,21 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
     }
   }
 
+  /**
+   * A tap while Rin sulks over a wrong pick (G.1): both cups come down now instead of after [CupsRules.scoldMs], then the
+   * next shuffle. Only once they are fully up (and [SKIP_GUARD_MS] into the sulk), so the user always sees the ball.
+   */
+  fun skipScold(now: Long): CupsState {
+    val s = state
+    val act = s.act as? CupsAct.Lift ?: return s
+    if (s.phase != CupsPhase.REVEAL || s.right != false) return s
+    val up = act.at + act.leadMs + act.upMs
+    if (now < up || now < act.at + SKIP_GUARD_MS) return s
+    val held = (now - up).coerceAtMost(act.holdMs ?: Long.MAX_VALUE)
+    val cut = act.copy(holdMs = held)
+    return set(s.copy(act = cut, nextAt = liftEnd(cut)))
+  }
+
   private fun shuffle(now: Long): CupsState {
     val n = rules.swaps[state.streak]
     val swaps = ArrayList<Pair<Int, Int>>(n)

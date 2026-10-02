@@ -94,6 +94,37 @@ class CupsGameTest {
   }
 
   @Test
+  fun skippingHerSulk_bringsTheCupsDownNow_butOnlyOnceTheBallWasSeen() {
+    val game = CupsGame(rules, Random(3))
+    val now = game.untilPick(0L.also { game.start(it) })
+    val ball = game.ballNow()
+    game.pick((ball + 1) % 3, now)
+    val reveal = game.state
+    val lift = reveal.act as CupsAct.Lift
+    val up = now + lift.leadMs + lift.upMs
+
+    assertEquals("still rising: the ball not seen yet", reveal, game.skipScold(up - 1))
+    val cut = game.skipScold(up + 200)
+    val act = cut.act as CupsAct.Lift
+    assertEquals(200L, act.holdMs)
+    assertEquals(lift.copy(holdMs = 200), act)
+    assertEquals(up + 200 + lift.downMs, cut.nextAt)
+    assertEquals(CupsPhase.REVEAL, cut.phase)
+
+    game.tick(cut.nextAt!!)
+    assertEquals(ball, (game.state.act as CupsAct.Shuffle).ball)
+  }
+
+  @Test
+  fun skipScold_isIgnored_afterARightPick() {
+    val game = CupsGame(rules, Random(3))
+    val now = game.untilPick(0L.also { game.start(it) })
+    game.pick(game.ballNow(), now)
+    val right = game.state
+    assertEquals(right, game.skipScold(now + 2_000))
+  }
+
+  @Test
   fun tapsWhileTheCupsMove_areCountedAndIgnored() {
     val game = CupsGame(rules, Random(4))
     game.start(0)

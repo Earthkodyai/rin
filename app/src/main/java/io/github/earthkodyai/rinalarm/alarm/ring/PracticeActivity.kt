@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
@@ -47,7 +48,11 @@ class PracticeActivity : ComponentActivity() {
   }
 
   companion object {
-    fun intent(context: Context, game: MissionType): Intent =
-      Intent(context, PracticeActivity::class.java).putExtra(RingViewModel.EXTRA_PRACTICE, game.stored)
+    /** A round of [game]; [level] and [scold] from the editor's draft, or (null) the ones a new alarm gets. */
+    fun intent(context: Context, game: MissionType, level: Difficulty? = null, scold: Boolean? = null): Intent =
+      Intent(context, PracticeActivity::class.java).putExtra(RingViewModel.EXTRA_PRACTICE, game.stored).apply {
+        level?.let { putExtra(RingViewModel.EXTRA_LEVEL, it.stored) }
+        scold?.let { putExtra(RingViewModel.EXTRA_SCOLD, it) }
+      }
   }
 }

@@ -16,6 +16,7 @@ import io.github.earthkodyai.rinalarm.data.db.AlarmEntity
 import io.github.earthkodyai.rinalarm.data.db.PendingRingDao
 import io.github.earthkodyai.rinalarm.data.db.PendingRingEntity
 import io.github.earthkodyai.rinalarm.data.db.toPendingRing
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.time.TimeSource
 import java.time.Instant
 import java.time.LocalDateTime
@@ -147,6 +148,22 @@ class AlarmEngineTest {
     assertEquals(PendingRing(id, at("2026-09-29T07:00")), systemAlarms.armed[id to false])
     assertEquals(listOf(FIRED), log.types(FIRED))
     assertEquals(at("2026-09-28T07:00"), log.events.first { it.type == FIRED }.scheduledAt)
+  }
+
+  @Test
+  fun fire_carriesTheLevelAndScoldSwitch_andASwitchFlippedMidRingReachesTheSnooze() = runTest {
+    val id = engine.save(daily.copy(difficulty = Difficulty.HARD))
+    fireAt(id, "2026-09-28T07:00")
+    assertEquals(Difficulty.HARD, rings.last().difficulty)
+    assertTrue(rings.last().scold)
+
+    val armed = systemAlarms.armed.toMap()
+    engine.setScold(id, false)
+    assertEquals("the switch re-arms nothing", armed, systemAlarms.armed.toMap())
+    val snooze = checkNotNull(engine.snooze(id, 0))
+    clock.now = snooze.triggerAt
+    deliver(id, snooze = true)
+    assertFalse(rings.last().scold)
   }
 
   @Test
@@ -428,6 +445,11 @@ private class FakeAlarmDao : AlarmDao {
 
   override suspend fun delete(id: Long) {
     rows.value -= id
+  }
+
+  override suspend fun setScold(id: Long, scold: Boolean) {
+    val row = rows.value[id] ?: return
+    rows.value += id to row.copy(scold = scold)
   }
 }
 

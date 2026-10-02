@@ -121,6 +121,8 @@ constructor(
           options = alarm.ring,
           mission = alarm.mission,
           isTest = alarm.isTest,
+          difficulty = alarm.difficulty,
+          scold = alarm.scold,
         )
       if (!ringer.start(request)) log.record(RingEventType.FGS_FAIL, alarmId, scheduledAt)
     }
@@ -147,6 +149,8 @@ constructor(
     }
 
   override suspend fun delete(alarmId: Long) = mutex.withLock { deleteLocked(alarmId) }
+
+  override suspend fun setScold(alarmId: Long, scold: Boolean) = mutex.withLock { alarmDao.setScold(alarmId, scold) }
 
   override suspend fun scheduleTest(label: String): Instant =
     mutex.withLock {

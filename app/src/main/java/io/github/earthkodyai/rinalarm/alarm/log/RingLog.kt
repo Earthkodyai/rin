@@ -62,6 +62,8 @@ enum class RingEventType {
   MISSION_SWITCHED,
   /** The ring ended (snooze, emergency hold, auto-stop) with its mission still running; detail is how far it got. */
   MISSION_UNFINISHED,
+  /** The scold switch was flipped on the ring screen (G.1); detail scold=true|false. */
+  SCOLD_SWITCHED,
 }
 
 /** Append-only log of alarm events: the evidence for the 14-night reliability run and for Diagnostics. */

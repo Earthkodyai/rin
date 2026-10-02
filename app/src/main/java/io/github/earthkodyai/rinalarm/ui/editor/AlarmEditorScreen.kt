@@ -86,6 +86,7 @@ import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.ring.PracticeActivity
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
@@ -133,6 +134,10 @@ interface AlarmEditorActions {
   fun setMaxSnoozes(value: Int)
 
   fun setMission(value: MissionChoice)
+
+  fun setDifficulty(value: Difficulty)
+
+  fun setScold(value: Boolean)
 
   /** Picks [value] and plays a few seconds of it; tapping the sound that is playing stops it. */
   fun pickSound(value: AlarmSound)
@@ -200,6 +205,10 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, guided: Boolean = fals
 
       override fun setMission(value: MissionChoice) = viewModel.setMission(value)
 
+      override fun setDifficulty(value: Difficulty) = viewModel.setDifficulty(value)
+
+      override fun setScold(value: Boolean) = viewModel.setScold(value)
+
       override fun pickSound(value: AlarmSound) = viewModel.pickSound(value)
 
       override fun allowMission(type: MissionType) {
@@ -208,8 +217,9 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, guided: Boolean = fals
 
       override fun tryGame() {
         val game = viewModel.gameToTry() ?: return
+        val (level, scold) = viewModel.practiceOptions() ?: return
         viewModel.stopPreview()
-        context.startActivity(PracticeActivity.intent(context, game))
+        context.startActivity(PracticeActivity.intent(context, game, level, scold))
         // The walkthrough's Try step is done once the round opens; the user comes back to the next one.
         if (guideStep == GuideStep.TRY) nextGuideStep()
       }
@@ -475,6 +485,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
       color = p.muted,
       modifier = Modifier.padding(start = 4.dp),
     )
+    if (choice != MissionChoice.None) GameOptions(state.draft, actions)
     // A practice round right here (the user, 2026-10-02): the chosen game, or Rin's pick for the next ring.
     if (choice != MissionChoice.None) {
       QuietPillButton(
@@ -488,6 +499,72 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
     state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
   }
 }
+
+/**
+ * The game's level and the scold switch (G.1), in one card under the game tiles. Repeat after Rin has one level, so it
+ * says so in place of the row; Nightmare carries a warning, as it is made to be lost.
+ */
+@Composable
+private fun GameOptions(draft: Alarm, actions: AlarmEditorActions) {
+  val p = RinTheme.palette
+  Column(Modifier.fillMaxWidth().sticker(radius = 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    OptionLabel(stringResource(R.string.editor_level))
+    if (draft.mission == MissionChoice.Only(MissionType.SPEECH)) {
+      Text(stringResource(R.string.level_one), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.testTag(LEVEL_ONE_TAG))
+    } else {
+      // Two by two: four in a row cut "Nightmare" off on a narrow phone.
+      Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        RingChoices.LEVELS.chunked(2).forEach { pair ->
+          PillChoiceRow(options = pair, selected = draft.difficulty, label = { levelName(it) }, onSelect = actions::setDifficulty)
+        }
+      }
+      if (draft.mission == MissionChoice.RinPicks) {
+        Text(stringResource(R.string.level_rin_picks), style = MaterialTheme.typography.bodySmall, color = p.muted)
+      }
+      if (draft.difficulty == Difficulty.NIGHTMARE) {
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.testTag(NIGHTMARE_WARNING_TAG)) {
+          Icon(painterResource(R.drawable.ic_warning), contentDescription = null, tint = p.danger, modifier = Modifier.size(18.dp))
+          Text(
+            stringResource(R.string.level_nightmare_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = p.ink,
+            modifier = Modifier.padding(start = 8.dp),
+          )
+        }
+      }
+    }
+    // The whole row toggles: a bigger target than the switch alone.
+    Row(
+      Modifier.fillMaxWidth()
+        .clip(RoundedCornerShape(14.dp))
+        .toggleable(value = draft.scold, role = Role.Switch, onValueChange = actions::setScold)
+        .padding(vertical = 2.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        OptionLabel(stringResource(R.string.editor_scold))
+        Text(stringResource(R.string.editor_scold_summary), style = MaterialTheme.typography.bodySmall, color = p.muted)
+      }
+      Switch(
+        checked = draft.scold,
+        onCheckedChange = null,
+        colors = rinSwitchColors(),
+        modifier = Modifier.padding(start = 12.dp).testTag(SCOLD_TAG),
+      )
+    }
+  }
+}
+
+@Composable
+private fun levelName(level: Difficulty): String =
+  stringResource(
+    when (level) {
+      Difficulty.EASY -> R.string.level_easy
+      Difficulty.NORMAL -> R.string.level_normal
+      Difficulty.HARD -> R.string.level_hard
+      Difficulty.NIGHTMARE -> R.string.level_nightmare
+    }
+  )
 
 /**
  * One choice of several: a tile with a thick pink ring when it is the one, its [mark] on a badge beside the name
@@ -713,6 +790,9 @@ private val SAVE_BUTTON_ROOM = 110.dp
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
 internal const val EDITOR_TRY_TAG = "editor_try_game"
+internal const val LEVEL_ONE_TAG = "editor_level_one"
+internal const val NIGHTMARE_WARNING_TAG = "editor_nightmare_warning"
+internal const val SCOLD_TAG = "editor_scold"
 
 /** Where the walkthrough scrolls each part to: just under the top of the page. */
 private val GUIDE_TOP_GAP = 12.dp
@@ -733,6 +813,10 @@ private object PreviewActions : AlarmEditorActions {
   override fun setMaxSnoozes(value: Int) = Unit
 
   override fun setMission(value: MissionChoice) = Unit
+
+  override fun setDifficulty(value: Difficulty) = Unit
+
+  override fun setScold(value: Boolean) = Unit
 
   override fun pickSound(value: AlarmSound) = Unit
 

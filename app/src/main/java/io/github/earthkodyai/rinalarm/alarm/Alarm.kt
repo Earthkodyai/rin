@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.alarm
 
 import io.github.earthkodyai.rinalarm.alarm.schedule.NextTrigger
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.Instant
 import java.time.LocalTime
@@ -13,6 +14,8 @@ import java.time.ZoneId
  * @property isTest the Diagnostics "test alarm": rings through the real path, but is hidden from the alarm list,
  *   deleted once it has rung, and left out of the reliability numbers.
  * @property mission what stops it (Phase 3); the test alarm uses [MissionChoice.None].
+ * @property difficulty how hard its game is (Phase G); Repeat after Rin has one level and ignores it.
+ * @property scold whether Rin scolds a miss (G.1): off, she keeps a calm face and her pouty lines stay unsaid.
  */
 data class Alarm(
   val id: Long = 0,
@@ -23,6 +26,8 @@ data class Alarm(
   val ring: RingOptions = RingOptions(),
   val isTest: Boolean = false,
   val mission: MissionChoice = MissionChoice.RinPicks,
+  val difficulty: Difficulty = Difficulty.EASY,
+  val scold: Boolean = true,
 ) {
   /** When this alarm rings next, or null while it is switched off. */
   fun nextTrigger(now: Instant, zone: ZoneId): Instant? =

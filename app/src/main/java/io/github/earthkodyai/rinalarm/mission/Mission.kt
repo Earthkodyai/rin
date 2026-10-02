@@ -40,3 +40,9 @@ data class MissionProgress(
   val fraction: Float
     get() = if (target <= 0) 1f else (done.toFloat() / target).coerceIn(0f, 1f)
 }
+
+/**
+ * How long after a miss a tap may skip Rin's scold (G.1): a quick second tap meant for the game would otherwise skip a
+ * miss the user never saw.
+ */
+const val SKIP_GUARD_MS = 400L

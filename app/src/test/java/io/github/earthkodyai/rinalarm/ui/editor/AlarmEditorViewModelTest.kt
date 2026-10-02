@@ -8,10 +8,12 @@ import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
 import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.testing.FakeAlarms
+import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import java.io.IOException
@@ -51,7 +53,9 @@ class AlarmEditorViewModelTest {
 
   private val previews = FakePreviews()
 
-  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes }, previews)
+  private val settings = FakeSettings()
+
+  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes }, previews, settings)
 
   // --- mission (task 3.1) ---
 
@@ -138,6 +142,54 @@ class AlarmEditorViewModelTest {
 
   private suspend fun AlarmEditorViewModel.finished() =
     uiState.first { it !is AlarmEditorUiState.Editing && it !is AlarmEditorUiState.Loading }
+
+  // --- level and scold switch (G.1) ---
+
+  @Test
+  fun aFirstNewAlarm_isNormal_andRinScolds() = runTest {
+    val draft = editor(AlarmEditorViewModel.NEW_ALARM_ID).editing().draft
+    assertEquals(Difficulty.NORMAL, draft.difficulty)
+    assertTrue(draft.scold)
+  }
+
+  @Test
+  fun aNewAlarm_startsAtTheLastLevelAndScoldPicked_andSavingOneRemembersThem() = runTest {
+    settings.lastDifficulty.value = Difficulty.HARD
+    settings.lastScold.value = false
+    val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
+    val state = editor.editing()
+    assertEquals(Difficulty.HARD, state.draft.difficulty)
+    assertFalse(state.draft.scold)
+    assertFalse("the remembered picks are no change", state.hasChanges)
+
+    editor.setDifficulty(Difficulty.NIGHTMARE)
+    editor.setScold(true)
+    assertEquals(Difficulty.NIGHTMARE to true, editor.practiceOptions())
+    editor.save()
+    editor.finished()
+    assertEquals(Difficulty.NIGHTMARE, alarms.saves.single().difficulty)
+    assertEquals(Difficulty.NIGHTMARE, settings.lastDifficulty.value)
+    assertTrue(settings.lastScold.value)
+  }
+
+  @Test
+  fun anOldAlarmSavedUntouched_leavesTheRememberedPicksAlone_butAChangedOneSetsThem() = runTest {
+    settings.lastDifficulty.value = Difficulty.HARD
+    val untouched = editor(work.id)
+    untouched.editing()
+    untouched.save()
+    untouched.finished()
+    assertEquals(Difficulty.EASY, alarms.saves.last().difficulty)
+    assertEquals(Difficulty.HARD, settings.lastDifficulty.value)
+
+    val changed = editor(work.id)
+    changed.editing()
+    changed.setScold(false)
+    changed.save()
+    changed.finished()
+    assertFalse(settings.lastScold.value)
+    assertEquals(Difficulty.HARD, settings.lastDifficulty.value)
+  }
 
   // --- opening ---
 

@@ -123,6 +123,25 @@ class PadsGameTest {
   }
 
   @Test
+  fun skippingHerScold_startsTheSameRoundNow_butNotOnAQuickSecondTap() {
+    val g = game()
+    g.start(now)
+    g.runUntil(PadsPhase.INPUT)
+    val first = g.state.sequence
+    g.tap(Pad.entries.first { it != first[0] }, now)
+    val scold = g.state
+    val missedAt = now
+
+    assertEquals(scold, g.skipScold(missedAt + SKIP_GUARD_MS - 1))
+    val next = g.skipScold(missedAt + SKIP_GUARD_MS)
+    assertEquals(PadsPhase.DEMO, next.phase)
+    assertEquals(0, next.round)
+    assertEquals(first.size, next.sequence.size)
+    assertEquals(missedAt + SKIP_GUARD_MS + rules.moveMs, next.nextAt)
+    assertEquals(next, g.skipScold(missedAt + 5_000)) // nothing to skip once the demo runs
+  }
+
+  @Test
   fun threeSecondsWithoutATap_isTooSlow_andEachRightTapRestartsTheClock() {
     val g = game()
     g.start(now)

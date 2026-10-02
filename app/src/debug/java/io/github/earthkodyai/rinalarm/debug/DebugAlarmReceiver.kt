@@ -15,6 +15,7 @@ import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.data.db.AlarmDao
 import io.github.earthkodyai.rinalarm.di.AppScope
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import java.time.DayOfWeek
@@ -29,7 +30,8 @@ import kotlinx.coroutines.launch
  *
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd add --ei sec 60
  *   (optional `--es mission pads|cups|none|rin_picks`, default rin_picks; `--ei snooze 1` for a short snooze in tests;
- *   `--es sound rin_picks|beep|<theme id>`, default rin_picks)
+ *   `--es sound rin_picks|beep|<theme id>`, default rin_picks; `--es level easy|normal|hard|nightmare`, default easy;
+ *   `--ez scold false` for a ring with scolding off)
  *   `--ei sec 0` rings at the next whole minute, the soonest an alarm can ring.
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd clear
  * `--es cmd clear-off` deletes every switched-off alarm (leftover test rings); `--es cmd demo` adds the store
@@ -58,8 +60,15 @@ class DebugAlarmReceiver : BroadcastReceiver() {
             val mission = intent.getStringExtra("mission")?.let(MissionChoice::fromStored) ?: MissionChoice.RinPicks
             val sound = AlarmSound.fromStored(intent.getStringExtra("sound") ?: AlarmSound.DEFAULT_STORED)
             val options = RingOptions(snoozeMinutes = intent.getIntExtra("snooze", RingOptions.DEFAULT_SNOOZE_MINUTES), sound = sound)
-            val id = deps.engine().save(Alarm(time = at.toLocalTime(), label = LABEL, mission = mission, ring = options))
-            Log.i(TAG, "added id=$id at=${at.toLocalTime()} mission=${mission.stored} snooze=${options.snoozeMinutes}m sound=${sound.stored}")
+            val level = Difficulty.fromStored(intent.getStringExtra("level") ?: Difficulty.DEFAULT_STORED)
+            val scold = intent.getBooleanExtra("scold", true)
+            val alarm = Alarm(time = at.toLocalTime(), label = LABEL, mission = mission, ring = options, difficulty = level, scold = scold)
+            val id = deps.engine().save(alarm)
+            Log.i(
+              TAG,
+              "added id=$id at=${at.toLocalTime()} mission=${mission.stored} level=${level.stored} scold=$scold " +
+                "snooze=${options.snoozeMinutes}m sound=${sound.stored}",
+            )
           }
           "clear" ->
             deps.alarmDao().getAll().filter { it.label == LABEL }.forEach {

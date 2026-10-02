@@ -7,6 +7,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import java.time.LocalTime
 
@@ -30,6 +31,9 @@ data class AlarmEntity(
   @ColumnInfo(defaultValue = "rin_picks") val mission: String = MissionChoice.DEFAULT_STORED,
   // Schema 5 (UX.7). AlarmSound.stored; the default must be AlarmSound.DEFAULT_STORED (AlarmEntityTest checks).
   @ColumnInfo(defaultValue = "rin_picks") val sound: String = AlarmSound.DEFAULT_STORED,
+  // Schema 6 (G.1). Difficulty.stored; existing alarms keep the game they had (AlarmEntityTest checks the defaults).
+  @ColumnInfo(defaultValue = "easy") val difficulty: String = Difficulty.DEFAULT_STORED,
+  @ColumnInfo(defaultValue = "1") val scold: Boolean = true,
 )
 
 fun AlarmEntity.toAlarm(): Alarm =
@@ -42,6 +46,8 @@ fun AlarmEntity.toAlarm(): Alarm =
     ring = RingOptions(rampSeconds, vibrate, snoozeMinutes, maxSnoozes, AlarmSound.fromStored(sound)),
     isTest = isTest,
     mission = MissionChoice.fromStored(mission),
+    difficulty = Difficulty.fromStored(difficulty),
+    scold = scold,
   )
 
 fun Alarm.toEntity(): AlarmEntity =
@@ -59,4 +65,6 @@ fun Alarm.toEntity(): AlarmEntity =
     isTest = isTest,
     mission = mission.stored,
     sound = ring.sound.stored,
+    difficulty = difficulty.stored,
+    scold = scold,
   )

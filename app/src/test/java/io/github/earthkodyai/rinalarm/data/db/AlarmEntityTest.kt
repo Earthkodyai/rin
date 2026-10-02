@@ -4,6 +4,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import java.io.File
@@ -25,6 +26,8 @@ class AlarmEntityTest {
         ring = RingOptions(rampSeconds = 0, vibrate = false, snoozeMinutes = 9, maxSnoozes = 1, sound = AlarmSound.Theme("cafe")),
         isTest = true,
         mission = MissionChoice.Only(MissionType.PADS),
+        difficulty = Difficulty.NIGHTMARE,
+        scold = false,
       )
     assertEquals(alarm, alarm.toEntity().toAlarm())
   }
@@ -48,6 +51,14 @@ class AlarmEntityTest {
   }
 
   @Test
+  fun levels_roundTrip_andUnknownValuesReadAsEasy() {
+    for (level in Difficulty.entries) {
+      assertEquals(level, Alarm(time = LocalTime.NOON, difficulty = level).toEntity().toAlarm().difficulty)
+    }
+    assertEquals(Difficulty.EASY, Alarm(time = LocalTime.NOON).toEntity().copy(difficulty = "impossible").toAlarm().difficulty)
+  }
+
+  @Test
   fun entity_storesWallClockFieldsAndMask() {
     val entity = Alarm(time = LocalTime.of(23, 5), repeatDays = RepeatDays.WEEKEND).toEntity()
     assertEquals(23, entity.hour)
@@ -60,7 +71,7 @@ class AlarmEntityTest {
     // Rows migrated from schema 1 get the SQL defaults; they must be the same alarm a new one would be.
     val defaults = RingOptions()
     // Read what Room actually uses: the exported schema (unit tests run with the module as working directory).
-    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/5.json").readText()
+    val schema = File("schemas/io.github.earthkodyai.rinalarm.data.db.RinDatabase/6.json").readText()
     val sql =
       Regex(""""fieldPath": "(\w+)",[^}]*?"defaultValue": "([^"]*)"""")
         .findAll(schema)
@@ -74,5 +85,9 @@ class AlarmEntityTest {
     assertEquals(MissionChoice.RinPicks, MissionChoice.fromStored(MissionChoice.DEFAULT_STORED))
     assertEquals("'${AlarmSound.DEFAULT_STORED}'", sql["sound"])
     assertEquals(defaults.sound, AlarmSound.fromStored(AlarmSound.DEFAULT_STORED))
+    // Schema 6: alarms set before Phase G keep the game they had, and Rin still scolds.
+    assertEquals("'${Difficulty.DEFAULT_STORED}'", sql["difficulty"])
+    assertEquals(Difficulty.EASY, Difficulty.fromStored(Difficulty.DEFAULT_STORED))
+    assertEquals("1", sql["scold"])
   }
 }

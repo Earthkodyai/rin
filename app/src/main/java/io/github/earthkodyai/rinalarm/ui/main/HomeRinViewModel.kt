@@ -44,9 +44,9 @@ constructor(
   moments: HomeMoments,
   settings: AppSettings,
 ) : ViewModel() {
-  /** Pout off (Phase 5): her one pouty head-tap line stays unsaid. */
-  @Volatile private var poutOff = false
-  private val lines = PoutFilter(book) { poutOff }
+  /** Scold off for new alarms (G.1, once "Pout off"): her one pouty head-tap line stays unsaid. */
+  @Volatile private var calm = false
+  private val lines = PoutFilter(book) { calm }
 
   private val speaker = RinSpeaker(voices.create(alarm = false), viewModelScope)
 
@@ -70,7 +70,7 @@ constructor(
   private val faceUp = MutableStateFlow(false)
 
   init {
-    viewModelScope.launch { settings.poutOff.collect { poutOff = it } }
+    viewModelScope.launch { settings.lastScold.collect { calm = !it } }
     viewModelScope.launch { for (saved in moments.alarmSaved) say(Pools.ALARM_SET) }
   }
 

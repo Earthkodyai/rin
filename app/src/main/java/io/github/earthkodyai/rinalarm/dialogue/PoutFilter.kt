@@ -4,16 +4,16 @@ import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
 import java.time.LocalDate
 
-/** Her pouty moods, which "Pout off" (Phase 5) keeps off her face. */
+/** Her pouty moods, which scold off (G.1, "Pout off" before it) keeps off her face. */
 val Mood.pouty: Boolean
   get() = this == Mood.POUTY || this == Mood.SULKY
 
-/** Her pouty gestures, which "Pout off" leaves out. */
+/** Her pouty gestures, which scold off leaves out. */
 val Gesture.pouty: Boolean
   get() = this == Gesture.POUT || this == Gesture.HUFF
 
 /**
- * [book] without her pouty lines while [calm] (Pout off, or a rest or sick day). An event pool draws again, so a head
+ * [book] without her pouty lines while [calm] (scold off, or a rest or sick day). An event pool draws again, so a head
  * tap still gets one of the others; a pool that holds only pouty lines (the snooze and scold ones) stays quiet, and
  * the games go on without waiting for her.
  */

@@ -15,7 +15,9 @@ import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
 import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
+import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.MissionPlanner
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -42,6 +45,9 @@ import kotlinx.coroutines.launch
  * goes through [AlarmWriter], so AlarmManager is re-armed in the same step.
  *
  * Saving always switches the alarm on: someone who just set a time expects it to ring.
+ *
+ * A new alarm starts at the level and scold switch last picked here (G.1; the scold switch on a ring also sets it), and
+ * saving a level or switch the user changed makes it the one the next new alarm gets.
  */
 @HiltViewModel(assistedFactory = AlarmEditorViewModel.Factory::class)
 class AlarmEditorViewModel
@@ -55,6 +61,7 @@ constructor(
   private val moments: HomeMoments,
   private val music: MusicCatalog,
   private val previews: PreviewSounds,
+  private val settings: AppSettings,
 ) : ViewModel() {
   private val session = MutableStateFlow<Session>(Session.Loading)
   private val readiness = MutableStateFlow(readMissions())
@@ -71,7 +78,10 @@ constructor(
 
   init {
     if (alarmId == NEW_ALARM_ID) {
-      session.value = Session.Open(NEW_ALARM, NEW_ALARM)
+      viewModelScope.launch {
+        val fresh = NEW_ALARM.copy(difficulty = settings.lastDifficulty.first(), scold = settings.lastScold.first())
+        session.value = Session.Open(fresh, fresh)
+      }
     } else {
       viewModelScope.launch {
         val alarm = repository.get(alarmId)
@@ -95,6 +105,10 @@ constructor(
   fun setMaxSnoozes(value: Int) = editRing { it.copy(maxSnoozes = value) }
 
   fun setMission(value: MissionChoice) = edit { it.copy(mission = value) }
+
+  fun setDifficulty(value: Difficulty) = edit { it.copy(difficulty = value) }
+
+  fun setScold(value: Boolean) = edit { it.copy(scold = value) }
 
   /**
    * A sound tile was tapped: the alarm takes that sound and plays a few seconds of it (the user, 2026-10-02). Tapping
@@ -162,6 +176,9 @@ constructor(
     readiness.value = readMissions()
   }
 
+  /** The draft's level and scold switch, for "Try this game" (G.1: the round plays as the alarm would). */
+  fun practiceOptions(): Pair<Difficulty, Boolean>? = (session.value as? Session.Open)?.draft?.let { it.difficulty to it.scold }
+
   /**
    * "Try this game" (the user, 2026-10-02): the game this alarm would play on its next ring, for a practice round.
    * Rin picks gives the game she would pick that day (as the sound preview plays her pick); None gives null. A game
@@ -191,6 +208,10 @@ constructor(
       session.value =
         try {
           writer.save(alarm)
+          // What the user picked becomes the next new alarm's (G.1); an old alarm saved untouched leaves them alone.
+          val isNew = open.original.id == NEW_ALARM_ID
+          if (isNew || alarm.difficulty != open.original.difficulty) settings.setLastDifficulty(alarm.difficulty)
+          if (isNew || alarm.scold != open.original.scold) settings.setLastScold(alarm.scold)
           // Rin says so on the home screen (task 4.2).
           moments.alarmSaved.trySend(Unit)
           Session.Saved(ringsIn(alarm))
@@ -269,8 +290,8 @@ constructor(
   companion object {
     const val NEW_ALARM_ID = 0L
 
-    /** What "Add alarm" starts from. */
-    val NEW_ALARM = Alarm(id = NEW_ALARM_ID, time = LocalTime.of(7, 0))
+    /** What "Add alarm" starts from, before the level and scold switch last picked replace its own. */
+    val NEW_ALARM = Alarm(id = NEW_ALARM_ID, time = LocalTime.of(7, 0), difficulty = Difficulty.NEW_ALARM)
 
     /** How long a sound tile plays when tapped (the user, 2026-10-02: about six seconds, fading out). */
     const val PREVIEW_MS = 6_000L
@@ -333,6 +354,9 @@ object RingChoices {
   val SNOOZE_MINUTES = listOf(1, 5, 10, 15)
   val MAX_SNOOZES = listOf(0, 1, 2, 3, 5)
   const val LABEL_MAX = 40
+
+  /** The game levels, easiest first (G.1). */
+  val LEVELS: List<Difficulty> = Difficulty.entries
 
   /** The mission choices, in the order the editor shows them (D15: Rin picks first, the default). */
   val MISSIONS: List<MissionChoice> =
