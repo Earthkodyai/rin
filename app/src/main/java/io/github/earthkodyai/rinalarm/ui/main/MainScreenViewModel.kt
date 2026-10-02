@@ -67,6 +67,15 @@ constructor(
     _setupIssue.value = SetupChecks.hasCritical(SetupChecks.evaluate(deviceStatus.read()))
   }
 
+  /** The home tour waits to run (UX.8): after onboarding on a new install, or asked for again in Settings. */
+  val tourPending: StateFlow<Boolean> =
+    settings.tutorialPending.catch { emit(false) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+  /** The tour ended, skipped or done: it does not come back unless Settings asks for it. */
+  fun endTour() {
+    viewModelScope.launch { settings.setTutorialPending(false) }
+  }
+
   /** The list's on/off switch. The engine re-reads the alarm, so a stale row cannot overwrite a newer edit. */
   fun setEnabled(alarmId: Long, enabled: Boolean) {
     viewModelScope.launch { writer.setEnabled(alarmId, enabled) }

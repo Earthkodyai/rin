@@ -16,6 +16,9 @@ import kotlinx.coroutines.withContext
 fun interface LineBook {
   /** A line from [pool], or null when there is none (or the script could not be read). Main thread only. */
   suspend fun pick(pool: String, day: LocalDate, morning: Any): Line?
+
+  /** The line with this [id], for a moment that needs those exact words (the home tour, UX.8), or null. */
+  suspend fun line(id: String): Line? = null
 }
 
 /**
@@ -30,6 +33,8 @@ class AssetLineBook @Inject constructor(@ApplicationContext private val context:
 
   override suspend fun pick(pool: String, day: LocalDate, morning: Any): Line? =
     picker()?.pick(pool, day, morning)
+
+  override suspend fun line(id: String): Line? = picker()?.line(id)
 
   private suspend fun picker(): LinePicker? =
     lock.withLock {

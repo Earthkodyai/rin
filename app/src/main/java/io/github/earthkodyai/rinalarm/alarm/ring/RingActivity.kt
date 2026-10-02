@@ -93,6 +93,7 @@ import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import io.github.earthkodyai.rinalarm.ui.common.BubbleDots
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rinPattern
@@ -117,49 +118,12 @@ class RingActivity : ComponentActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     setContent {
       RinThemedContent(themeClock) {
-        val state by viewModel.uiState.collectAsStateWithLifecycle()
-        LaunchedEffect(state.finished) { if (state.finished) finish() }
-        LaunchedEffect(viewModel) {
-          viewModel.commands.collect { command ->
-            when (command) {
-              RingCommand.Snooze -> startService(RingService.snoozeIntent(this@RingActivity))
-              is RingCommand.Dismiss -> startService(RingService.dismissIntent(this@RingActivity, command.source))
-            }
+        RingRoute(viewModel, onFinish = ::finish) { command ->
+          when (command) {
+            RingCommand.Snooze -> startService(RingService.snoozeIntent(this@RingActivity))
+            is RingCommand.Dismiss -> startService(RingService.dismissIntent(this@RingActivity, command.source))
           }
         }
-        RingScreen(
-          state = state,
-          onSnooze = viewModel::snooze,
-          onDismiss = viewModel::dismiss,
-          onEmergencyStop = viewModel::emergencyStop,
-          onStartGame = viewModel::startGame,
-          onTapPad = viewModel::tapPad,
-          onPickCup = viewModel::pickCup,
-          onHearAgain = viewModel::hearAgain,
-          onTapWord = viewModel::tapWord,
-          onCantTalk = viewModel::cantTalk,
-          onClose = viewModel::close,
-          character = { modifier, insets ->
-            CharacterView(
-              state.mood,
-              modifier,
-              framing = Framing.RING,
-              insets = insets,
-              cues = viewModel.cues,
-              // Her page acts the cups out until the 2D board takes over (then the table goes away behind it).
-              cups =
-                when {
-                  state.cups2d -> null
-                  state.cupsStaging && state.cups?.act == null -> CupsAct.Rest(ball = 1, at = 0)
-                  else -> state.cups?.act
-                },
-              onCups = viewModel::onCupsView,
-              speech = viewModel.speaking,
-              onVisible = viewModel::onCharacterVisible,
-            )
-          },
-          hand = { modifier -> RinHand(modifier) },
-        )
       }
     }
   }
@@ -176,6 +140,49 @@ class RingActivity : ComponentActivity() {
   }
 }
 
+/** The ring screen on its view model: a ring's (RingActivity), or a practice round's (PracticeActivity, UX.8). */
+@Composable
+internal fun RingRoute(viewModel: RingViewModel, onFinish: () -> Unit, onCommand: (RingCommand) -> Unit) {
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
+  LaunchedEffect(state.finished) { if (state.finished) onFinish() }
+  LaunchedEffect(viewModel) { viewModel.commands.collect(onCommand) }
+  RingScreen(
+    state = state,
+    onSnooze = viewModel::snooze,
+    onDismiss = viewModel::dismiss,
+    onEmergencyStop = viewModel::emergencyStop,
+    onStartGame = viewModel::startGame,
+    onTapPad = viewModel::tapPad,
+    onPickCup = viewModel::pickCup,
+    onHearAgain = viewModel::hearAgain,
+    onTapWord = viewModel::tapWord,
+    onCantTalk = viewModel::cantTalk,
+    onClose = viewModel::close,
+    onPlayAgain = viewModel::playAgain,
+    onEndPractice = viewModel::endPractice,
+    character = { modifier, insets ->
+      CharacterView(
+        state.mood,
+        modifier,
+        framing = Framing.RING,
+        insets = insets,
+        cues = viewModel.cues,
+        // Her page acts the cups out until the 2D board takes over (then the table goes away behind it).
+        cups =
+          when {
+            state.cups2d -> null
+            state.cupsStaging && state.cups?.act == null -> CupsAct.Rest(ball = 1, at = 0)
+            else -> state.cups?.act
+          },
+        onCups = viewModel::onCupsView,
+        speech = viewModel.speaking,
+        onVisible = viewModel::onCharacterVisible,
+      )
+    },
+    hand = { modifier -> RinHand(modifier) },
+  )
+}
+
 @Composable
 internal fun RingScreen(
   state: RingUiState,
@@ -190,6 +197,8 @@ internal fun RingScreen(
   onTapWord: (Int) -> Unit = {},
   onCantTalk: () -> Unit = {},
   onClose: () -> Unit = {},
+  onPlayAgain: () -> Unit = {},
+  onEndPractice: () -> Unit = {},
   // Slots, so previews and UI tests run without a WebView.
   character: @Composable (Modifier, CharacterInsets) -> Unit = { _, _ -> },
   hand: @Composable (Modifier) -> Unit = { DrawnHand(it) },
@@ -200,7 +209,8 @@ internal fun RingScreen(
   // Once the ring is over (a pass, a snooze, the emergency stop) a tap anywhere closes the screen, cutting her short.
   // Only a tap that starts after that: the finger still on the emergency button when its 3 s hold ends, lifted a
   // moment later, closed the screen and cut her line off (the user, 2026-10-02).
-  val closable = state.passed || state.leaving
+  // A practice round's win keeps the screen for "Play again" or "Done".
+  val closable = (state.passed && !state.practice) || state.leaving
   // The game being played: the planned one, or the one "Can't talk right now" switched to.
   val game = state.missionType ?: ring.mission?.type
   val playing = !state.plainDismiss && !state.passed && !state.leaving
@@ -301,15 +311,20 @@ internal fun RingScreen(
             state.plainDismiss -> Unit
             game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
             // The cups keep their line visible through the pass: she claps behind the table.
-            game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame)
-            game == MissionType.SPEECH -> RepeatCard(state.repeat, onStartGame, onHearAgain, onCantTalk)
+            game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame, state.practice)
+            // A practice round has no other game to switch to.
+            game == MissionType.SPEECH -> RepeatCard(state.repeat, onStartGame, onHearAgain, onCantTalk.takeUnless { state.practice })
           }
         }
-        if (state.passed && game != MissionType.CUPS) Passed()
+        if (state.passed && game != MissionType.CUPS) Passed(state.practice)
       }
-      // Big targets: the user is half asleep. Same size, invisible and inert once the ring is over.
-      Box(if (over) inert else Modifier) {
-        Controls(state, request, if (over) ({}) else onSnooze, if (over) ({}) else onDismiss, if (over) ({}) else onEmergencyStop)
+      if (state.practice) {
+        PracticeControls(state.passed, onPlayAgain, onEndPractice)
+      } else {
+        // Big targets: the user is half asleep. Same size, invisible and inert once the ring is over.
+        Box(if (over) inert else Modifier) {
+          Controls(state, request, if (over) ({}) else onSnooze, if (over) ({}) else onDismiss, if (over) ({}) else onEmergencyStop)
+        }
       }
     }
   }
@@ -341,7 +356,7 @@ private fun TopBar(request: RingRequest, started: Boolean, state: RingUiState, g
     Column(modifier.padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
       Text(time, style = MaterialTheme.typography.displayLarge.copy(fontSize = 60.sp, lineHeight = 64.sp), color = p.ink)
       Text(
-        request.label.ifBlank { stringResource(R.string.ring_default_label) },
+        if (state.practice) stringResource(R.string.practice_label) else request.label.ifBlank { stringResource(R.string.ring_default_label) },
         style = MaterialTheme.typography.titleMedium,
         color = p.muted,
       )
@@ -475,6 +490,25 @@ private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: M
   }
 }
 
+/**
+ * A practice round's controls in place of Snooze and the emergency hold (UX.8): "Done" leaves at any point; after the
+ * win "Play again" comes first. The row keeps the controls' height, so the sheet does not jump at the win.
+ */
+@Composable
+private fun PracticeControls(passed: Boolean, onPlayAgain: () -> Unit, onDone: () -> Unit) {
+  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    if (passed) {
+      PillButton(stringResource(R.string.practice_again), onPlayAgain, Modifier.weight(1f).height(CONTROL_HEIGHT).testTag(PRACTICE_AGAIN_TAG))
+    }
+    QuietPillButton(
+      stringResource(R.string.practice_done),
+      onDone,
+      Modifier.weight(1f).testTag(PRACTICE_DONE_TAG),
+      height = CONTROL_HEIGHT,
+    )
+  }
+}
+
 /** Room for the warning sign and "Hold 3 s to stop" on one line (150 dp cut "stop" off). */
 private val HOLD_WIDTH = 176.dp
 
@@ -483,22 +517,24 @@ private val CONTROL_HEIGHT = 48.dp
 
 /** Compact, so it fits in the game row it covers and the sheet keeps its height at the pass. */
 @Composable
-private fun Passed() {
+private fun Passed(practice: Boolean) {
   val p = RinTheme.palette
   Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
     Text(
-      stringResource(R.string.mission_passed),
+      stringResource(if (practice) R.string.practice_passed else R.string.mission_passed),
       style = MaterialTheme.typography.titleLarge,
       color = p.ink,
       textAlign = TextAlign.Center,
       modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
     )
-    Text(stringResource(R.string.ring_tap_to_close), style = MaterialTheme.typography.bodySmall, color = p.pattern.muted)
+    if (!practice) Text(stringResource(R.string.ring_tap_to_close), style = MaterialTheme.typography.bodySmall, color = p.pattern.muted)
   }
 }
 
 internal const val RING_SCREEN_TAG = "ring_screen"
 internal const val RIN_LINE_TAG = "rin_line"
+internal const val PRACTICE_AGAIN_TAG = "practice_again"
+internal const val PRACTICE_DONE_TAG = "practice_done"
 
 private val PREVIEW_RING =
   ActiveRing(
@@ -548,6 +584,15 @@ private fun RingScreenCups2dPreview() {
 @Composable
 private fun RingScreenPlainPreview() {
   RinAlarmTheme { RingScreen(RingUiState(PREVIEW_RING.copy(mission = null)), {}, {}, {}) }
+}
+
+@Preview
+@Composable
+private fun RingScreenPracticeWonPreview() {
+  val practice = PREVIEW_RING.copy(request = PREVIEW_RING.request.copy(label = ""))
+  RinAlarmTheme {
+    RingScreen(RingUiState(practice, MissionProgress(1, 1), RingPhase.PASSED, passed = true, pads = PadsState(), practice = true), {}, {}, {})
+  }
 }
 
 @Preview

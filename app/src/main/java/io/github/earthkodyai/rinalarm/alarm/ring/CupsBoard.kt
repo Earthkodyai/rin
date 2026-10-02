@@ -144,7 +144,7 @@ private fun CupsBoard2d(act: CupsAct, modifier: Modifier) {
  * page glides to the new framing), unlike the card of 3.4, which had to keep one height.
  */
 @Composable
-internal fun CupsCard(state: CupsState?, staging: Boolean, passed: Boolean, onStart: () -> Unit) {
+internal fun CupsCard(state: CupsState?, staging: Boolean, passed: Boolean, onStart: () -> Unit, practice: Boolean = false) {
   val ready = (state == null || state.phase == CupsPhase.READY) && !staging && !passed
   if (ready) {
     GameIntro(R.string.cups_title, R.string.cups_intro, onStart, CUPS_START_TAG)
@@ -153,7 +153,7 @@ internal fun CupsCard(state: CupsState?, staging: Boolean, passed: Boolean, onSt
   Text(
     stringResource(
       when {
-        passed -> R.string.mission_passed
+        passed -> if (practice) R.string.practice_passed else R.string.mission_passed
         state?.phase == CupsPhase.PICK -> R.string.cups_pick
         state?.right == true -> R.string.cups_right
         state?.right == false -> R.string.cups_pick

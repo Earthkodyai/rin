@@ -61,10 +61,23 @@ class SettingsViewModel @Inject constructor(private val settings: AppSettings) :
   fun setThemeMode(mode: ThemeMode) {
     viewModelScope.launch { settings.setThemeMode(mode) }
   }
+
+  /** "Show the tour again" (UX.8): the home screen runs it as soon as it shows; then [onDone]. */
+  fun replayTour(onDone: () -> Unit) {
+    viewModelScope.launch {
+      settings.setTutorialPending(true)
+      onDone()
+    }
+  }
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onPrivacy: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+  onBack: () -> Unit,
+  onPrivacy: () -> Unit,
+  onPractice: () -> Unit,
+  viewModel: SettingsViewModel = hiltViewModel(),
+) {
   val poutOff by viewModel.poutOff.collectAsStateWithLifecycle()
   val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
   SettingsScreen(
@@ -74,6 +87,8 @@ fun SettingsScreen(onBack: () -> Unit, onPrivacy: () -> Unit, viewModel: Setting
     onThemeMode = viewModel::setThemeMode,
     onPrivacy = onPrivacy,
     onBack = onBack,
+    onTour = { viewModel.replayTour(onBack) },
+    onPractice = onPractice,
   )
 }
 
@@ -85,8 +100,9 @@ internal fun SettingsScreen(
   onThemeMode: (ThemeMode) -> Unit,
   onPrivacy: () -> Unit,
   onBack: () -> Unit,
+  onTour: () -> Unit = {},
+  onPractice: () -> Unit = {},
 ) {
-  val p = RinTheme.palette
   RinPage(stringResource(R.string.settings_title), onBack) {
     // The app's own day or night look (UX phase): Auto follows the time of day, never the phone's dark mode.
     Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -118,24 +134,34 @@ internal fun SettingsScreen(
       CardText(stringResource(R.string.settings_pout), stringResource(R.string.settings_pout_summary), Modifier.weight(1f))
       Switch(checked = poutOff, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 12.dp))
     }
+    // UX.8: the games without an alarm, and the home screen's tour again.
+    LinkCard(stringResource(R.string.practice_title), stringResource(R.string.settings_practice_summary), onPractice)
+    LinkCard(stringResource(R.string.settings_tour), stringResource(R.string.settings_tour_summary), onTour)
     Column(Modifier.rinCard()) { CardText(stringResource(R.string.about_rin_title), stringResource(R.string.about_rin)) }
-    Row(
-      Modifier.fillMaxWidth()
-        .sticker(radius = 22.dp)
-        .clip(RoundedCornerShape(22.dp))
-        .clickable(role = Role.Button, onClick = onPrivacy)
-        .padding(16.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      CardText(stringResource(R.string.privacy_title), stringResource(R.string.privacy_summary), Modifier.weight(1f))
-      // The back arrow turned around: "opens a page".
-      Icon(
-        painterResource(R.drawable.ic_arrow_back),
-        contentDescription = null,
-        tint = p.muted,
-        modifier = Modifier.padding(start = 12.dp).size(20.dp).rotate(180f),
-      )
-    }
+    LinkCard(stringResource(R.string.privacy_title), stringResource(R.string.privacy_summary), onPrivacy)
+  }
+}
+
+/** A card that opens something: its name, what it means, and an arrow. */
+@Composable
+private fun LinkCard(title: String, text: String, onClick: () -> Unit) {
+  val p = RinTheme.palette
+  Row(
+    Modifier.fillMaxWidth()
+      .sticker(radius = 22.dp)
+      .clip(RoundedCornerShape(22.dp))
+      .clickable(role = Role.Button, onClick = onClick)
+      .padding(16.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    CardText(title, text, Modifier.weight(1f))
+    // The back arrow turned around: "opens a page".
+    Icon(
+      painterResource(R.drawable.ic_arrow_back),
+      contentDescription = null,
+      tint = p.muted,
+      modifier = Modifier.padding(start = 12.dp).size(20.dp).rotate(180f),
+    )
   }
 }
 

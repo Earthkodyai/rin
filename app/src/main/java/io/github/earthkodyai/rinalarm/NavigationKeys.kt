@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
 /** Pout off (Phase 5). */
 @Serializable data object Settings : NavKey
 
+/** "Try the games": a practice round of each game, no alarm (UX.8). */
+@Serializable data object Practice : NavKey
+
 /** How Rin uses your data: PRIVACY.md (6.3). */
 @Serializable data object Privacy : NavKey
 

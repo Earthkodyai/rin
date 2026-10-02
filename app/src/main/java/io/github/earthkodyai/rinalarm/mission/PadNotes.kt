@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.mission
 
+import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Handler
@@ -19,9 +20,10 @@ interface PadNotes {
 /**
  * One short generated note per pad (plan phase-3: each pad has its own note, so the game can be played by ear and
  * without colour vision). A C major arpeggio, C5 E5 G5 C6: far enough apart to tell by ear, above the range phone
- * speakers lose, and clear of the alarm's 880 Hz beeps. USAGE_ALARM, like the tone, so it is heard in silent mode.
+ * speakers lose, and clear of the alarm's 880 Hz beeps. USAGE_ALARM, like the tone, so it is heard in silent mode; a
+ * practice round (UX.8) plays them on the media stream instead ([attributes]).
  */
-class AndroidPadNotes : PadNotes {
+class AndroidPadNotes(private val attributes: AudioAttributes = ALARM_AUDIO) : PadNotes {
   private var tracksBuilt = false
   private val tracks: Map<Pad, AudioTrack> by lazy { Pad.entries.associateWith { track(FREQUENCIES.getValue(it)) } }
   private var released = false
@@ -49,7 +51,7 @@ class AndroidPadNotes : PadNotes {
     tracksBuilt = true
     val pcm = note(frequency)
     return AudioTrack.Builder()
-      .setAudioAttributes(ALARM_AUDIO)
+      .setAudioAttributes(attributes)
       .setAudioFormat(
         AudioFormat.Builder()
           .setEncoding(AudioFormat.ENCODING_PCM_16BIT)

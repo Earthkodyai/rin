@@ -54,6 +54,16 @@ class HomeRinViewModelTest {
   }
 
   @Test
+  fun theTour_endsOnTheOneClipThatSaysWhatTheGamesAreFor() =
+    runTest(main.dispatcher) {
+      val (rin, _) = home()
+      rin.onTourGames()
+      runCurrent()
+      assertEquals(HomeRinViewModel.TOUR_GAMES_LINE, rin.line.value?.id)
+      assertEquals("Let's play. Win, and the alarm stops.", rin.line.value?.text)
+    }
+
+  @Test
   fun theAppOpening_getsAHelloForTheTimeOfDay_butNotEachReturnFromAnotherScreen() =
     runTest(main.dispatcher) {
       val (rin, cues) = home()

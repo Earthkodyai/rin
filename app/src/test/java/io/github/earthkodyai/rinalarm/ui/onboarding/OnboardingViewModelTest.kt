@@ -122,6 +122,16 @@ class OnboardingViewModelTest {
   }
 
   @Test
+  fun finish_leavesTheHomeTourWaiting() = runTest {
+    val vm = viewModel()
+    var done = false
+    vm.finish { done = true }
+    settings.completed.first { it }
+    assertTrue(done)
+    assertTrue(settings.tutorialPending.value)
+  }
+
+  @Test
   fun startTest_failure_isShown_andDoesNotCountAsStarted() = runTest {
     alarms.failure = IllegalStateException("disk full")
     val vm = viewModel()

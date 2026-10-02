@@ -97,9 +97,13 @@ constructor(
     }
   }
 
-  /** Marks onboarding done (so it never shows again), then calls [onDone]. A pending test alarm keeps waiting. */
+  /**
+   * Marks onboarding done (so it never shows again) with the home tour waiting (UX.8), then calls [onDone]. A pending
+   * test alarm keeps waiting. The tour is set first: cut off in between, onboarding simply shows again.
+   */
   fun finish(onDone: () -> Unit) {
     viewModelScope.launch {
+      settings.setTutorialPending(true)
       settings.setOnboardingCompleted(true)
       onDone()
     }

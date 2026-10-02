@@ -252,4 +252,30 @@
     <string name="settings_look_night">Night</string>
     <string name="settings_pout">No pouting</string>
     <string name="settings_pout_summary">Rin stays calm when you snooze or miss in a game, and skips her teasing lines.</string>
+    <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
+    <string name="tour_hello">I\'m Rin! Let me show you around.</string>
+    <string name="tour_add">Tap here to set an alarm: time, days, game and sound.</string>
+    <string name="tour_day_mode">Day off, or sick? One tap, and your next alarm has no game.</string>
+    <string name="tour_alarm">Tap an alarm to change it. The switch turns it off.</string>
+    <string name="tour_top">Left: can your phone ring? Right: Settings, and this tour.</string>
+    <string name="tour_games">Want to try my games? No alarm, just practice.</string>
+    <string name="tour_games_card">One short round of each game. No alarm rings, and nothing is saved.</string>
+    <string name="tour_skip">Skip tour</string>
+    <string name="tour_next">Next · %1$d/%2$d</string>
+    <string name="tour_try_games">Try the games</string>
+    <string name="tour_not_now">Not now</string>
+    <string name="practice_title">Try the games</string>
+    <string name="practice_intro">One short round of each game, with no alarm. Nothing is saved.</string>
+    <string name="practice_hint_pads">Watch Rin\'s hand, then tap the same 3 colours.</string>
+    <string name="practice_hint_cups">Follow the ball and tap its cup, once.</string>
+    <string name="practice_hint_speech">Say one short sentence after Rin. The mic listens only during the round.</string>
+    <string name="practice_stop_title">When an alarm rings</string>
+    <string name="practice_stop">Win the game and it stops. Snooze gives you a few more minutes. In an emergency, hold the red button for 3 seconds.</string>
+    <string name="practice_done">Done</string>
+    <string name="practice_again">Play again</string>
+    <string name="practice_label">Practice round</string>
+    <string name="practice_passed">Nice work! You won.</string>
+    <string name="settings_practice_summary">A practice round of each game, with no alarm.</string>
+    <string name="settings_tour">Home tour</string>
+    <string name="settings_tour_summary">Rin shows you around the home screen again.</string>
 </resources>

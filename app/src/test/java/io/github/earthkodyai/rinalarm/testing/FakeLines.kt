@@ -17,7 +17,11 @@ val realScript: Script by lazy { Script.parse(File("src/main/assets/dialogue/lin
 /** A book over the real script, with a fixed seed so session and event picks repeat run to run. */
 fun realLineBook(seed: Int = 1): LineBook {
   val picker = LinePicker(realScript, Random(seed))
-  return LineBook { pool, day, morning -> picker.pick(pool, day, morning) }
+  return object : LineBook {
+    override suspend fun pick(pool: String, day: java.time.LocalDate, morning: Any): Line? = picker.pick(pool, day, morning)
+
+    override suspend fun line(id: String): Line? = picker.line(id)
+  }
 }
 
 /** No script: Rin stays quiet (what the screens do when lines.json cannot be read). */

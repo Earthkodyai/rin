@@ -32,6 +32,30 @@ class MainScreenViewModelTest {
   private val time = FixedTimeSource(LocalDateTime.parse("2026-09-28T06:00").atZone(zone).toInstant(), zone)
 
   @Test
+  fun theTour_waitsWhenAsked_andEndingItClearsIt() = runTest {
+    val alarms = FakeAlarms()
+    val settings = FakeSettings()
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), settings)
+    backgroundScope.launch { viewModel.tourPending.collect {} }
+    assertFalse(viewModel.tourPending.value)
+    settings.setTutorialPending(true)
+    assertTrue(viewModel.tourPending.first { it })
+    viewModel.endTour()
+    assertFalse(viewModel.tourPending.first { !it })
+    assertFalse(settings.tutorialPending.value)
+  }
+
+  @Test
+  fun tourSteps_skipTheAlarmStep_whenTheListIsEmpty() {
+    assertEquals(
+      listOf(TourStep.HELLO, TourStep.ADD, TourStep.DAY_MODE, TourStep.TOP, TourStep.GAMES),
+      TourStep.steps(hasAlarms = false),
+    )
+    assertEquals(TourStep.entries, TourStep.steps(hasAlarms = true))
+    assertEquals(TourStep.GAMES, TourStep.steps(hasAlarms = true).last())
+  }
+
+  @Test
   fun uiState_startsLoading() {
     val alarms = FakeAlarms()
     val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), FakeSettings())

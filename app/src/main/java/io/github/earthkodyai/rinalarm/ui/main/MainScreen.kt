@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,10 +35,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,6 +114,7 @@ fun MainScreen(
   onEdit: (Long) -> Unit,
   onDiagnostics: () -> Unit,
   onSettings: () -> Unit,
+  onPractice: () -> Unit,
   viewModel: MainScreenViewModel = hiltViewModel(),
   rin: HomeRinViewModel = hiltViewModel(),
 ) {
@@ -116,6 +122,17 @@ fun MainScreen(
   val setupIssue by viewModel.setupIssue.collectAsStateWithLifecycle()
   val dayMode by viewModel.dayMode.collectAsStateWithLifecycle()
   val line by rin.line.collectAsStateWithLifecycle()
+  val tourPending by viewModel.tourPending.collectAsStateWithLifecycle()
+  // The tour (UX.8): which step, kept through a rotation; back to the start whenever it is asked for again.
+  var tourIndex by rememberSaveable { mutableIntStateOf(0) }
+  val steps = TourStep.steps(hasAlarms = (state as? MainScreenUiState.Success)?.alarms?.isNotEmpty() == true)
+  val step = steps.getOrNull(tourIndex).takeIf { tourPending && state is MainScreenUiState.Success }
+  val endTour = {
+    viewModel.endTour()
+    tourIndex = 0
+  }
+  LaunchedEffect(step) { if (step == TourStep.GAMES) rin.onTourGames() }
+  BackHandler(enabled = step != null, onBack = endTour)
   LifecycleResumeEffect(viewModel) {
     viewModel.refreshSetup()
     onPauseOrDispose {}
@@ -134,7 +151,15 @@ fun MainScreen(
     onSettings = onSettings,
     dayMode = dayMode,
     onDayMode = viewModel::tapDayMode,
-    rinLine = line?.text,
+    // Her spoken line while she says it, otherwise the tour's tip (text alone: her mouth stays still).
+    rinLine = line?.text ?: step?.let { stringResource(it.tip) },
+    tour = step?.let { TourState(it, steps.indexOf(it) + 1, steps.size) },
+    onTourNext = { tourIndex++ },
+    onTourSkip = endTour,
+    onTryGames = {
+      endTour()
+      onPractice()
+    },
     character = { modifier ->
       val mood = rememberDefaultMood()
       CharacterView(
@@ -176,31 +201,43 @@ internal fun MainScreen(
   dayMode: DayModeKind? = null,
   onDayMode: (DayModeKind) -> Unit = {},
   rinLine: String? = null,
+  tour: TourState? = null,
+  onTourNext: () -> Unit = {},
+  onTourSkip: () -> Unit = {},
+  onTryGames: () -> Unit = {},
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable (Modifier) -> Unit = {},
 ) {
   val p = RinTheme.palette
+  val targets = remember { TourTargets() }
   Box(Modifier.fillMaxSize().background(p.ground)) {
     RinBackdrop(Modifier.fillMaxSize())
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-      TopBar(onDiagnostics, onSettings)
+      TopBar(onDiagnostics, onSettings, targets)
       if (setupIssue) SetupBanner(onDiagnostics)
-      RinPanel(rinLine, character)
-      DayModeRow(dayMode, onDayMode)
+      RinPanel(rinLine, character, Modifier.tourTarget(targets, TourTarget.PANEL))
+      DayModeRow(dayMode, onDayMode, Modifier.tourTarget(targets, TourTarget.DAY_MODE))
       ListHeader(state)
-      AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth())
+      AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth(), targets)
     }
     PillButton(
       stringResource(R.string.alarm_add),
       onAdd,
-      Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 20.dp),
+      Modifier.align(Alignment.BottomEnd)
+        .navigationBarsPadding()
+        .padding(end = 18.dp, bottom = 20.dp)
+        .tourTarget(targets, TourTarget.ADD),
       icon = R.drawable.ic_add,
     )
+    tour?.let { HomeTour(it.step, it.number, it.count, targets, onTourNext, onTourSkip, onTryGames) }
   }
 }
 
+/** The tour's step on screen, and its place among [count] steps. */
+data class TourState(val step: TourStep, val number: Int, val count: Int)
+
 @Composable
-private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit) {
+private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit, targets: TourTargets) {
   val p = RinTheme.palette
   val name = stringResource(R.string.app_name)
   Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -218,9 +255,11 @@ private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit) {
       color = p.ink,
       modifier = Modifier.weight(1f).semantics { heading() },
     )
-    RoundIconButton(R.drawable.ic_pulse, stringResource(R.string.diagnostics_title), onDiagnostics)
-    Spacer(Modifier.size(10.dp))
-    RoundIconButton(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings)
+    Row(Modifier.tourTarget(targets, TourTarget.TOP_BUTTONS)) {
+      RoundIconButton(R.drawable.ic_pulse, stringResource(R.string.diagnostics_title), onDiagnostics)
+      Spacer(Modifier.size(10.dp))
+      RoundIconButton(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings)
+    }
   }
 }
 
@@ -256,11 +295,12 @@ private fun SetupBanner(onClick: () -> Unit) {
  * time and date, which fade out while she speaks and her line sits there in a bubble (the mockups).
  */
 @Composable
-private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit) {
+private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, modifier: Modifier = Modifier) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(28.dp)
   Box(
     Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
+      .then(modifier)
       .fillMaxWidth()
       .height(PANEL_HEIGHT)
       .clip(shape)
@@ -318,9 +358,9 @@ private val PANEL_DATE = DateTimeFormatter.ofPattern("EEE, MMM d", AppLocale)
  * only, nothing to type (the user's slips, Phase 2).
  */
 @Composable
-private fun DayModeRow(dayMode: DayModeKind?, onTap: (DayModeKind) -> Unit) {
+private fun DayModeRow(dayMode: DayModeKind?, onTap: (DayModeKind) -> Unit, modifier: Modifier = Modifier) {
   Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
       DayModeKind.entries.forEach { kind -> DayModeButton(kind, dayMode == kind, { onTap(kind) }, Modifier.weight(1f)) }
     }
     if (dayMode != null) {
@@ -403,6 +443,7 @@ private fun AlarmList(
   onEdit: (Long) -> Unit,
   onToggle: (Long, Boolean) -> Unit,
   modifier: Modifier,
+  targets: TourTargets? = null,
 ) {
   val p = RinTheme.palette
   val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + ADD_BUTTON_ROOM
@@ -425,8 +466,13 @@ private fun AlarmList(
           contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottom),
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          items(state.alarms, key = { it.alarm.id }) { row ->
-            AlarmCard(row.alarm, onEdit = { onEdit(row.alarm.id) }, onToggle = { onToggle(row.alarm.id, it) })
+          itemsIndexed(state.alarms, key = { _, row -> row.alarm.id }) { index, row ->
+            AlarmCard(
+              row.alarm,
+              onEdit = { onEdit(row.alarm.id) },
+              onToggle = { onToggle(row.alarm.id, it) },
+              if (index == 0) Modifier.tourTarget(targets, TourTarget.FIRST_ALARM) else Modifier,
+            )
           }
         }
       }
@@ -435,14 +481,15 @@ private fun AlarmList(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AlarmCard(alarm: Alarm, onEdit: () -> Unit, onToggle: (Boolean) -> Unit) {
+private fun AlarmCard(alarm: Alarm, onEdit: () -> Unit, onToggle: (Boolean) -> Unit, modifier: Modifier = Modifier) {
   val p = RinTheme.palette
   val clock = rememberClockText()(alarm.time)
   // Read out in the locale's own words ("07:00 น."); the card shows digits only.
   val switchDescription = stringResource(R.string.alarm_switch, alarm.time.format(rememberTimeFormatter()))
   val shape = RoundedCornerShape(22.dp)
   Row(
-    Modifier.fillMaxWidth()
+    modifier
+      .fillMaxWidth()
       .sticker(radius = 22.dp)
       .clip(shape)
       .clickable(onClickLabel = stringResource(R.string.alarm_edit), onClick = onEdit)
@@ -557,6 +604,21 @@ private fun MainScreenPreview() {
 private fun MainScreenNightPreview() {
   RinAlarmTheme(night = true) {
     MainScreen(MainScreenUiState.Success(previewRows, LocalDate.of(2026, 9, 28)), {}, {}, { _, _ -> }, dayMode = DayModeKind.REST)
+  }
+}
+
+@Preview(heightDp = 844, widthDp = 390)
+@Composable
+private fun MainScreenTourPreview() {
+  RinAlarmTheme {
+    MainScreen(
+      MainScreenUiState.Success(previewRows, LocalDate.of(2026, 9, 28)),
+      {},
+      {},
+      { _, _ -> },
+      rinLine = stringResource(R.string.tour_add),
+      tour = TourState(TourStep.ADD, 2, 6),
+    )
   }
 }
 

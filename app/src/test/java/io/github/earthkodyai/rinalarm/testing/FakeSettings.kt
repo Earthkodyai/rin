@@ -36,4 +36,10 @@ class FakeSettings(poutOff: Boolean = false, dayMode: DayMode? = null) : AppSett
   override suspend fun setThemeMode(mode: ThemeMode) {
     themeMode.value = mode
   }
+
+  override val tutorialPending = MutableStateFlow(false)
+
+  override suspend fun setTutorialPending(pending: Boolean) {
+    tutorialPending.value = pending
+  }
 }

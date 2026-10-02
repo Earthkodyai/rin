@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.mission
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -308,13 +309,18 @@ private class VoskRecognizing(model: Model, grammar: List<String>) : Recognizing
 /**
  * Rin's sentences through [VoicePlayer] on the alarm stream: at wake-up the media volume may be at zero, and the alarm
  * stream is the one RingService has raised to its floor. The clips come from Rin's voice pack (task 4.3,
- * `voice/rin/repeat/<id>.mp3`); without a clip the game shows the sentence to read instead.
+ * `voice/rin/repeat/<id>.mp3`); without a clip the game shows the sentence to read instead. A practice round (UX.8)
+ * plays them on the media stream ([attributes]).
  */
-class AndroidRinVoice(context: Context, private val pack: String = PACK) : RinVoice {
+class AndroidRinVoice(
+  context: Context,
+  private val pack: String = PACK,
+  attributes: AudioAttributes = VoicePlayer.ALARM_SPEECH,
+) : RinVoice {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private val speakingState = MutableStateFlow<Speaking?>(null)
   override val speaking: StateFlow<Speaking?> = speakingState.asStateFlow()
-  private val player = VoicePlayer(context, scope, VoicePlayer.ALARM_SPEECH) { speakingState.value = it }
+  private val player = VoicePlayer(context, scope, attributes) { speakingState.value = it }
 
   // Waits for a line of hers still playing (her feedback on the last try), so the mic never opens over it.
   override suspend fun say(sentence: Sentence): Boolean =

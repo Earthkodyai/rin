@@ -19,6 +19,7 @@ import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorScreen
 import io.github.earthkodyai.rinalarm.ui.editor.AlarmEditorViewModel
 import io.github.earthkodyai.rinalarm.ui.main.MainScreen
 import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingScreen
+import io.github.earthkodyai.rinalarm.ui.practice.PracticeScreen
 import io.github.earthkodyai.rinalarm.ui.settings.PrivacyScreen
 import io.github.earthkodyai.rinalarm.ui.settings.SettingsScreen
 import javax.inject.Inject
@@ -69,6 +70,7 @@ private fun AppNavigation(first: NavKey) {
             onEdit = { backStack.add(AlarmEditor(it)) },
             onDiagnostics = { if (backStack.lastOrNull() == Main) backStack.add(Diagnostics) },
             onSettings = { if (backStack.lastOrNull() == Main) backStack.add(Settings) },
+            onPractice = { if (backStack.lastOrNull() == Main) backStack.add(Practice) },
           )
         }
         entry<AlarmEditor> { key ->
@@ -79,8 +81,10 @@ private fun AppNavigation(first: NavKey) {
           SettingsScreen(
             onBack = { if (backStack.lastOrNull() == Settings) backStack.removeLastOrNull() },
             onPrivacy = { if (backStack.lastOrNull() == Settings) backStack.add(Privacy) },
+            onPractice = { if (backStack.lastOrNull() == Settings) backStack.add(Practice) },
           )
         }
+        entry<Practice> { PracticeScreen(onBack = { if (backStack.lastOrNull() == Practice) backStack.removeLastOrNull() }) }
         entry<Privacy> { PrivacyScreen(onBack = { if (backStack.lastOrNull() == Privacy) backStack.removeLastOrNull() }) }
         entry<Diagnostics> {
           DiagnosticsScreen(onBack = { if (backStack.lastOrNull() == Diagnostics) backStack.removeLastOrNull() })

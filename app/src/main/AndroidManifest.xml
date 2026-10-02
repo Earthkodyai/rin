@@ -74,6 +74,13 @@
             android:turnScreenOn="true"
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
 
+        <!-- A practice round of one game (UX.8): the ring screen with no ring behind it. -->
+        <activity
+            android:name=".alarm.ring.PracticeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
 
         <service
             android:name=".alarm.ring.RingService"

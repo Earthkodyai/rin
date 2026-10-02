@@ -36,6 +36,14 @@ interface AppSettings {
   val themeMode: Flow<ThemeMode>
 
   suspend fun setThemeMode(mode: ThemeMode)
+
+  /**
+   * The home screen's tour waits to be shown (UX.8): set as onboarding finishes on a new install, or from Settings;
+   * cleared when the tour ends or is skipped. Users set up before UX.8 never get it unasked.
+   */
+  val tutorialPending: Flow<Boolean>
+
+  suspend fun setTutorialPending(pending: Boolean)
 }
 
 /** [AppSettings] in a Preferences DataStore in device-protected storage. */
@@ -82,6 +90,12 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     store.edit { it[THEME_MODE] = mode.stored }
   }
 
+  override val tutorialPending: Flow<Boolean> = store.data.map { it[TUTORIAL_PENDING] ?: false }
+
+  override suspend fun setTutorialPending(pending: Boolean) {
+    store.edit { it[TUTORIAL_PENDING] = pending }
+  }
+
   private fun Preferences.dayMode(): DayMode? {
     val kind = DayModeKind.fromStored(this[DAY_MODE]) ?: return null
     return DayMode(kind, this[DAY_MODE_AT] ?: return null)
@@ -93,5 +107,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     val DAY_MODE = stringPreferencesKey("day_mode")
     val DAY_MODE_AT = longPreferencesKey("day_mode_at")
     val THEME_MODE = stringPreferencesKey("theme_mode")
+    val TUTORIAL_PENDING = booleanPreferencesKey("tutorial_pending")
   }
 }

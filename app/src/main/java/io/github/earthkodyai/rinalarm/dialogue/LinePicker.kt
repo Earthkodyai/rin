@@ -18,6 +18,9 @@ import kotlin.random.Random
  * Main thread only.
  */
 class LinePicker(private val script: Script, private val random: Random = Random.Default) {
+  /** The line with this [id], or null. */
+  fun line(id: String): Line? = script.lines.firstOrNull { it.id == id }
+
   private val orders = mutableMapOf<String, List<Line>>()
   private var morning: Any? = null
   private val bags = mutableMapOf<String, ArrayDeque<Line>>()

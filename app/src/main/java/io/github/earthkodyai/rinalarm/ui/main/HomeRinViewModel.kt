@@ -37,7 +37,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 class HomeRinViewModel
 @Inject
 constructor(
-  book: LineBook,
+  private val book: LineBook,
   voices: LineVoiceFactory,
   private val time: TimeSource,
   private val clock: ElapsedClock,
@@ -104,9 +104,18 @@ constructor(
     say(Pools.HEAD_TAP)
   }
 
+  /** The home tour's last step (UX.8): the one existing clip that says what the games are for. */
+  fun onTourGames() {
+    say { book.line(TOUR_GAMES_LINE) }
+  }
+
   private fun say(pool: String, gesture: Boolean = true) {
+    say(gesture) { lines.pick(pool, time.now().atZone(time.zone()).toLocalDate(), Unit) }
+  }
+
+  private fun say(gesture: Boolean = true, pick: suspend () -> Line?) {
     viewModelScope.launch {
-      val line = lines.pick(pool, time.now().atZone(time.zone()).toLocalDate(), Unit) ?: return@launch
+      val line = pick() ?: return@launch
       // The same wait as the ring screen's opening line (4.3). Her new page greets with a wave as it comes up, so a
       // line that waited for it drops its own gesture: two at once jerked her hand there.
       val waited = !faceUp.value
@@ -129,5 +138,8 @@ constructor(
 
     /** After her page is ready, a moment for its first frames before she speaks. */
     const val FACE_SETTLE_MS = 300L
+
+    /** "Let's play. Win, and the alarm stops." */
+    const val TOUR_GAMES_LINE = "game.intro.02"
   }
 }

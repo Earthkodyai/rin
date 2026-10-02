@@ -1,8 +1,10 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.CupsView
@@ -31,6 +33,8 @@ import io.github.earthkodyai.rinalarm.mission.MissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionState
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Miss
+import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionPlan
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsMission
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
@@ -69,6 +73,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * won line and one closing remark before [RingUiState.finished] closes the screen (a tap closes it sooner). A snooze or the emergency stop gets
  * a line too, and the screen stays up until she has said it. [RingUiState.line] is the subtitle; the tone steps back
  * only while one of her clips plays. With no script, she stays quiet and the screen closes [CELEBRATE_MS] after a pass.
+ *
+ * A practice round (UX.8, [EXTRA_PRACTICE] names the game) runs the same screen with no ring at all: no RingService,
+ * no tone, nothing logged; the game's first round only ([MissionFactory.practice]), her voice on the media stream, and
+ * after the win her won line, then "Play again" or "Done" ([RingUiState.practice]).
  */
 @HiltViewModel
 class RingViewModel
@@ -84,7 +92,13 @@ constructor(
   book: LineBook,
   voices: LineVoiceFactory,
   settings: AppSettings,
+  savedState: SavedStateHandle,
 ) : ViewModel() {
+  /** The game of a practice round, or null for a real ring. */
+  private val practice: MissionType? = savedState.get<String>(EXTRA_PRACTICE)?.let(MissionType::fromStored)
+  /** A practice round's last progress, which a real ring keeps in [RingState]. */
+  private var practiceProgressAt: Long? = null
+
   private val state = MutableStateFlow(RingUiState())
   val uiState: StateFlow<RingUiState> = state.asStateFlow()
 
@@ -105,7 +119,7 @@ constructor(
   /** Pout off (Phase 5), as last read from the settings. */
   @Volatile private var poutOff = false
   private val lines = PoutFilter(book) { calm() }
-  private val speaker = RinSpeaker(voices.create(alarm = true), viewModelScope)
+  private val speaker = RinSpeaker(voices.create(alarm = practice == null), viewModelScope)
   private var gameSpeaking: Speaking? = null
   /** What the game asks of the tone (Repeat after Rin); the ring gets the stronger of it and her lines' hush. */
   private var gameHush = Hush.NONE
@@ -139,9 +153,13 @@ constructor(
         state.update { it.copy(calm = calm()) }
       }
     }
-    viewModelScope.launch {
-      ringState.active.collect { ring ->
-        if (ring == null) onRingEnded() else onRing(ring)
+    if (practice != null) {
+      startPractice(practice)
+    } else {
+      viewModelScope.launch {
+        ringState.active.collect { ring ->
+          if (ring == null) onRingEnded() else onRing(ring)
+        }
       }
     }
     viewModelScope.launch { speaker.line.collect { line -> state.update { it.copy(line = line) } } }
@@ -157,7 +175,9 @@ constructor(
     if (!(gesture.pouty && calm())) cueFlow.tryEmit(gesture.onRing())
   }
 
-  private fun pushHush() = ringState.setHush(maxOf(gameHush, speaker.hush.value))
+  private fun pushHush() {
+    if (practice == null) ringState.setHush(maxOf(gameHush, speaker.hush.value))
+  }
 
   private fun publishSpeaking() {
     speakingFlow.value = speaker.speaking.value ?: gameSpeaking
@@ -223,8 +243,37 @@ constructor(
     run(ring, plan.type, plan.switchedFrom?.let { " switchedFrom=${it.stored}" } ?: "")
   }
 
+  /**
+   * A practice round of [type]: a stand-in ring at the current time, with no snoozes, that nothing outside this screen
+   * knows of. Her opening line is left out: the round starts at "Let's play", as the user came to play.
+   */
+  private fun startPractice(type: MissionType) {
+    val now = time.now().atZone(time.zone())
+    ringDay = now.toLocalDate()
+    morning = PRACTICE_MORNING
+    val request = RingRequest(PRACTICE_ALARM_ID, now.toLocalTime(), "", null, 0, 0, late = false, RingOptions(), MissionChoice.Only(type))
+    val ring = ActiveRing(request, MissionPlan.Run(type))
+    practiceProgressAt = null
+    // The cup table her page shows now (the round before): kept, or "Let's play" would wait for it to come back.
+    state.value = RingUiState(ring = ring, practice = true, cupsView = state.value.cupsView)
+    state.update { it.copy(calm = calm()) }
+    refreshPhase()
+    run(ring, type, "")
+  }
+
+  /** "Play again" after a practice round's win: a new round of the same game. */
+  fun playAgain() {
+    val type = practice ?: return
+    if (!state.value.passed) return
+    stopMission()
+    speaker.stop()
+    trouble = false
+    cups2dReason = null
+    startPractice(type)
+  }
+
   private fun run(ring: ActiveRing, type: MissionType, logExtra: String) {
-    val running = runCatching { missions.create(type).also(Mission::start) }.getOrNull()
+    val running = runCatching { (if (practice != null) missions.practice(type) else missions.create(type)).also(Mission::start) }.getOrNull()
     if (running == null) {
       state.update { it.copy(missionFailed = true) }
       log(RingEventType.MISSION_FAILED, ring, "type=${type.stored} reason=create_failed")
@@ -286,6 +335,7 @@ constructor(
    */
   fun cantTalk() {
     val ring = state.value.ring ?: return
+    if (practice != null) return
     val from = mission as? RepeatMission ?: return
     if (state.value.passed) return
     val ready = runCatching { readiness.check() }.getOrDefault(emptyMap())
@@ -405,7 +455,7 @@ constructor(
     val before = state.value.progress
     state.update { it.copy(progress = progress) }
     if (before != null && (progress.done > before.done || progress.activity > before.activity)) {
-      ringState.reportProgress(clock.now())
+      if (practice != null) practiceProgressAt = clock.now() else ringState.reportProgress(clock.now())
       refreshPhase()
       // No event marks the idle timeout, so a timer does: STALLED arrives when progress simply stops. Each step
       // restarts it; a one-shot rather than a ticker, so nothing keeps running once the ring is over.
@@ -429,7 +479,7 @@ constructor(
         )
         stopMission()
         refreshPhase()
-        commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_MISSION))
+        if (practice == null) commandFlow.tryEmit(RingCommand.Dismiss(RingService.SOURCE_MISSION))
         celebrate(ring)
       }
       MissionState.FAILED -> {
@@ -454,6 +504,11 @@ constructor(
     viewModelScope.launch {
       val won = lines.pick(Pools.won(clean = !trouble), ringDay ?: today(), morning)
       cue(won?.gesture ?: Gesture.CLAP)
+      // A practice round stays for "Play again" or "Done": her won line, and no goodbye.
+      if (practice != null) {
+        won?.let { speaker.say(it) }
+        return@launch
+      }
       if (won == null) {
         delay(CELEBRATE_MS)
       } else {
@@ -489,10 +544,18 @@ constructor(
     if (state.value.passed || state.value.leaving) state.update { it.copy(finished = true) }
   }
 
+  /** "Done" in a practice round: the screen closes, at any point of the round. */
+  fun endPractice() {
+    if (practice == null) return
+    stopMission()
+    speaker.stop()
+    state.update { it.copy(finished = true) }
+  }
+
   private fun refreshPhase() {
     val current = state.value
     if (current.ring == null) return
-    val phase = RingMoods.phase(current.passed, clock.now(), ringState.lastProgressAt)
+    val phase = RingMoods.phase(current.passed, clock.now(), if (practice != null) practiceProgressAt else ringState.lastProgressAt)
     if (phase == current.phase) return
     state.update { it.copy(phase = phase) }
     // A pass brings her won line's own gesture (celebrate).
@@ -549,6 +612,8 @@ constructor(
   }
 
   private fun log(type: RingEventType, ring: ActiveRing, detail: String) {
+    // A practice round is no ring: the ring log (and the reliability run) never sees it.
+    if (practice != null) return
     // App scope: a pass logs and then the screen closes; the row must still land.
     appScope.launch { ringLog.record(type, ring.request.alarmId, ring.request.scheduledAt, detail) }
   }
@@ -568,6 +633,15 @@ constructor(
      * frame came 1.8 s after the ring screen opened on the 14T, and the camera move takes 0.6 s.
      */
     const val CUPS_PAGE_WAIT_MS = 4_000L
+
+    /** The intent extra (and saved-state key) naming a practice round's game by [MissionType.stored]. */
+    const val EXTRA_PRACTICE = "practice"
+
+    /** A practice round's stand-in alarm id: no stored alarm has it (ids start at 1). */
+    const val PRACTICE_ALARM_ID = -2L
+
+    /** Keys a practice round's session pools, apart from any real morning. */
+    private val PRACTICE_MORNING = Any()
   }
 }
 
@@ -585,6 +659,7 @@ constructor(
  * @property line Rin's line on screen (the subtitle), or null.
  * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
  * @property calm no pouting (Pout off, or a rest or sick day): a pouty mood shows as cheerful.
+ * @property practice a practice round (UX.8): no ring behind it, "Done" instead of Snooze and the emergency hold.
  */
 data class RingUiState(
   val ring: ActiveRing? = null,
@@ -605,6 +680,7 @@ data class RingUiState(
   val line: Line? = null,
   val leaving: Boolean = false,
   val calm: Boolean = false,
+  val practice: Boolean = false,
 ) {
   /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood

@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.alarm.ring
 
+import androidx.lifecycle.SavedStateHandle
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.log.RingEventType
 import io.github.earthkodyai.rinalarm.alarm.log.RingLog
@@ -75,7 +76,7 @@ class RingViewModelTest {
   private val settings = FakeSettings()
 
   private fun TestScope.ringScreen(): Pair<RingViewModel, MutableList<RingCommand>> {
-    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
+    val viewModel = RingViewModel(ringState, { mission }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
     val commands = mutableListOf<RingCommand>()
     backgroundScope.launch { viewModel.commands.collect { commands += it } }
     runCurrent()
@@ -176,7 +177,7 @@ class RingViewModelTest {
   fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
     runTest(main.dispatcher) {
       val pads = FakePadsMission()
-      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
@@ -201,7 +202,7 @@ class RingViewModelTest {
     }
 
   private fun TestScope.cupsScreen(cups: FakeCupsMission): Pair<RingViewModel, MutableList<Gesture>> {
-    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
+    val viewModel = RingViewModel(ringState, { cups }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
     val cues = mutableListOf<Gesture>()
     backgroundScope.launch { viewModel.cues.collect { cues += it } }
     ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.CUPS)))
@@ -313,7 +314,7 @@ class RingViewModelTest {
       val repeat = FakeRepeatMission()
       val pads = FakePadsMission()
       val viewModel =
-        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
+        RingViewModel(ringState, { if (it == MissionType.SPEECH) repeat else pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
       val cues = mutableListOf<Gesture>()
       backgroundScope.launch { viewModel.cues.collect { cues += it } }
       ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.SPEECH)))
@@ -368,7 +369,7 @@ class RingViewModelTest {
     faceUp: Boolean = true,
   ): Triple<RingViewModel, MutableList<RingCommand>, MutableList<Gesture>> {
     book = realLineBook()
-    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings)
+    val viewModel = RingViewModel(ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, SavedStateHandle())
     if (faceUp) viewModel.onCharacterVisible()
     val commands = mutableListOf<RingCommand>()
     val cues = mutableListOf<Gesture>()
@@ -666,6 +667,103 @@ class RingViewModelTest {
       calls += "tap $pad"
     }
   }
+
+  // --- Practice rounds (UX.8) ---
+
+  /** A practice round of pads with the real script: every round its own fake mission, from [MissionFactory.practice]. */
+  private fun TestScope.practiceScreen(rounds: MutableList<FakeMission>): Pair<RingViewModel, MutableList<RingCommand>> {
+    book = realLineBook()
+    val missions =
+      object : MissionFactory {
+        override fun create(type: MissionType): Mission = error("a practice round never builds the real game")
+
+        override fun practice(type: MissionType): Mission = FakeMission().also { rounds += it }
+      }
+    val viewModel =
+      RingViewModel(
+        ringState, missions, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings,
+        SavedStateHandle(mapOf(RingViewModel.EXTRA_PRACTICE to MissionType.PADS.stored)),
+      )
+    viewModel.onCharacterVisible()
+    val commands = mutableListOf<RingCommand>()
+    backgroundScope.launch { viewModel.commands.collect { commands += it } }
+    runCurrent()
+    return viewModel to commands
+  }
+
+  @Test
+  fun aPracticeRound_runsWithNoRing_andTouchesNothingOfARealOne() =
+    runTest(main.dispatcher) {
+      val rounds = mutableListOf<FakeMission>()
+      val (viewModel, commands) = practiceScreen(rounds)
+      val state = viewModel.uiState.value
+      assertTrue(state.practice)
+      assertEquals(MissionType.PADS, state.missionType)
+      assertEquals(1, rounds.single().starts)
+      assertNull("no opening line: the round starts at Let's play", viewModel.line)
+
+      viewModel.startGame()
+      runCurrent()
+      assertTrue(checkNotNull(viewModel.line).pool.startsWith("game.intro"))
+      untilSaid(viewModel)
+      clockMs = 5_000
+      rounds.single().state.value = MissionProgress(0, 1, activity = 1)
+      runCurrent()
+      assertNull("a real ring's progress stays untouched", ringState.lastProgressAt)
+      assertEquals(RingPhase.WORKING, viewModel.uiState.value.phase)
+
+      rounds.single().state.value = MissionProgress(1, 1, MissionState.PASSED)
+      runCurrent()
+      assertTrue(viewModel.uiState.value.passed)
+      assertEquals("won.clean", viewModel.line?.pool)
+      untilSaid(viewModel)
+      advanceTimeBy(60_000)
+      runCurrent()
+      assertFalse("the round waits for Play again or Done", viewModel.uiState.value.finished)
+      assertNull(viewModel.line)
+      assertTrue(commands.isEmpty())
+      assertTrue(log.types.isEmpty())
+      assertEquals(Hush.NONE, ringState.hush.value)
+    }
+
+  @Test
+  fun playAgain_startsANewRound_andDone_closesTheScreen() =
+    runTest(main.dispatcher) {
+      val rounds = mutableListOf<FakeMission>()
+      val (viewModel, _) = practiceScreen(rounds)
+      viewModel.playAgain()
+      assertEquals("no new round before a win", 1, rounds.size)
+
+      rounds[0].state.value = MissionProgress(1, 1, MissionState.PASSED)
+      runCurrent()
+      viewModel.playAgain()
+      runCurrent()
+      assertEquals(2, rounds.size)
+      assertTrue(rounds[0].stopped)
+      assertFalse(viewModel.uiState.value.passed)
+      assertTrue(viewModel.uiState.value.practice)
+      assertNull(viewModel.line)
+
+      viewModel.endPractice()
+      runCurrent()
+      assertTrue(rounds[1].stopped)
+      assertTrue(viewModel.uiState.value.finished)
+    }
+
+  @Test
+  fun aRealRing_ignoresPracticeOnlyActions() =
+    runTest(main.dispatcher) {
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      val (viewModel, _) = ringScreen()
+      assertFalse(viewModel.uiState.value.practice)
+      viewModel.endPractice()
+      mission.state.value = MissionProgress(30, 30, MissionState.PASSED)
+      runCurrent()
+      viewModel.playAgain()
+      runCurrent()
+      assertEquals(1, mission.starts)
+      assertFalse(viewModel.uiState.value.finished)
+    }
 
   private class FakeMission : Mission {
     override val type = MissionType.PADS
