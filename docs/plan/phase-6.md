@@ -2,9 +2,10 @@
 
 > **D32 (2026-10-02, ADR 0007): แจกผ่าน Google Play closed test แทน APK** · งานที่เหลือ:
 > - **6.4 ✅ bundle สำหรับ Play:** `bundleRelease` → app-release.aab 77 MB (โมเดลริน 12.8 MB, คลิปเสียง, เพลงปลุก, Vosk, ไม่มีโมเดลตัวอย่าง VRoid, เซ็นด้วย key เดิม) · `checkPlayBundle` กันการสร้าง bundle ที่ขาดโมเดล/เสียง/เพลงหรือมีโมเดลตัวอย่าง
-> - **6.5 หน้าร้าน + App content:** Claude ร่างทุกคำตอบใน `docs/store/` (ชื่อแอป O4, คำอธิบายสั้น/ยาว, ไอคอน 512, feature graphic 1024×500, ภาพหน้าจอ, content rating, Data safety, target audience 18+, declaration ของ exact alarm / full-screen intent / FGS systemExempted) → คุณกรอกและกดส่งใน Play Console (หรือให้ Claude in Chrome กรอกโดยคุณอนุมัติทีละขั้น)
+> - **6.5 หน้าร้าน ✅ (บันทึกใน Console ทั้ง en-US และ th, 2026-10-02) + App content (ยังไม่ทำ):** Claude ร่างทุกคำตอบใน `docs/store/` (ชื่อแอป O4, คำอธิบายสั้น/ยาว, ไอคอน 512, feature graphic 1024×500, ภาพหน้าจอ, content rating, Data safety, target audience 18+, declaration ของ exact alarm / full-screen intent / FGS systemExempted) → คุณกรอกและกดส่งใน Play Console (หรือให้ Claude in Chrome กรอกโดยคุณอนุมัติทีละขั้น)
 > - **6.6 Play App Signing ด้วย key เดิม + อัปโหลดเข้า closed testing:** PEPK (คุณรันคำสั่งเองเพราะต้องใส่รหัส keystore) → อัป AAB → ส่งรีวิว
 > - **6.7 ผู้ทดสอบ:** ข้อความชวน + คู่มือผู้ทดสอบ (ไทย) + ช่องทาง feedback · หา 12 คนขึ้นไป (เริ่มจาก 0)
+> - **6.9 optimise ครั้งสุดท้ายก่อนอัป (คุณขอ 2026-10-02):** ความลื่น/เปิดเร็ว, ขนาดแอป, หน่วยความจำ/แบต, ตรวจโค้ดหาบั๊ก · วัดก่อนแก้และวัดซ้ำหลังแก้ (แผนใน STATUS)
 > - **6.8 feedback:** 7 วันแรกของ closed test = จบเฟส 6 · ครบ 14 วันต่อเนื่อง → ขอ production (เฟส 8)
 
 > อ่านประกอบเมื่อจำเป็น: [09-security-privacy.md](09-security-privacy.md) · [10-policy-legal.md](10-policy-legal.md)
