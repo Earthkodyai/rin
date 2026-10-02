@@ -14,7 +14,11 @@ import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmEngine
 import io.github.earthkodyai.rinalarm.data.db.AlarmDao
 import io.github.earthkodyai.rinalarm.di.AppScope
+import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionType
+import java.time.DayOfWeek
+import java.time.LocalTime
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +32,8 @@ import kotlinx.coroutines.launch
  *   `--es sound rin_picks|beep|<theme id>`, default rin_picks)
  *   `--ei sec 0` rings at the next whole minute, the soonest an alarm can ring.
  * adb shell am broadcast -n io.github.earthkodyai.rinalarm/.debug.DebugAlarmReceiver --es cmd clear
+ * `--es cmd clear-off` deletes every switched-off alarm (leftover test rings); `--es cmd demo` adds the store
+ * screenshots' three alarms (task 6.5), switched on, so they ring for real until switched off.
  */
 class DebugAlarmReceiver : BroadcastReceiver() {
   @EntryPoint
@@ -60,6 +66,16 @@ class DebugAlarmReceiver : BroadcastReceiver() {
               deps.engine().delete(it.id)
               Log.i(TAG, "deleted id=${it.id}")
             }
+          "clear-off" ->
+            deps.alarmDao().getAll().filter { !it.enabled && !it.isTest }.forEach {
+              deps.engine().delete(it.id)
+              Log.i(TAG, "deleted off id=${it.id}")
+            }
+          "demo" ->
+            DEMO.forEach { alarm ->
+              val id = deps.engine().save(alarm)
+              Log.i(TAG, "demo id=$id at=${alarm.time} label=${alarm.label}")
+            }
           else -> Log.w(TAG, "unknown cmd")
         }
       } finally {
@@ -71,5 +87,19 @@ class DebugAlarmReceiver : BroadcastReceiver() {
   private companion object {
     const val TAG = "RinDebug"
     const val LABEL = "smoke"
+
+    /** What a real week might hold: the store screenshots' list. */
+    val DEMO =
+      listOf(
+        Alarm(time = LocalTime.of(6, 30), repeatDays = RepeatDays.WEEKDAYS, label = "Work", mission = MissionChoice.Only(MissionType.PADS)),
+        Alarm(
+          time = LocalTime.of(7, 15),
+          repeatDays = RepeatDays.of(DayOfWeek.SATURDAY),
+          label = "Morning run",
+          mission = MissionChoice.Only(MissionType.CUPS),
+          ring = RingOptions(sound = AlarmSound.fromStored("cafe")),
+        ),
+        Alarm(time = LocalTime.of(8, 30), repeatDays = RepeatDays.WEEKEND, label = "Weekend"),
+      )
   }
 }
