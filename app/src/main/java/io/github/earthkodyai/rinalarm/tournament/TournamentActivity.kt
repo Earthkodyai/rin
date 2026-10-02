@@ -215,6 +215,12 @@ internal fun TournamentScreen(
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - tableIn }.background(p.ground)) {
           Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
           if (p.night) Stars(Modifier.fillMaxSize())
+          Text(
+            stringResource(R.string.tournament_setting_table),
+            style = MaterialTheme.typography.titleMedium,
+            color = p.muted,
+            modifier = Modifier.align(Alignment.Center),
+          )
         }
       }
     }
