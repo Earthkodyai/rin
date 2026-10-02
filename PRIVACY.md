@@ -1,6 +1,6 @@
 # RinAlarm privacy notice
 
-Last updated: 2 October 2026. Applies to RinAlarm 0.1 for Android. ภาษาไทย: PRIVACY.th.md
+Last updated: 2 October 2026. Applies to RinAlarm 1.0 for Android. ภาษาไทย: PRIVACY.th.md
 
 RinAlarm works entirely on your phone. It has no internet permission, no camera permission, no account, no ads, no analytics and no crash reporting. Nothing you say or do in the app leaves your phone.
 

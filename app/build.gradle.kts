@@ -22,7 +22,7 @@ android {
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
         // Swaps in HiltTestApplication so receiver tests can replace storage and the ring outputs (androidTest/HiltTestRunner.kt).
         testInstrumentationRunner = "io.github.earthkodyai.rinalarm.HiltTestRunner"
         // Phones (64- and 32-bit ARM) and CI's x86_64 emulator. Vosk and JNA (task 3.5) also ship x86, armeabi and
