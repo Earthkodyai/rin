@@ -29,8 +29,10 @@ interface PadsMission : Mission {
 
 /**
  * Colour pads (D17) on the ring screen: runs [PadsGame] on a timer, plays each pad's note when it lights, and reports
- * [progress] as rounds passed. Starting the game and each right tap count as [MissionProgress.activity], which quiets
- * the tone (plan phase-3: right answers lower it; 30 s without one brings it back). Main-thread only.
+ * [progress] as rounds passed. Starting the game and each tap it judges, right or wrong, count as
+ * [MissionProgress.activity], which quiets the tone; 30 s without a tap brings it back (plan phase-3). Wrong taps count
+ * since G.4: at Nightmare a player can miss for 30 s while wide awake, and the tone came back at full mid-game.
+ * Timeouts do not count, so someone who drifts off still gets the full tone. Main-thread only.
  */
 class ColourPadsMission(
   private val rules: PadsRules,
@@ -76,7 +78,8 @@ class ColourPadsMission(
     // An early tap may still move her demo on (a late tick caught up), which lights a pad without being an answer.
     val right = after.phase != PadsPhase.SCOLD && after.flash != before.flash && after.earlyTaps == before.earlyTaps
     if (right) rightTaps++
-    apply(after, activity = right)
+    val wrong = after.phase == PadsPhase.SCOLD && before.phase != PadsPhase.SCOLD && after.miss == Miss.WRONG
+    apply(after, activity = right || wrong)
   }
 
   override fun skipScold() {

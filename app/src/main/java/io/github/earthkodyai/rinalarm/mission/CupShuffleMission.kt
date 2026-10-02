@@ -28,8 +28,8 @@ interface CupsMission : Mission {
 
 /**
  * The cup shuffle (D17, task 3.4) on the ring screen: runs [CupsGame] on a timer and reports [progress] as the
- * streak (a wrong pick takes it back to 0). Starting and each right pick count as [MissionProgress.activity], which
- * quiets the tone, like the colour pads. Main-thread only.
+ * streak (a wrong pick takes it back to 0). Starting and every pick, right or wrong (G.4), count as
+ * [MissionProgress.activity], which quiets the tone, like the colour pads. Main-thread only.
  */
 class CupShuffleMission(
   private val rules: CupsRules,
@@ -69,7 +69,7 @@ class CupShuffleMission(
   override fun pick(slot: Int) {
     if (scope == null) return
     val after = play.pick(slot, clock.now())
-    apply(after, activity = after.right == true && after.picks != gameState.value.picks)
+    apply(after, activity = after.picks != gameState.value.picks)
   }
 
   override fun skipScold() {

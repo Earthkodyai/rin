@@ -51,7 +51,7 @@ class CupShuffleMissionTest {
   }
 
   @Test
-  fun aWrongPick_takesTheCountBack_andIsNotActivity() = runTest {
+  fun aWrongPick_takesTheCountBack_butIsActivity() = runTest {
     val m = mission()
     m.start()
     m.begin()
@@ -63,7 +63,7 @@ class CupShuffleMissionTest {
     m.pick((m.ball() + 1) % 3)
     runCurrent()
     assertEquals(0, m.progress.value.done)
-    assertEquals(activity, m.progress.value.activity)
+    assertEquals(activity + 1, m.progress.value.activity)
     m.stop()
   }
 

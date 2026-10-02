@@ -74,7 +74,22 @@ class ColourPadsMissionTest {
   }
 
   @Test
-  fun missesAreNotActivity_andTheScoldEndsInANewDemo() = runTest {
+  fun aTimeoutIsNotActivity_soSomeoneWhoDriftsOffGetsTheFullTone() = runTest {
+    val m = mission()
+    m.start()
+    m.begin()
+    untilYourTurn(m)
+    val activity = m.progress.value.activity
+    testScheduler.advanceTimeBy(PadsRules().exitMs + PadsRules().tapTimeoutMs + 1)
+    runCurrent()
+    assertEquals(PadsPhase.SCOLD, m.game.value.phase)
+    assertEquals(Miss.SLOW, m.game.value.miss)
+    assertEquals(activity, m.progress.value.activity)
+    m.stop()
+  }
+
+  @Test
+  fun aWrongTapIsActivity_andTheScoldEndsInANewDemo() = runTest {
     val m = mission()
     m.start()
     m.begin()
@@ -82,7 +97,8 @@ class ColourPadsMissionTest {
     val first = m.game.value.sequence
     m.tap(PadGrid.TWO.pads.first { it != first[0] })
     assertEquals(PadsPhase.SCOLD, m.game.value.phase)
-    assertEquals(1, m.progress.value.activity)
+    // The player is awake and playing (G.4): the tone stays quiet through a run of misses.
+    assertEquals(2, m.progress.value.activity)
 
     testScheduler.advanceTimeBy(PadsRules().scoldMs + 1)
     runCurrent()

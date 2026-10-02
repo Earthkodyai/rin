@@ -46,4 +46,6 @@ Three cups have one far pair (0–2), and it cannot come twice in a row, so Norm
 Tests: `PadsLevelsTest` (rules, band, shapes rejected), `CupsLevelsTest` (`fair` on every level, fewer side-by-side swaps, even odds per level), `PadsReplayTest` (a logged game replays from seed + trace under the new draws; the G.2 rings' seeds now draw other games). 396 unit tests.
 
 ## The user's check
-_Pending: Hard and Nightmare, both games, via Try this game or a test ring._
+- **Nightmare pads ring (2026-10-03 01:38):** "harder now". 1/3 rounds in 129 s, 11 wrong + 2 timeouts, emergency stop; most misses on pads 5–6 of the 7-pad round.
+- **Nightmare cups ring (01:41):** harder, but **the alarm tone jumped to full mid-game**. Log: TONE_QUIET at 01:41:10, TONE_FULL at 01:42:32 (gain 0.15 → 1.0). Only right answers counted as activity (plan phase-3), so 30 s of misses read as "drifted off". Fixed: every judged answer, right or wrong, counts; pad timeouts still do not, so someone asleep still gets the full tone (`ColourPadsMission`, `CupShuffleMission`).
+- _Pending: Hard and Normal of both games._
