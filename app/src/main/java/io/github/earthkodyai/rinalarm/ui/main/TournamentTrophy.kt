@@ -22,7 +22,9 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -56,6 +58,7 @@ import io.github.earthkodyai.rinalarm.theme.RinRounded
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.random.Random
 import kotlin.math.sin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -253,15 +256,46 @@ private val BubbleRightHalf =
 private const val BUBBLE_W = 300f
 private const val BUBBLE_H = 140f
 
-private fun bubblePath(): Path {
-  val ring = BubbleRightHalf + BubbleRightHalf.drop(1).dropLast(1).reversed().map { (x, y) -> -x to y }
+/**
+ * One drawing of the bubble for its "line boil" (G.5, the user: always moving like crumpled paper, as in Spider-Man:
+ * Across the Spider-Verse): the outline redrawn a little differently, a few paper creases, and a small tilt and shift.
+ * Shown in turn on twos (12 a second) and never blended, as hand-drawn animation is.
+ */
+private class BoilFrame(val outline: Path, val creases: List<Path>, val tilt: Float, val dx: Float, val dy: Float)
+
+/** [BOIL_FRAMES] fixed drawings, the same every run. The spikes move as mirror pairs, so the bubble stays symmetric. */
+private fun boilFrames(): List<BoilFrame> =
+  List(BOIL_FRAMES) { i ->
+    val r = Random(BOIL_SEED + i)
+    fun j(amount: Float) = (r.nextFloat() * 2f - 1f) * amount
+    val right = BubbleRightHalf.map { (x, y) -> (x + if (x == 0f) 0f else j(2.5f)) to (y + j(2.5f)) }
+    val creases =
+      List(3) {
+        val x0 = j(60f)
+        val y0 = j(22f)
+        path {
+          moveTo(x0, y0)
+          lineTo(x0 + 10f + j(6f), y0 + j(8f))
+          lineTo(x0 + 18f + j(8f), y0 + j(10f))
+        }
+      }
+    BoilFrame(bubblePath(right, bow = 0.9f + j(0.02f)), creases, tilt = j(1.2f), dx = j(0.6f), dy = j(0.6f))
+  }
+
+private const val BOIL_FRAMES = 4
+private const val BOIL_SEED = 2026
+/** On twos: a new drawing every other frame of 24 fps film. */
+private const val BOIL_MS = 83L
+
+private fun bubblePath(right: List<Pair<Float, Float>> = BubbleRightHalf, bow: Float = 0.9f): Path {
+  val ring = right + right.drop(1).dropLast(1).reversed().map { (x, y) -> -x to y }
   return path {
     moveTo(ring[0].first, ring[0].second)
     for (i in ring.indices) {
       val (px, py) = ring[i]
       val (qx, qy) = ring[(i + 1) % ring.size]
       // Each side bows inward a little, which gives the spikes their curved, inked look.
-      quadraticTo((px + qx) / 2 * .9f, (py + qy) / 2 * .9f, qx, qy)
+      quadraticTo((px + qx) / 2 * bow, (py + qy) / 2 * bow, qx, qy)
     }
     close()
   }
@@ -307,7 +341,15 @@ internal fun ShoutBubble(shown: Boolean, text: String, from: TransformOrigin, mo
   val fill = Color.White
   val dots = Color(0xFFD2D0D4)
   val letters = Ink
-  val outline = remember { bubblePath() }
+  val frames = remember { boilFrames() }
+  var boil by remember { mutableIntStateOf(0) }
+  LaunchedEffect(shown) {
+    // Only while it is up: hidden, nothing ticks.
+    while (shown) {
+      delay(BOIL_MS)
+      boil = (boil + 1 + Random.nextInt(BOIL_FRAMES - 1)) % BOIL_FRAMES
+    }
+  }
   Box(
     modifier
       // Out of the cup: grows from [from], so it also rises from there.
@@ -319,16 +361,20 @@ internal fun ShoutBubble(shown: Boolean, text: String, from: TransformOrigin, mo
         alpha = (pop.value * 4f).coerceIn(0f, 1f)
       }
       // The wiggle turns it about its own middle.
-      .graphicsLayer { rotationZ = wiggle.value },
+      .graphicsLayer { rotationZ = wiggle.value + frames[boil].tilt },
     contentAlignment = Alignment.Center,
   ) {
-    // Drawn once into a bitmap and then only moved: ~1,000 dots under a path clip, redrawn with every frame of the
-    // trophy's twinkle and Rin's page, cost 100–250 ms a frame on the 14T (≈20 fps while the bubble was up).
+    // Each drawing is made once into a bitmap and then only swapped and moved: ~1,000 dots under a path clip, redrawn
+    // with every frame of the trophy's twinkle and Rin's page, cost 100–250 ms a frame on the 14T (≈20 fps).
     Spacer(
       Modifier.matchParentSize().drawWithCache {
-        val bitmap = ImageBitmap(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1))
-        CanvasDrawScope().draw(this, layoutDirection, Canvas(bitmap), size) { drawBubble(outline, fill, dots) }
-        onDrawBehind { drawImage(bitmap) }
+        val bitmaps =
+          frames.map { f ->
+            ImageBitmap(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1)).also {
+              CanvasDrawScope().draw(this, layoutDirection, Canvas(it), size) { drawBubble(f, fill, dots) }
+            }
+          }
+        onDrawBehind { drawImage(bitmaps[boil]) }
       }
     )
     val style =
@@ -341,13 +387,21 @@ internal fun ShoutBubble(shown: Boolean, text: String, from: TransformOrigin, mo
       )
     // University short names run from 2 letters (KU) to 6 (KMUTNB): the line shrinks to stay inside the bubble's body.
     val fit = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 15.sp, stepSize = 0.5.sp)
-    Box(Modifier.fillMaxWidth(SHOUT_TEXT_WIDTH), contentAlignment = Alignment.Center) {
+    Box(
+      Modifier.fillMaxWidth(SHOUT_TEXT_WIDTH).graphicsLayer {
+        // The letters jump with the paper, a little off from the outline, as a redrawn frame would.
+        translationX = frames[boil].dx.dp.toPx()
+        translationY = frames[boil].dy.dp.toPx()
+      },
+      contentAlignment = Alignment.Center,
+    ) {
       BasicText(text, style = style.copy(color = letters), maxLines = 1, autoSize = fit)
     }
   }
 }
 
-private fun DrawScope.drawBubble(outline: Path, fill: Color, dots: Color) {
+private fun DrawScope.drawBubble(frame: BoilFrame, fill: Color, dots: Color) {
+  val outline = frame.outline
   val k = minOf(size.width / BUBBLE_W, size.height / BUBBLE_H)
   translate(size.width / 2, size.height / 2) {
     scale(k, pivot = Offset.Zero) {
@@ -366,6 +420,9 @@ private fun DrawScope.drawBubble(outline: Path, fill: Color, dots: Color) {
           y += 6f
           row++
         }
+      }
+      clipPath(outline, ClipOp.Intersect) {
+        for (crease in frame.creases) drawPath(crease, Ink.copy(alpha = .16f), style = Stroke(1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
       }
       drawPath(outline, Ink, style = Stroke(5.5f, join = StrokeJoin.Round))
     }
