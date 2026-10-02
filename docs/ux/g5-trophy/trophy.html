@@ -1,0 +1,145 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Bangers&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #f4ece6; font-family: 'M PLUS Rounded 1c', sans-serif; }
+  .grid { display: grid; grid-template-columns: 610px 610px; gap: 14px; padding: 14px; }
+  .label { grid-column: 1 / 3; font: 800 26px 'M PLUS Rounded 1c'; color: #3a2430; margin-top: 6px; }
+  .panel { position: relative; width: 610px; height: 363px; overflow: hidden; border-radius: 0; }
+  .panel img { position: absolute; inset: 0; width: 610px; height: 363px; }
+  .cover { position: absolute; left: 30px; top: 20px; width: 262px; height: 160px; border-radius: 10px; }
+  .clock { position: absolute; left: 36px; top: 30px; line-height: 1; }
+  .clock .t { font: 800 44px 'M PLUS Rounded 1c'; }
+  .clock .d { font: 700 14px 'M PLUS Rounded 1c'; margin-top: 4px; }
+  svg.trophy { position: absolute; left: 14px; top: 92px; width: 300px; height: 270px; overflow: visible; }
+</style></head>
+<body><div class="grid" id="grid"></div>
+<script>
+const themes = {
+  day:   { bg: 'rgb(254,225,232)', ink: '#3b2632', muted: '#8a6f7b', img: '1-home-day-panel.png', stroke: '#3b2632' },
+  night: { bg: 'rgb(27,35,80)',    ink: '#f3f1ff', muted: '#b9b6dc', img: '2-home-night-panel.png', stroke: '#141a3d' },
+};
+
+// A spiky anime shout bubble: alternating outer and inner radii, a little irregular so it reads hand-drawn.
+function burst(cx, cy, rx, ry, spikes, seed) {
+  let r = seed, pts = [];
+  const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < spikes * 2; i++) {
+    const a = (i / (spikes * 2)) * Math.PI * 2;
+    const k = i % 2 === 0 ? 1 + rnd() * 0.16 : 0.8 + rnd() * 0.05;
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  return pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+}
+
+// One glint: a four-point star with a soft glow, drawn at its brightest moment (it flashes every few seconds).
+function glint(x, y, s) {
+  return `<g transform="translate(${x},${y})">
+    <circle r="${s * 0.9}" fill="url(#glow)"/>
+    <path d="M0,-${s} Q${s * 0.12},-${s * 0.12} ${s},0 Q${s * 0.12},${s * 0.12} 0,${s} Q-${s * 0.12},${s * 0.12} -${s},0 Q-${s * 0.12},-${s * 0.12} 0,-${s}Z" fill="#fff"/>
+  </g>`;
+}
+
+const defs = `
+  <radialGradient id="glow"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#9a6a12"/><stop offset=".28" stop-color="#ffe9a3"/><stop offset=".45" stop-color="#f6c443"/><stop offset=".8" stop-color="#c98b16"/><stop offset="1" stop-color="#7d5208"/></linearGradient>
+  <linearGradient id="goldV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#b47a10"/></linearGradient>
+  <linearGradient id="rose" x1="0" x2="1"><stop offset="0" stop-color="#9c2f5a"/><stop offset=".28" stop-color="#ffd3e2"/><stop offset=".45" stop-color="#f48fb1"/><stop offset=".8" stop-color="#c94f7f"/><stop offset="1" stop-color="#7a1f45"/></linearGradient>
+  <linearGradient id="roseV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc1d6"/><stop offset="1" stop-color="#b03a68"/></linearGradient>
+  <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9b4b0"/><stop offset=".55" stop-color="#8d8681"/><stop offset="1" stop-color="#5f5853"/></linearGradient>
+  <linearGradient id="stoneSide" x1="0" x2="1"><stop offset="0" stop-color="#6e6762"/><stop offset=".5" stop-color="#9a938e"/><stop offset="1" stop-color="#55504c"/></linearGradient>
+  <radialGradient id="boulder" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#c9c3be"/><stop offset=".6" stop-color="#8e8781"/><stop offset="1" stop-color="#57514c"/></radialGradient>
+  <linearGradient id="moss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ccc65"/><stop offset="1" stop-color="#5b8f2e"/></linearGradient>
+  <linearGradient id="dark" x1="0" x2="1"><stop offset="0" stop-color="#3c2a20"/><stop offset=".5" stop-color="#6b4a36"/><stop offset="1" stop-color="#2e2018"/></linearGradient>
+`;
+
+// A: classic gold cup with two handles on a cut stone block.
+function cupA(metal, metalV) {
+  return `
+    <ellipse cx="95" cy="236" rx="78" ry="9" fill="#000" opacity=".18"/>
+    <path d="M28,196 L162,196 L170,232 L20,232 Z" fill="url(#stoneSide)"/>
+    <path d="M36,180 L154,180 L162,196 L28,196 Z" fill="url(#stone)"/>
+    <path d="M62,206 l10,8 l-4,9 M130,201 l-8,10 l6,10" stroke="#4a4440" stroke-width="2" fill="none" opacity=".6"/>
+    <rect x="58" y="160" width="74" height="20" rx="3" fill="url(#dark)"/>
+    <rect x="66" y="150" width="58" height="12" rx="3" fill="url(#${metal})"/>
+    <path d="M86,150 L104,150 L100,120 L90,120 Z" fill="url(#${metal})"/>
+    <ellipse cx="95" cy="118" rx="16" ry="5" fill="url(#${metalV})"/>
+    <path d="M42,42 Q42,118 95,118 Q148,118 148,42 Z" fill="url(#${metal})"/>
+    <ellipse cx="95" cy="42" rx="53" ry="11" fill="url(#${metalV})"/>
+    <ellipse cx="95" cy="43" rx="45" ry="7" fill="#6b4808" opacity=".55"/>
+    <path d="M44,54 Q14,54 16,78 Q19,100 52,98" stroke="url(#${metal})" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M146,54 Q176,54 174,78 Q171,100 138,98" stroke="url(#${metal})" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M60,52 Q58,92 80,108" stroke="#fff" stroke-width="5" fill="none" opacity=".55" stroke-linecap="round"/>
+    <path d="M95,62 l6,12 13,2 -10,9 3,13 -12,-7 -12,7 3,-13 -10,-9 13,-2 z" fill="#fff6d6" opacity=".8"/>
+    ${glint(132, 40, 15)}`;
+}
+
+// B: chibi round cup with a star on top, on a mossy boulder.
+function cupB(metal, metalV) {
+  return `
+    <ellipse cx="95" cy="240" rx="80" ry="9" fill="#000" opacity=".18"/>
+    <path d="M18,236 Q10,190 50,176 Q95,160 142,176 Q180,190 172,236 Z" fill="url(#boulder)"/>
+    <path d="M40,182 Q70,166 100,170 Q120,164 150,180 Q132,186 112,180 Q92,190 72,182 Q56,190 40,182Z" fill="url(#moss)"/>
+    <path d="M60,214 l12,-6 l4,10 M128,206 l10,10" stroke="#4a4440" stroke-width="2" fill="none" opacity=".55"/>
+    <ellipse cx="95" cy="168" rx="36" ry="8" fill="url(#dark)"/>
+    <path d="M62,168 L128,168 L120,148 L70,148 Z" fill="url(#${metal})"/>
+    <path d="M88,148 L102,148 L99,128 L91,128 Z" fill="url(#${metal})"/>
+    <circle cx="95" cy="88" r="44" fill="url(#${metal})"/>
+    <ellipse cx="95" cy="56" rx="38" ry="9" fill="url(#${metalV})"/>
+    <rect x="57" y="48" width="76" height="9" fill="url(#${metal})"/>
+    <ellipse cx="95" cy="48" rx="38" ry="8" fill="url(#${metalV})"/>
+    <path d="M95,6 l8,16 18,3 -13,12 3,18 -16,-8 -16,8 3,-18 -13,-12 18,-3 z" fill="url(#${metalV})" stroke="#8a5a08" stroke-width="1.5"/>
+    <path d="M66,72 Q62,100 78,118" stroke="#fff" stroke-width="6" fill="none" opacity=".5" stroke-linecap="round"/>
+    ${glint(70, 24, 14)}`;
+}
+
+// C: tall slim cup with laurel wings on stacked stone slabs.
+function cupC(metal, metalV) {
+  return `
+    <ellipse cx="95" cy="238" rx="74" ry="8" fill="#000" opacity=".18"/>
+    <path d="M30,214 L160,214 L164,234 L26,234 Z" fill="url(#stoneSide)"/>
+    <path d="M36,204 L154,204 L160,214 L30,214 Z" fill="url(#stone)"/>
+    <path d="M48,186 L142,186 L146,204 L44,204 Z" fill="url(#stoneSide)"/>
+    <path d="M54,178 L136,178 L142,186 L48,186 Z" fill="url(#stone)"/>
+    <path d="M72,178 L118,178 L112,160 L78,160 Z" fill="url(#${metal})"/>
+    <path d="M89,160 L101,160 L99,126 L91,126 Z" fill="url(#${metal})"/>
+    <path d="M58,26 L132,26 Q130,108 95,126 Q60,108 58,26 Z" fill="url(#${metal})"/>
+    <ellipse cx="95" cy="26" rx="37" ry="8" fill="url(#${metalV})"/>
+    <ellipse cx="95" cy="27" rx="31" ry="5" fill="#6b4808" opacity=".5"/>
+    ${[0,1,2,3].map(i => `<ellipse cx="${46 - i * 3}" cy="${44 + i * 18}" rx="12" ry="5" transform="rotate(${-40 + i * 12} ${46 - i * 3} ${44 + i * 18})" fill="url(#${metalV})"/>
+      <ellipse cx="${144 + i * 3}" cy="${44 + i * 18}" rx="12" ry="5" transform="rotate(${40 - i * 12} ${144 + i * 3} ${44 + i * 18})" fill="url(#${metalV})"/>`).join('')}
+    <path d="M70,36 Q72,86 88,110" stroke="#fff" stroke-width="5" fill="none" opacity=".55" stroke-linecap="round"/>
+    ${glint(122, 30, 14)}`;
+}
+
+function shout(t) {
+  return `<g transform="translate(200,86) rotate(-10)">
+    <polygon points="-40,22 -78,46 -24,30" fill="#fff" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="${burst(0, 0, 80, 36, 12, 7)}" fill="#fff" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>
+    <text x="0" y="8" text-anchor="middle" font-family="Bangers" font-size="22" letter-spacing=".5" fill="#d23a6b" stroke="${t.stroke}" stroke-width=".8">TOURNAMENT!</text>
+  </g>`;
+}
+
+const variants = [
+  ['A · classic gold cup on a cut stone', cupA, 'gold', 'goldV'],
+  ['B · round cup with a star, mossy boulder', cupB, 'gold', 'goldV'],
+  ['C · slim cup with laurel, stacked slabs (Rin pink metal)', cupC, 'rose', 'roseV'],
+];
+const grid = document.getElementById('grid');
+for (const [name, cup, m, mv] of variants) {
+  grid.insertAdjacentHTML('beforeend', `<div class="label">${name}</div>`);
+  for (const key of ['day', 'night']) {
+    const t = themes[key];
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="panel">
+        <img src="${t.img}">
+        <div class="cover" style="background:${t.bg}"></div>
+        <div class="clock"><div class="t" style="color:${t.ink}">06:58</div><div class="d" style="color:${t.muted}">Sat, Oct 3</div></div>
+        <svg class="trophy" viewBox="0 0 300 270"><defs>${defs}</defs>
+          <g transform="translate(14,66) rotate(-7 95 140) scale(.8)">${cup(m, mv)}</g>
+          ${shout(t)}
+        </svg>
+      </div>`);
+  }
+}
+</script></body></html>
