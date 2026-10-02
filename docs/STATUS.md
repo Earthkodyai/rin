@@ -1,9 +1,9 @@
-# STATUS — 2026-10-03 (**Phase G: G.5 steps 1–3 done, step 4 next (ring-screen Tournament button); D33**, then 6.9 + Play Console · UI/UX done · Rin's own model in · Phases 3–5 done · Phase 6 left: limited distribution (after UI/UX, D28) · Phase 8 after)
+# STATUS — 2026-10-03 (**Phase G: G.5 done, G.6 next (Firebase leaderboard); D33**, then 6.9 + Play Console · UI/UX done · Rin's own model in · Phases 3–5 done · Phase 6 left: limited distribution (after UI/UX, D28) · Phase 8 after)
 
 Phase 1: tasks done; **14-night run** pending (Diagnostics card, Strict daily; set one alarm repeating every day — none enabled). Ends at 14/14 + green CI (needs the remote; 0.4 accounts on the user).
 Phase 2 **done 2026-09-28** on the VRoid sample. **Your model still pending** (`rin.model=<path>` in local.properties; ❓ edits in `docs/character/character-sheet.md`); when it lands: `./gradlew checkGestures -PwriteBody` → build → `./gradlew checkGestures` → `tools/character/phase-exit.sh`, re-check hands (`npm run dev`), gaze (`aimCamera`; the cup table now uses `CupScene.attend`) and the pads hand (thumb).
 ## ▶ Resume here (Phase G, D33 / ADR 0008: docs/plan/phase-games.md, then 6.9 and Play Console)
-- **G.5 steps 1–3 done (2026-10-03, last commit 5012195; 21 commits since 6be066d, unpushed: ask first).** Next: **step 4**, the "Tournament" button on the ring screen in the last 5 s before it closes after a win (a tap unlocks and opens the app's start page), then G.5's close-out (the user's check, phase-games.md ✅). Then G.6 (Firebase; the user creates the project).
+- **G.5 done (2026-10-03, last commit 5012195; 21 commits since 6be066d, unpushed: ask first).** **G.5 done: the user cut step 4** (no Tournament button on the ring screen; the only way in is the home trophy). **Next: G.6** (Firebase Spark leaderboard; the user creates the project; see phase-games.md).
   - **Home (step 1, device-checked):**
     - Trophy on a wooden TOURNAMENT base is the button; trophy and base press together.
     - A white manga "TOP1 IS ???!" bubble springs out of the cup 6 s in every 15 s, after Rin's hello. It boils like paper (4 drawings swapped at 12/s) and sinks back in.
