@@ -1,11 +1,18 @@
 package io.github.earthkodyai.rinalarm.ui.editor
 
+import android.animation.ValueAnimator
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -17,6 +24,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -24,6 +32,8 @@ import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import kotlin.math.PI
+import kotlin.math.cos
 
 /**
  * The mark beside an editor tile's name (the user, 2026-10-02: minimal, the fewest shapes that say what the game is or
@@ -85,6 +95,64 @@ fun TileBadge(mark: TileMark, modifier: Modifier = Modifier) {
     Canvas(Modifier.size(GLYPH)) { drawMark(mark, color) }
   }
 }
+
+/**
+ * The badge while its sound plays a preview (the user, 2026-10-02): a speaker in the mark's colour, its two waves
+ * pulsing outward. With the phone's animations off, the waves stand still.
+ */
+@Composable
+fun PlayingBadge(mark: TileMark, modifier: Modifier = Modifier) {
+  val night = RinTheme.palette.night
+  val color = mark.color(night)
+  val moving = remember { ValueAnimator.areAnimatorsEnabled() }
+  val phase =
+    if (moving) {
+      rememberInfiniteTransition(label = "speaker")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(WAVE_MS, easing = LinearEasing)), label = "waves")
+        .value
+    } else {
+      null
+    }
+  Box(
+    modifier.size(TILE_BADGE).background(color.copy(alpha = if (night) 0.22f else 0.14f), CircleShape).clearAndSetSemantics {},
+    contentAlignment = Alignment.Center,
+  ) {
+    Canvas(Modifier.size(GLYPH)) { drawSpeaker(color, phase) }
+  }
+}
+
+/** A speaker in the 18-unit square; each wave lights up in turn as [phase] runs 0..1 (null: both lit). */
+private fun DrawScope.drawSpeaker(color: Color, phase: Float?) {
+  val u = size.minDimension / 18f
+  val body =
+    Path().apply {
+      moveTo(1.5f * u, 6.5f * u)
+      lineTo(5f * u, 6.5f * u)
+      lineTo(9f * u, 3f * u)
+      lineTo(9f * u, 15f * u)
+      lineTo(5f * u, 11.5f * u)
+      lineTo(1.5f * u, 11.5f * u)
+      close()
+    }
+  drawPath(body, color, style = Fill)
+  drawPath(body, color, style = Stroke(width = 1f * u, join = StrokeJoin.Round))
+  val line = Stroke(width = 1.8f * u, cap = StrokeCap.Round)
+  listOf(3.5f, 7f).forEachIndexed { i, r ->
+    // The inner wave first, the outer a third of a beat later; each dims to a third between pulses.
+    val alpha = if (phase == null) 1f else 0.3f + 0.7f * (0.5f + 0.5f * cos(2f * PI.toFloat() * (phase - i / 3f)))
+    drawArc(
+      color.copy(alpha = alpha),
+      startAngle = -50f,
+      sweepAngle = 100f,
+      useCenter = false,
+      topLeft = Offset((9.5f - r) * u, (9f - r) * u),
+      size = Size(2f * r * u, 2f * r * u),
+      style = line,
+    )
+  }
+}
+
+private const val WAVE_MS = 900
 
 /** The badge's side; the tile leaves room for it beside the name. */
 internal val TILE_BADGE = 32.dp

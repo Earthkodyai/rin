@@ -70,7 +70,7 @@ class AlarmEditorScreenTest {
         calls += "mission ${value.stored}"
       }
 
-      override fun setSound(value: AlarmSound) {
+      override fun pickSound(value: AlarmSound) {
         calls += "sound ${value.stored}"
       }
 

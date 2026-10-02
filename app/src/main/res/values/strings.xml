@@ -119,6 +119,7 @@
     <string name="sound_rin_picks">Rin picks</string>
     <string name="sound_beep">Beep</string>
     <string name="sound_hint_rin_picks">Rin picks a different theme each day.</string>
+    <string name="sound_playing">Playing a preview</string>
 
     <!-- Missed-alarm notification. -->
     <string name="missed_title">Missed alarm at %1$s</string>

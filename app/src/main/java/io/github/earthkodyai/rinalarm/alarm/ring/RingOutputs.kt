@@ -67,13 +67,13 @@ val ALARM_AUDIO: AudioAttributes =
 /**
  * A generated beep pattern on USAGE_ALARM. No media file, so nothing can stop it from playing: it rings when an alarm
  * picks the beep, and in place of a theme that cannot play (MusicPlayer, UX.7). USAGE_ALARM is also what keeps it audible under Android 17's
- * background audio limits.
+ * background audio limits. The editor's preview plays it on the media stream instead ([attributes]).
  */
-class TonePlayer : RingSound {
+class TonePlayer(attributes: AudioAttributes = ALARM_AUDIO) : RingSound {
   private val pcm = tonePattern()
   private val track: AudioTrack =
     AudioTrack.Builder()
-      .setAudioAttributes(ALARM_AUDIO)
+      .setAudioAttributes(attributes)
       .setAudioFormat(
         AudioFormat.Builder()
           .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -88,6 +88,10 @@ class TonePlayer : RingSound {
         write(pcm, 0, pcm.size)
         setLoopPoints(0, pcm.size, -1)
       }
+
+  /** The track's audio session, for an effect on this sound alone (the editor's preview boost). */
+  val sessionId: Int
+    get() = track.audioSessionId
 
   override fun setGain(gain: Float) {
     track.setVolume(gain)

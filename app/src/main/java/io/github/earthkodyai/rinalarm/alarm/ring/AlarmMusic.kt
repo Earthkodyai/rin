@@ -2,6 +2,7 @@ package io.github.earthkodyai.rinalarm.alarm.ring
 
 import android.content.Context
 import android.content.res.AssetFileDescriptor
+import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.MediaCodec
@@ -63,12 +64,12 @@ class AssetMusicCatalog @Inject constructor(@ApplicationContext private val cont
  * decodes, so the first notes come at once; the decoded sound is kept, and every later loop plays from memory. If the
  * file cannot be opened or decoded before any sound came out, the beep plays instead, in this same ring: an alarm
  * must always sound. Gain, pause and play work as on the beep, so the ramp, the game's quiet, ducking under Rin and
- * the call pause behave the same.
+ * the call pause behave the same. The editor's preview plays it on the media stream instead ([attributes]).
  */
-class MusicPlayer(private val open: () -> AssetFileDescriptor) : RingSound {
+class MusicPlayer(attributes: AudioAttributes = ALARM_AUDIO, private val open: () -> AssetFileDescriptor) : RingSound {
   private val track: AudioTrack =
     AudioTrack.Builder()
-      .setAudioAttributes(ALARM_AUDIO)
+      .setAudioAttributes(attributes)
       .setAudioFormat(
         AudioFormat.Builder()
           .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -84,6 +85,10 @@ class MusicPlayer(private val open: () -> AssetFileDescriptor) : RingSound {
         )
       )
       .build()
+
+  /** The track's audio session, for an effect on this sound alone (the editor's preview boost). */
+  val sessionId: Int
+    get() = track.audioSessionId
 
   @Volatile private var running = true
 

@@ -4,8 +4,10 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.github.earthkodyai.rinalarm.alarm.ring.AndroidPreviewSounds
 import io.github.earthkodyai.rinalarm.alarm.ring.AssetMusicCatalog
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicCatalog
+import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionFactory
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionFactory
@@ -20,4 +22,7 @@ abstract class MissionModule {
 
   /** The alarm themes (UX.7): here with the games, the other thing an alarm picks per ring. */
   @Binds abstract fun musicCatalog(impl: AssetMusicCatalog): MusicCatalog
+
+  /** The editor's few seconds of each sound. */
+  @Binds abstract fun previewSounds(impl: AndroidPreviewSounds): PreviewSounds
 }

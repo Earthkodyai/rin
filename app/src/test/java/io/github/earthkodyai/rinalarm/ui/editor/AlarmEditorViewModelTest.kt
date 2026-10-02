@@ -1,8 +1,11 @@
 package io.github.earthkodyai.rinalarm.ui.editor
 
 import io.github.earthkodyai.rinalarm.alarm.Alarm
+import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
+import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
+import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -14,11 +17,13 @@ import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
 import java.io.IOException
 import java.time.DayOfWeek
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,7 +48,9 @@ class AlarmEditorViewModelTest {
 
   private var themes = emptyList<MusicTheme>()
 
-  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes })
+  private val previews = FakePreviews()
+
+  private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes }, previews)
 
   // --- mission (task 3.1) ---
 
@@ -257,6 +264,142 @@ class AlarmEditorViewModelTest {
 
     assertFalse(viewModel.editing().busy)
     assertEquals(listOf(work), alarms.alarms.first())
+  }
+
+  // --- sound preview (the user, 2026-10-02) ---
+
+  @Test
+  fun pickSound_choosesIt_andPlaysAFewSecondsThatFadeOut() = runTest {
+    themes = listOf(MusicTheme("magic", "Magic morning"), MusicTheme("cafe", "Sweet bistro"))
+    val editor = editor(work.id)
+    editor.editing()
+
+    editor.pickSound(AlarmSound.Theme("cafe"))
+    val sound = previews.sounds.single()
+    assertEquals(listOf<String?>("cafe"), previews.opened)
+    assertTrue(sound.playing)
+    assertEquals(AlarmSound.Theme("cafe"), editor.editing().draft.ring.sound)
+    assertEquals(AlarmSound.Theme("cafe"), editor.editing().previewing)
+
+    advanceTimeBy(AlarmEditorViewModel.PREVIEW_MS - AlarmEditorViewModel.FADE_MS - 1)
+    assertEquals(1f, sound.gains.last())
+    advanceTimeBy(AlarmEditorViewModel.FADE_MS / 2)
+    assertTrue(sound.gains.last() in 0.1f..0.5f)
+    advanceTimeBy(AlarmEditorViewModel.FADE_MS)
+    assertEquals(0f, sound.gains.last())
+    assertTrue(sound.released)
+    assertNull(editor.editing().previewing)
+    // The choice stays once the preview ends.
+    assertEquals(AlarmSound.Theme("cafe"), editor.editing().draft.ring.sound)
+  }
+
+  @Test
+  fun pickSound_onThePlayingTile_stopsIt_andKeepsTheChoice() = runTest {
+    themes = listOf(MusicTheme("magic", "Magic morning"))
+    val editor = editor(work.id)
+    editor.editing()
+
+    editor.pickSound(AlarmSound.Beep)
+    editor.pickSound(AlarmSound.Beep)
+
+    assertEquals(listOf<String?>(null), previews.opened)
+    assertTrue(previews.sounds.single().released)
+    assertNull(editor.editing().previewing)
+    assertEquals(AlarmSound.Beep, editor.editing().draft.ring.sound)
+
+    // Once stopped, a tap plays it again.
+    editor.pickSound(AlarmSound.Beep)
+    assertEquals(2, previews.sounds.size)
+    assertEquals(AlarmSound.Beep, editor.editing().previewing)
+    editor.stopPreview()
+  }
+
+  @Test
+  fun pickSound_onAnotherTile_cutsTheFirstPreview() = runTest {
+    themes = listOf(MusicTheme("magic", "Magic morning"), MusicTheme("cafe", "Sweet bistro"))
+    val editor = editor(work.id)
+    editor.editing()
+
+    editor.pickSound(AlarmSound.Theme("magic"))
+    editor.pickSound(AlarmSound.Theme("cafe"))
+
+    assertEquals(listOf<String?>("magic", "cafe"), previews.opened)
+    assertTrue(previews.sounds[0].released)
+    assertFalse(previews.sounds[1].released)
+    assertEquals(AlarmSound.Theme("cafe"), editor.editing().previewing)
+
+    // The first preview's timer is gone with it: the second still plays its full length.
+    advanceTimeBy(AlarmEditorViewModel.PREVIEW_MS - 100)
+    assertEquals(AlarmSound.Theme("cafe"), editor.editing().previewing)
+    editor.stopPreview()
+    assertTrue(previews.sounds[1].released)
+  }
+
+  @Test
+  fun rinPicks_playsTheThemeOfTheNextRing() = runTest {
+    themes = listOf(MusicTheme("magic", "Magic morning"), MusicTheme("cafe", "Sweet bistro"))
+    val ids = themes.map { it.id }
+    // It is Monday 06:00; a 05:00 alarm next rings on Tuesday, when Rin picks the other theme.
+    val early = work.copy(id = 8, time = LocalTime.of(5, 0), repeatDays = RepeatDays.EVERY_DAY)
+    alarms.save(early)
+    val editor = editor(early.id)
+    editor.editing()
+
+    editor.pickSound(AlarmSound.RinPicks)
+
+    val tuesday = AlarmSound.resolve(AlarmSound.RinPicks, ids, LocalDate.of(2026, 9, 29))
+    val monday = AlarmSound.resolve(AlarmSound.RinPicks, ids, LocalDate.of(2026, 9, 28))
+    assertEquals(listOf(tuesday), previews.opened)
+    assertTrue(tuesday != monday)
+    assertEquals(AlarmSound.RinPicks, editor.editing().previewing)
+    editor.stopPreview()
+  }
+
+  @Test
+  fun save_silencesThePreview() = runTest {
+    themes = listOf(MusicTheme("magic", "Magic morning"))
+    val editor = editor(work.id)
+    editor.editing()
+
+    editor.pickSound(AlarmSound.Theme("magic"))
+    editor.save()
+
+    assertTrue(editor.finished() is AlarmEditorUiState.Saved)
+    assertTrue(previews.sounds.single().released)
+    assertEquals(AlarmSound.Theme("magic"), alarms.saves.last().ring.sound)
+  }
+
+  private class FakeSound : RingSound {
+    val gains = mutableListOf<Float>()
+    var playing = false
+    var released = false
+
+    override fun setGain(gain: Float) {
+      gains += gain
+    }
+
+    override fun play() {
+      playing = true
+    }
+
+    override fun pause() {
+      playing = false
+    }
+
+    override fun release() {
+      playing = false
+      released = true
+    }
+  }
+
+  private class FakePreviews : PreviewSounds {
+    val opened = mutableListOf<String?>()
+    val sounds = mutableListOf<FakeSound>()
+
+    override fun open(themeId: String?): RingSound {
+      opened += themeId
+      return FakeSound().also { sounds += it }
+    }
   }
 
   // --- choices ---

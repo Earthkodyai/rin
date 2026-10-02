@@ -12,6 +12,8 @@ import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicCatalog
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
+import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
+import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -23,6 +25,8 @@ import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,13 +52,19 @@ constructor(
   private val missionReadiness: MissionReadiness,
   private val moments: HomeMoments,
   private val music: MusicCatalog,
+  private val previews: PreviewSounds,
 ) : ViewModel() {
   private val session = MutableStateFlow<Session>(Session.Loading)
   private val readiness = MutableStateFlow(readMissions())
   private val themes = runCatching { music.themes() }.getOrDefault(emptyList())
+  private val previewing = MutableStateFlow<AlarmSound?>(null)
+  private var preview: Job? = null
+  private var previewSound: RingSound? = null
 
   val uiState: StateFlow<AlarmEditorUiState> =
-    combine(session, readiness, time.minuteTicks) { session, readiness, _ -> session.toUiState(readiness) }
+    combine(session, readiness, previewing, time.minuteTicks) { session, readiness, previewing, _ ->
+        session.toUiState(readiness, previewing)
+      }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmEditorUiState.Loading)
 
   init {
@@ -84,7 +94,66 @@ constructor(
 
   fun setMission(value: MissionChoice) = edit { it.copy(mission = value) }
 
-  fun setSound(value: AlarmSound) = editRing { it.copy(sound = value) }
+  /**
+   * A sound tile was tapped: the alarm takes that sound and plays a few seconds of it (the user, 2026-10-02). Tapping
+   * the tile that is playing stops it instead.
+   */
+  fun pickSound(value: AlarmSound) {
+    val open = session.value as? Session.Open ?: return
+    if (open.busy) return
+    if (previewing.value == value) {
+      stopPreview()
+      return
+    }
+    editRing { it.copy(sound = value) }
+    startPreview(value, open.draft)
+  }
+
+  /** Silences the preview: the editor left the screen, or a save or delete started. */
+  fun stopPreview() {
+    preview?.cancel()
+    preview = null
+    previewSound?.let { runCatching { it.release() } }
+    previewSound = null
+    previewing.value = null
+  }
+
+  /**
+   * Plays [sound] for [PREVIEW_MS], fading out over the last [FADE_MS]. Rin picks plays the theme she would pick for
+   * the draft's next ring, so the user hears what they will wake up to.
+   */
+  private fun startPreview(sound: AlarmSound, draft: Alarm) {
+    stopPreview()
+    val zone = time.zone()
+    val day = (draft.copy(enabled = true).nextTrigger(time.now(), zone) ?: time.now()).atZone(zone).toLocalDate()
+    val theme = AlarmSound.resolve(sound, themes.map { it.id }, day)
+    val player = runCatching { previews.open(theme) }.getOrNull() ?: return
+    previewSound = player
+    previewing.value = sound
+    preview =
+      viewModelScope.launch {
+        runCatching {
+            player.setGain(1f)
+            player.play()
+          }
+          .onFailure {
+            stopPreview()
+            return@launch
+          }
+        delay(PREVIEW_MS - FADE_MS)
+        for (step in 1..FADE_STEPS) {
+          val left = 1f - step.toFloat() / FADE_STEPS
+          // Squared, so the fade sounds even to the ear rather than dropping late.
+          runCatching { player.setGain(left * left) }
+          delay(FADE_MS / FADE_STEPS)
+        }
+        stopPreview()
+      }
+  }
+
+  override fun onCleared() {
+    stopPreview()
+  }
 
   /** Re-reads which missions can run: on resume, and after a permission answer (the user may change it in Settings). */
   fun refreshMissions() {
@@ -96,6 +165,7 @@ constructor(
   fun save() {
     val open = session.value as? Session.Open ?: return
     if (open.busy) return // a second tap while the first save is still running
+    stopPreview()
     session.value = open.copy(busy = true)
     viewModelScope.launch {
       val alarm = open.draft.copy(label = open.draft.label.trim(), enabled = true)
@@ -116,6 +186,7 @@ constructor(
   fun delete() {
     val open = session.value as? Session.Open ?: return
     if (open.busy || open.original.id == NEW_ALARM_ID) return
+    stopPreview()
     session.value = open.copy(busy = true)
     viewModelScope.launch {
       session.value =
@@ -138,7 +209,7 @@ constructor(
   private fun ringsIn(alarm: Alarm): Duration? =
     alarm.copy(enabled = true).nextTrigger(time.now(), time.zone())?.let { Duration.between(time.now(), it) }
 
-  private fun Session.toUiState(readiness: Map<MissionType, Readiness>): AlarmEditorUiState =
+  private fun Session.toUiState(readiness: Map<MissionType, Readiness>, previewing: AlarmSound?): AlarmEditorUiState =
     when (this) {
       Session.Loading -> AlarmEditorUiState.Loading
       Session.NotFound -> AlarmEditorUiState.NotFound
@@ -152,6 +223,7 @@ constructor(
           failed = failed,
           missionReadiness = readiness,
           themes = themes,
+          previewing = previewing,
         )
       is Session.Saved -> AlarmEditorUiState.Saved(ringsIn)
       Session.Deleted -> AlarmEditorUiState.Deleted
@@ -180,6 +252,11 @@ constructor(
 
     /** What "Add alarm" starts from. */
     val NEW_ALARM = Alarm(id = NEW_ALARM_ID, time = LocalTime.of(7, 0))
+
+    /** How long a sound tile plays when tapped (the user, 2026-10-02: about six seconds, fading out). */
+    const val PREVIEW_MS = 6_000L
+    const val FADE_MS = 1_500L
+    private const val FADE_STEPS = 30
   }
 }
 
@@ -196,6 +273,7 @@ sealed interface AlarmEditorUiState {
    * @property failed the last save or delete threw (e.g. disk full); the draft is kept so the user can retry.
    * @property missionReadiness which missions can run on this phone now; the editor explains the ones that can't.
    * @property themes the alarm themes this build carries (UX.7); none in builds without the music, which only beep.
+   * @property previewing the sound whose tile is playing its preview, if any.
    */
   data class Editing(
     val draft: Alarm,
@@ -206,6 +284,7 @@ sealed interface AlarmEditorUiState {
     val failed: Boolean = false,
     val missionReadiness: Map<MissionType, Readiness> = emptyMap(),
     val themes: List<MusicTheme> = emptyList(),
+    val previewing: AlarmSound? = null,
   ) : AlarmEditorUiState {
     /** The missions this alarm could run that are not ready, and why (shown under the mission choice). */
     val missionProblems: Map<MissionType, Readiness>
