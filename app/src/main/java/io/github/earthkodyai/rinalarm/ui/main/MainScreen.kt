@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
@@ -112,6 +113,7 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun MainScreen(
@@ -339,7 +341,11 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
   val speaking by rememberUpdatedState(line != null)
   var shout by remember { mutableStateOf(false) }
   LaunchedEffect(Unit) {
-    delay(SHOUT_FIRST_MS)
+    // Rin greets first (the user): wait for her hello to start and end. She skips it when the app was open within
+    // the last 5 minutes, so after HELLO_WAIT_MS with no line the bubble comes anyway.
+    withTimeoutOrNull(HELLO_WAIT_MS) { snapshotFlow { speaking }.first { it } }
+    snapshotFlow { speaking }.first { !it }
+    delay(SHOUT_AFTER_LINE_MS)
     while (true) {
       snapshotFlow { speaking }.first { !it }
       shout = true
@@ -366,31 +372,43 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
   }
   val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
   val clockTop by animateDpAsState(if (clockUp) CLOCK_TOP_UP else CLOCK_TOP_DOWN, tween(CLOCK_SLIDE_MS), label = "clock slide")
+  // Up, the clock shrinks a little so the bubble has room to breathe between it and the trophy.
+  val clockScale by animateFloatAsState(if (clockUp) CLOCK_SCALE_UP else 1f, tween(CLOCK_SLIDE_MS), label = "clock scale")
   val label = stringResource(R.string.home_tournament)
   Box(modifier) {
-    PanelClock(Modifier.align(Alignment.TopCenter).padding(top = clockTop).graphicsLayer { alpha = clockAlpha })
+    PanelClock(
+      Modifier.align(Alignment.TopCenter).padding(top = clockTop).graphicsLayer {
+        alpha = clockAlpha
+        scaleX = clockScale
+        scaleY = clockScale
+        transformOrigin = TransformOrigin(0.5f, 0f)
+      }
+    )
     ShoutBubble(bubbleUp, p.night, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
     TournamentTrophy(
+      bubbleUp,
       TrophySize.align(Alignment.BottomCenter)
-        .offset(y = (-2).dp)
         .clickable(role = Role.Button, onClickLabel = label) { onTournament() }
         .semantics { contentDescription = label }
     )
   }
 }
 
-/** The bubble's first pop after the home screen opens, once Rin's hello has had its moment. */
-private const val SHOUT_FIRST_MS = 1_500L
+/** How long to wait for Rin's hello to start (her page loads first), and the pause after her line before the pop. */
+private const val HELLO_WAIT_MS = 5_000L
+private const val SHOUT_AFTER_LINE_MS = 800L
 private const val CLOCK_SLIDE_MS = 350
 /** ShoutBubble's shrink when it hides. */
 private const val SHOUT_OUT_MS = 180L
-private val CLOCK_TOP_UP = 0.dp
 /**
- * Measured on the 14T: with the clock up its date ends about 76 dp down, so the bubble's top spike starts below that
- * and its lower spikes rest on the trophy's rim; down, the clock sits centred above the trophy (top at 126 dp).
+ * Measured on the 14T, the clock's ink runs from 11 to 76 dp below its top. Up at 80% it ends near 61 dp; the bubble
+ * (76 dp, spikes ±31 dp from its middle at 96 dp) clears it by a few dp and ends ~5 dp above the trophy (84 dp, its
+ * foot on the panel's edge, so its top at 132 dp). Down, the clock's ink is centred on the 132 dp above the trophy.
  */
-private val CLOCK_TOP_DOWN = 32.dp
-private val SHOUT_TOP = 75.dp
+private val CLOCK_TOP_UP = 0.dp
+private const val CLOCK_SCALE_UP = 0.8f
+private val CLOCK_TOP_DOWN = 22.dp
+private val SHOUT_TOP = 58.dp
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -63,9 +64,9 @@ private val GoldDeep = Color(0xFFD98C0C)
 private val GoldLight = Color(0xFFFFD04A)
 private val Ink = Color(0xFF231B24)
 
-/** The trophy's design space: 200 wide, 256 tall (the base ends at 252). */
+/** The trophy's design space: 200 wide, 252 tall, its base's foot on the bottom edge. */
 private const val TROPHY_W = 200f
-private const val TROPHY_H = 256f
+private const val TROPHY_H = 252f
 
 /** Sparkles over the cup: x, y, size, and where in the twinkle cycle each starts, so they never blink together. */
 private val Sparkles =
@@ -78,8 +79,16 @@ private val Sparkles =
     floatArrayOf(100f, 190f, 3.5f, .6f),
   )
 
+/**
+ * [kick] turning true knocks the trophy (the bubble popping up beside it): it rocks on its base, hard at first, and
+ * settles as a weighted thing would (an underdamped spring with a starting swing), not on a fixed wobble.
+ */
 @Composable
-internal fun TournamentTrophy(modifier: Modifier = Modifier) {
+internal fun TournamentTrophy(kick: Boolean, modifier: Modifier = Modifier) {
+  val rock = remember { Animatable(0f) }
+  LaunchedEffect(kick) {
+    if (kick) rock.animateTo(0f, spring(dampingRatio = ROCK_DAMPING, stiffness = ROCK_STIFFNESS), initialVelocity = ROCK_KICK)
+  }
   val twinkle = rememberInfiniteTransition(label = "trophy")
   val t by twinkle.animateFloat(0f, 1f, infiniteRepeatable(tween(TWINKLE_MS, easing = LinearEasing)), label = "twinkle")
   // The big glint: a quick flash on the rim's right, once every GLINT_MS.
@@ -100,7 +109,12 @@ internal fun TournamentTrophy(modifier: Modifier = Modifier) {
       label = "glint",
     )
   val shapes = remember { TrophyShapes() }
-  Canvas(modifier) {
+  Canvas(
+    modifier.graphicsLayer {
+      rotationZ = rock.value
+      transformOrigin = TransformOrigin(0.5f, 1f)
+    }
+  ) {
     val k = minOf(size.width / TROPHY_W, size.height / TROPHY_H)
     translate((size.width - TROPHY_W * k) / 2, size.height - TROPHY_H * k) {
       scale(k, pivot = Offset.Zero) {
@@ -121,6 +135,10 @@ internal fun TournamentTrophy(modifier: Modifier = Modifier) {
   }
 }
 
+/** About 19° at the first swing, a few swings each smaller, still within ~1.5 s (to ~10% of the first). */
+private const val ROCK_KICK = 260f
+private const val ROCK_DAMPING = 0.12f
+private const val ROCK_STIFFNESS = 180f
 private const val TWINKLE_MS = 2_400
 private const val GLINT_MS = 4_200
 
@@ -287,7 +305,7 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, modifier: Modifier = Mo
       TextStyle(
         fontFamily = RinRounded,
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 11.5.sp,
+        fontSize = 12.5.sp,
         letterSpacing = (-0.6).sp,
         // A forward lean for the comic shout.
         textGeometricTransform = TextGeometricTransform(skewX = -0.18f),
@@ -298,5 +316,5 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, modifier: Modifier = Mo
 }
 
 /** The trophy's size on the home panel, and the bubble's. */
-internal val TrophySize = Modifier.size(width = 70.dp, height = 88.dp)
-internal val ShoutSize = Modifier.size(width = 150.dp, height = 70.dp)
+internal val TrophySize = Modifier.size(width = 67.dp, height = 84.dp)
+internal val ShoutSize = Modifier.size(width = 164.dp, height = 76.dp)
