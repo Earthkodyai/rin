@@ -50,4 +50,6 @@ Tests: `PadsLevelsTest` (rules, band, shapes rejected), `CupsLevelsTest` (`fair`
 - **Nightmare cups ring (01:41):** harder, but **the alarm tone jumped to full mid-game**. Log: TONE_QUIET at 01:41:10, TONE_FULL at 01:42:32 (gain 0.15 → 1.0). Only right answers counted as activity (plan phase-3), so 30 s of misses read as "drifted off". Fixed: every judged answer, right or wrong, counts; pad timeouts still do not, so someone asleep still gets the full tone (`ColourPadsMission`, `CupShuffleMission`).
 - **Hard pads ring (01:50):** passed in 61 s, one miss; the tone stayed quiet through the misses. But **it got loud as the game started**: Rin's intro hushes the tone only while her clip plays, and the game's first activity came after the intro, so for ~0.6 s the tone was back at full. Fixed: the Let's play tap itself counts as activity (`RingViewModel.markActive`).
 - **Hard cups ring (01:53):** passed clean in 28 s.
-- _Pending: Normal of both games._
+- **Normal pads ring (01:55):** passed in 61 s, 2 misses (both in the 6-pad round). TONE_QUIET at the Let's play tap (01:55:24.451) and no TONE_FULL after: both tone fixes hold.
+- **Normal cups ring (01:57):** passed clean in 23 s.
+- **The user's verdict (2026-10-03): "every level is OK".** G.4 done; the rules above are locked for G.5.
