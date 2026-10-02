@@ -82,10 +82,10 @@ The app is in English. Meant for adults (18+).
 ตัวแอปเป็นภาษาอังกฤษ เหมาะสำหรับผู้ใหญ่ (18 ปีขึ้นไป)
 ```
 
-## Graphics (to make, the user picks)
+## Graphics
 
-- App icon 512×512 PNG (32-bit, ≤1 MB): the launcher icon is still the Android Studio template's, so both are replaced together (adaptive icon foreground/background/monochrome).
-- Feature graphic 1024×500 JPG/PNG.
+- **App icon ✅** `graphics/icon-512.png` (512×512, 32-bit): the user's picks, 2026-10-02: Rin's face (her own model's head-and-shoulders still) on the blush with the sun, and the **logo**: "RinAlarm", Rin pink + Alarm ink, outlined in white, no box, the i's dot an alarm clock. The launcher uses the same art (adaptive icon: blush background, `drawable-nodpi/ic_launcher_foreground.webp`, a one-colour clock for themed icons). The home screen's wordmark is the logo too (`logo_rinalarm.webp`). Drafts: `tools/character/icon-options.mjs`, `logo-options.mjs`.
+- **Feature graphic ✅** `graphics/feature-1024x500.png`: the night look (the user changed from day), Rin waist up, the logo, "Beat her at a quick game, and the alarm stops." (`tools/character/feature-graphic.mjs`).
 - Phone screenshots: 2–8, 16:9 or 9:16, 320–3840 px per side. Plan: home (day), editor, ring + pads, cup table, Repeat after Rin, home (night). From the 14T with `adb exec-out screencap` while the user navigates; status bar with no personal notifications.
 
 ## Contact details

@@ -3,6 +3,7 @@ package io.github.earthkodyai.rinalarm.ui.main
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,11 +59,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -233,28 +231,25 @@ internal fun MainScreen(
   }
 }
 
+/** The home logo's height: about the old 24 sp wordmark's, plus the clock above the i and the outline. */
+private val LOGO_HEIGHT = 40.dp
+
 /** The tour's step on screen, and its place among [count] steps. */
 data class TourState(val step: TourStep, val number: Int, val count: Int)
 
 @Composable
 private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit, targets: TourTargets) {
-  val p = RinTheme.palette
   val name = stringResource(R.string.app_name)
-  Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-    // The wordmark: "Rin" in her pink, the rest in ink (the mockups' logo); any other app name stays plain.
-    Text(
-      buildAnnotatedString {
-        if (name.startsWith("Rin")) {
-          withStyle(SpanStyle(color = p.primary)) { append("Rin") }
-          append(name.removePrefix("Rin"))
-        } else {
-          append(name)
-        }
-      },
-      style = MaterialTheme.typography.headlineSmall,
-      color = p.ink,
-      modifier = Modifier.weight(1f).semantics { heading() },
-    )
+  Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    // The logo (task 6.5, the user's pick): "Rin" in her pink, "Alarm" in ink, the i's dot an alarm clock, outlined in
+    // white, so it reads on the day cream and the night navy alike. The same art as the store icon's.
+    Box(Modifier.weight(1f)) {
+      Image(
+        painterResource(R.drawable.logo_rinalarm),
+        contentDescription = name,
+        modifier = Modifier.height(LOGO_HEIGHT).semantics { heading() },
+      )
+    }
     Row(Modifier.tourTarget(targets, TourTarget.TOP_BUTTONS)) {
       RoundIconButton(R.drawable.ic_pulse, stringResource(R.string.diagnostics_title), onDiagnostics)
       Spacer(Modifier.size(10.dp))
