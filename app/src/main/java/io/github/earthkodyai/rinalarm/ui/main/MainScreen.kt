@@ -1,5 +1,6 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -42,10 +43,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,6 +111,7 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun MainScreen(
@@ -205,6 +210,7 @@ internal fun MainScreen(
   onTourNext: () -> Unit = {},
   onTourSkip: () -> Unit = {},
   onTourAdd: () -> Unit = {},
+  onTournament: () -> Unit = {},
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable (Modifier) -> Unit = {},
 ) {
@@ -215,7 +221,7 @@ internal fun MainScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       TopBar(onDiagnostics, onSettings, targets)
       if (setupIssue) SetupBanner(onDiagnostics)
-      RinPanel(rinLine, character, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
+      RinPanel(rinLine, character, onTournament, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
       DayModeRow(dayMode, onDayMode, Modifier.spotTarget(targets, TourTarget.DAY_MODE, radius = Spot.PILL, depth = 3.dp))
       ListHeader(state)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth(), targets)
@@ -292,7 +298,7 @@ private fun SetupBanner(onClick: () -> Unit) {
  * time and date, which fade out while she speaks and her line sits there in a bubble (the mockups).
  */
 @Composable
-private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, modifier: Modifier = Modifier) {
+private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, onTournament: () -> Unit, modifier: Modifier = Modifier) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(28.dp)
   Box(
@@ -312,13 +318,79 @@ private fun RinPanel(line: String?, character: @Composable (Modifier) -> Unit, m
       Box(Modifier.align(Alignment.TopEnd).offset(x = 24.dp, y = (-28).dp).size(120.dp).background(p.glow, CircleShape))
     }
     character(Modifier.align(Alignment.BottomEnd).fillMaxWidth(RIN_WIDTH).fillMaxHeight().padding(top = 8.dp))
-    val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
-    PanelClock(Modifier.align(Alignment.CenterStart).padding(start = 22.dp, bottom = 12.dp).graphicsLayer { alpha = clockAlpha })
+    TournamentColumn(line, onTournament, Modifier.align(Alignment.TopStart).fillMaxWidth(COLUMN_WIDTH).fillMaxHeight())
     RinBubble(line, Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp))
   }
 }
 
 private const val CLOCK_FADE_MS = 300
+
+/** The free side of the panel, left of Rin as she stands (measured on the store stills): its middle is their axis. */
+private const val COLUMN_WIDTH = 0.48f
+
+/**
+ * The clock, the TOURNAMENT! bubble and the trophy on one centre line (G.5, the user's layout 1). The bubble comes
+ * [SHOUT_SHOWN_MS] in every [SHOUT_HIDDEN_MS] and never while Rin speaks; while it is gone the clock slides down to the
+ * middle of the space above the trophy. The clock fades while she speaks, as before; the trophy always stays.
+ */
+@Composable
+private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: Modifier) {
+  val p = RinTheme.palette
+  val speaking by rememberUpdatedState(line != null)
+  var shout by remember { mutableStateOf(false) }
+  LaunchedEffect(Unit) {
+    delay(SHOUT_FIRST_MS)
+    while (true) {
+      snapshotFlow { speaking }.first { !it }
+      shout = true
+      delay(SHOUT_SHOWN_MS)
+      shout = false
+      delay(SHOUT_HIDDEN_MS)
+    }
+  }
+  val shown = shout && !speaking
+  // One after the other, so they never cross: the clock makes room before the bubble pops, and the bubble is gone
+  // before the clock comes back down.
+  var clockUp by remember { mutableStateOf(false) }
+  var bubbleUp by remember { mutableStateOf(false) }
+  LaunchedEffect(shown) {
+    if (shown) {
+      clockUp = true
+      delay(CLOCK_SLIDE_MS.toLong())
+      bubbleUp = true
+    } else {
+      bubbleUp = false
+      delay(SHOUT_OUT_MS)
+      clockUp = false
+    }
+  }
+  val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
+  val clockTop by animateDpAsState(if (clockUp) CLOCK_TOP_UP else CLOCK_TOP_DOWN, tween(CLOCK_SLIDE_MS), label = "clock slide")
+  val label = stringResource(R.string.home_tournament)
+  Box(modifier) {
+    PanelClock(Modifier.align(Alignment.TopCenter).padding(top = clockTop).graphicsLayer { alpha = clockAlpha })
+    ShoutBubble(bubbleUp, p.night, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
+    TournamentTrophy(
+      TrophySize.align(Alignment.BottomCenter)
+        .offset(y = (-2).dp)
+        .clickable(role = Role.Button, onClickLabel = label) { onTournament() }
+        .semantics { contentDescription = label }
+    )
+  }
+}
+
+/** The bubble's first pop after the home screen opens, once Rin's hello has had its moment. */
+private const val SHOUT_FIRST_MS = 1_500L
+private const val CLOCK_SLIDE_MS = 350
+/** ShoutBubble's shrink when it hides. */
+private const val SHOUT_OUT_MS = 180L
+private val CLOCK_TOP_UP = 0.dp
+/**
+ * Measured on the 14T: with the clock up its date ends about 76 dp down, so the bubble's top spike starts below that
+ * and its lower spikes rest on the trophy's rim; down, the clock sits centred above the trophy (top at 126 dp).
+ */
+private val CLOCK_TOP_DOWN = 32.dp
+private val SHOUT_TOP = 75.dp
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the
@@ -336,7 +408,7 @@ private fun PanelClock(modifier: Modifier) {
       }
     }
   val clock = rememberClockText()(now.toLocalTime())
-  Column(modifier.clearAndSetSemantics {}) {
+  Column(modifier.clearAndSetSemantics {}, horizontalAlignment = Alignment.CenterHorizontally) {
     Row(verticalAlignment = Alignment.Bottom) {
       Text(clock.digits, style = MaterialTheme.typography.displaySmall.copy(fontSize = 44.sp, lineHeight = 46.sp), color = p.ink)
       clock.amPm?.let {

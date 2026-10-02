@@ -1,0 +1,181 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Bangers&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #f4ece6; font-family: 'M PLUS Rounded 1c', sans-serif; }
+  .row { display: flex; gap: 14px; padding: 10px 14px; align-items: flex-start; }
+  .label { font: 800 26px 'M PLUS Rounded 1c'; color: #3a2430; padding: 14px 14px 0; }
+  .big { width: 300px; height: 363px; background: radial-gradient(circle at 50% 40%, #fff 0, #fde3ea 70%); border-radius: 18px; }
+  .big.n { background: radial-gradient(circle at 50% 40%, #2a3570 0, #1b2350 70%); }
+  .panel { position: relative; width: 610px; height: 363px; overflow: hidden; }
+  .panel img { position: absolute; inset: 0; width: 610px; height: 363px; }
+  .cover { position: absolute; left: 30px; top: 20px; width: 262px; height: 160px; }
+  .clock { position: absolute; left: 36px; top: 30px; line-height: 1; }
+  .clock .t { font: 800 44px 'M PLUS Rounded 1c'; }
+  .clock .d { font: 700 14px 'M PLUS Rounded 1c'; margin-top: 4px; }
+  svg.trophy { position: absolute; left: 14px; top: 92px; width: 300px; height: 270px; overflow: visible; }
+</style></head>
+<body><div id="out"></div>
+<script>
+const themes = {
+  day:   { bg: 'rgb(254,225,232)', ink: '#3b2632', muted: '#8a6f7b', img: '1-home-day-panel.png', stroke: '#3b2632' },
+  night: { bg: 'rgb(27,35,80)',    ink: '#f3f1ff', muted: '#b9b6dc', img: '2-home-night-panel.png', stroke: '#141a3d' },
+};
+let uid = 0;
+
+function burst(cx, cy, rx, ry, spikes, seed) {
+  let r = seed, pts = [];
+  const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < spikes * 2; i++) {
+    const a = (i / (spikes * 2)) * Math.PI * 2;
+    const k = i % 2 === 0 ? 1 + rnd() * 0.16 : 0.8 + rnd() * 0.05;
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  return pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+}
+function star4(x, y, s, fill = '#fff') {
+  const q = s * 0.14;
+  return `<path transform="translate(${x},${y})" d="M0,-${s} Q${q},-${q} ${s},0 Q${q},${q} 0,${s} Q-${q},${q} -${s},0 Q-${q},-${q} 0,-${s}Z" fill="${fill}"/>`;
+}
+
+// Shared geometry (viewBox 0 0 200 250): bowl rim at y 40, bowl bottom y 118, stem to 150, plinth 150-182, stone 182-236.
+const BOWL = 'M38,40 C38,92 62,118 100,120 C138,118 162,92 162,40 Z';
+const LHANDLE = 'M42,52 C10,50 8,96 50,98';
+const RHANDLE = 'M158,52 C190,50 192,96 150,98';
+const STEM = 'M91,120 L109,120 L105,138 C112,140 116,146 118,152 L82,152 C84,146 88,140 95,138 Z';
+
+// --- Glossy: layered gradients, ambient occlusion, rim light, a blurred specular hotspot, textured stone.
+function glossy() {
+  const u = 'g' + (uid++);
+  return `<defs>
+    <linearGradient id="${u}m" x1="0" x2="1">
+      <stop offset="0" stop-color="#6e4506"/><stop offset=".12" stop-color="#b9820f"/>
+      <stop offset=".26" stop-color="#ffefb0"/><stop offset=".34" stop-color="#ffd25a"/>
+      <stop offset=".58" stop-color="#e2a21c"/><stop offset=".74" stop-color="#ffe28a"/>
+      <stop offset=".86" stop-color="#b47a0e"/><stop offset="1" stop-color="#5c3a05"/></linearGradient>
+    <linearGradient id="${u}ao" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".45" stop-color="#3a2000" stop-opacity="0"/><stop offset="1" stop-color="#3a2000" stop-opacity=".45"/></linearGradient>
+    <linearGradient id="${u}lip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6d8"/><stop offset=".5" stop-color="#f3c34a"/><stop offset="1" stop-color="#9a650a"/></linearGradient>
+    <radialGradient id="${u}in" cx=".5" cy=".75" r=".75">
+      <stop offset="0" stop-color="#e7a92a"/><stop offset=".55" stop-color="#8a5a08"/><stop offset="1" stop-color="#4a2e03"/></radialGradient>
+    <radialGradient id="${u}knob" cx=".35" cy=".35" r=".7">
+      <stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#eab335"/><stop offset="1" stop-color="#6e4506"/></radialGradient>
+    <linearGradient id="${u}wood" x1="0" x2="1">
+      <stop offset="0" stop-color="#2a1a12"/><stop offset=".35" stop-color="#5a3a28"/><stop offset=".55" stop-color="#3e281b"/><stop offset="1" stop-color="#1e120c"/></linearGradient>
+    <linearGradient id="${u}woodTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a5440"/><stop offset="1" stop-color="#4a3022"/></linearGradient>
+    <linearGradient id="${u}top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2ddd7"/><stop offset="1" stop-color="#b3aca5"/></linearGradient>
+    <linearGradient id="${u}front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a49c95"/><stop offset="1" stop-color="#6d6660"/></linearGradient>
+    <linearGradient id="${u}side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f7871"/><stop offset="1" stop-color="#4c4641"/></linearGradient>
+    <filter id="${u}blur"><feGaussianBlur stdDeviation="2.2"/></filter>
+    <filter id="${u}soft"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="${u}grain" x="0" y="0" width="1" height="1">
+      <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.2"/>
+      <feComposite in2="SourceGraphic" operator="in"/></filter>
+    <clipPath id="${u}bowl"><path d="${BOWL}"/></clipPath>
+    <radialGradient id="${u}glow"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="100" cy="240" rx="86" ry="9" fill="#000" opacity=".28" filter="url(#${u}soft)"/>
+  <!-- stone: top face, front face, right side, chips and grain -->
+  <path d="M22,196 L170,196 L176,238 L18,238 Z" fill="url(#${u}front)"/>
+  <path d="M170,196 L186,186 L190,226 L176,238 Z" fill="url(#${u}side)"/>
+  <path d="M34,182 L186,182 L186,186 L170,196 L22,196 Z" fill="url(#${u}top)"/>
+  <path d="M22,196 L170,196 L176,238 L18,238 Z M170,196 L186,186 L190,226 L176,238 Z" fill="#000" filter="url(#${u}grain)"/>
+  <path d="M22,196 L170,196" stroke="#f2eee9" stroke-width="1.5" opacity=".8"/>
+  <path d="M18,238 L26,226 L40,238 Z M150,238 L160,229 L166,238 Z" fill="#57514b"/>
+  <path d="M60,204 l9,10 -5,10 4,8 M134,200 l-7,11 6,9" stroke="#4c4641" stroke-width="1.6" fill="none" opacity=".7"/>
+  <!-- plinth: dark wood with a gold plate -->
+  <path d="M58,166 L142,166 L146,184 L54,184 Z" fill="url(#${u}wood)"/>
+  <path d="M62,158 L138,158 L142,166 L58,166 Z" fill="url(#${u}woodTop)"/>
+  <rect x="80" y="170" width="40" height="10" rx="2" fill="url(#${u}m)"/>
+  <!-- stem and foot -->
+  <path d="M76,152 L124,152 L128,160 L72,160 Z" fill="url(#${u}m)"/>
+  <path d="${STEM}" fill="url(#${u}m)"/>
+  <ellipse cx="100" cy="130" rx="10" ry="7" fill="url(#${u}knob)"/>
+  <!-- handles behind the bowl's edge -->
+  <path d="${LHANDLE}" stroke="#7a4e07" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <path d="${LHANDLE}" stroke="url(#${u}m)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M38,56 C18,58 16,84 40,92" stroke="#fff4c8" stroke-width="2" fill="none" opacity=".8" stroke-linecap="round"/>
+  <path d="${RHANDLE}" stroke="#7a4e07" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <path d="${RHANDLE}" stroke="url(#${u}m)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- bowl: metal bands, occlusion at the bottom, star emboss, rim light on the right -->
+  <path d="${BOWL}" fill="url(#${u}m)"/>
+  <path d="${BOWL}" fill="url(#${u}ao)"/>
+  <g clip-path="url(#${u}bowl)">
+    <path d="M100,62 l7,14 15,2 -11,10 3,15 -14,-8 -14,8 3,-15 -11,-10 15,-2 z" fill="#a46b08" opacity=".55" transform="translate(1.5,2)"/>
+    <path d="M100,62 l7,14 15,2 -11,10 3,15 -14,-8 -14,8 3,-15 -11,-10 15,-2 z" fill="url(#${u}lip)"/>
+    <path d="M160,44 C158,90 136,114 104,119" stroke="#fff3c0" stroke-width="3" fill="none" opacity=".7"/>
+    <ellipse cx="70" cy="66" rx="7" ry="20" fill="#fff" opacity=".85" filter="url(#${u}blur)" transform="rotate(-12 70 66)"/>
+  </g>
+  <!-- lip: a thick ring, the inside dark at the back -->
+  <ellipse cx="100" cy="40" rx="63" ry="13" fill="url(#${u}lip)"/>
+  <ellipse cx="100" cy="41" rx="55" ry="9" fill="url(#${u}in)"/>
+  <path d="M46,42 C60,51 140,51 154,42" stroke="#fff8dc" stroke-width="1.5" fill="none" opacity=".8"/>
+  <!-- the glint (the flash at its peak) -->
+  <circle cx="140" cy="36" r="16" fill="url(#${u}glow)"/>
+  ${star4(140, 36, 15)}`;
+}
+
+// --- Cel: anime-style flat tones (base, shadow, light) with a warm ink outline and sharp highlight shapes.
+function cel() {
+  const ink = '#5b3608', base = '#f6c13a', shade = '#d38f12', deep = '#a8680a', light = '#ffe9a0';
+  const sb = '#a29a93', ss = '#7a726b', sl = '#cfc8c1';
+  const ol = `stroke="${ink}" stroke-width="3.2" stroke-linejoin="round"`;
+  const so = `stroke="#3f3a36" stroke-width="3.2" stroke-linejoin="round"`;
+  return `
+  <ellipse cx="100" cy="240" rx="84" ry="8" fill="#000" opacity=".22"/>
+  <path d="M22,196 L170,196 L176,238 L18,238 Z" fill="${sb}" ${so}/>
+  <path d="M120,196 L170,196 L176,238 L130,238 Z" fill="${ss}"/>
+  <path d="M170,196 L186,186 L190,226 L176,238 Z" fill="${ss}" ${so}/>
+  <path d="M34,182 L186,182 L186,186 L170,196 L22,196 Z" fill="${sl}" ${so}/>
+  <path d="M22,196 L170,196 L176,238 L18,238 Z" fill="none" ${so}/>
+  <path d="M58,206 l9,10 -5,10 M138,202 l-7,11" stroke="#3f3a36" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M58,166 L142,166 L146,184 L54,184 Z" fill="#4a2f22" stroke="#2a1a12" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M62,158 L138,158 L142,166 L58,166 Z" fill="#6e4a36" stroke="#2a1a12" stroke-width="3.2" stroke-linejoin="round"/>
+  <rect x="80" y="170" width="40" height="10" rx="2" fill="${base}" ${ol}/>
+  <path d="M76,152 L124,152 L128,160 L72,160 Z" fill="${base}" ${ol}/>
+  <path d="${STEM}" fill="${base}" ${ol}/>
+  <path d="M100,120 L109,120 L105,138 C112,140 116,146 118,152 L100,152 Z" fill="${shade}"/>
+  <path d="${STEM}" fill="none" ${ol}/>
+  <ellipse cx="100" cy="130" rx="10" ry="7" fill="${base}" ${ol}/>
+  <path d="${LHANDLE}" stroke="${ink}" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="${LHANDLE}" stroke="${base}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="${RHANDLE}" stroke="${ink}" stroke-width="13" fill="none" stroke-linecap="round"/>
+  <path d="${RHANDLE}" stroke="${shade}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="${BOWL}" fill="${base}"/>
+  <path d="M120,40 L162,40 C162,92 138,118 100,120 C124,108 134,80 120,40 Z" fill="${shade}"/>
+  <path d="M100,120 C76,118 60,104 52,86 C70,104 92,110 128,108 C120,114 110,119 100,120 Z" fill="${deep}" opacity=".55"/>
+  <path d="M100,64 l6.5,13 14,2 -10,9.5 2.5,14 -13,-7 -13,7 2.5,-14 -10,-9.5 14,-2 z" fill="${light}" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M58,52 C56,74 64,92 76,102 C66,86 64,70 66,52 Z" fill="#fff" opacity=".95"/>
+  <path d="M70,108 C74,110 78,112 82,113" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/>
+  <path d="${BOWL}" fill="none" ${ol}/>
+  <ellipse cx="100" cy="40" rx="63" ry="13" fill="${light}" ${ol}/>
+  <ellipse cx="100" cy="41" rx="54" ry="8.5" fill="${deep}"/>
+  <path d="M48,42 C62,49 138,49 152,42 C138,46 62,46 48,42 Z" fill="${shade}"/>
+  ${star4(140, 34, 16, '#fff')}
+  <circle cx="156" cy="52" r="2.5" fill="#fff"/><circle cx="124" cy="22" r="2" fill="#fff"/>`;
+}
+
+function shout(t) {
+  return `<g transform="translate(200,86) rotate(-10)">
+    <polygon points="-40,22 -78,46 -24,30" fill="#fff" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="${burst(0, 0, 80, 36, 12, 7)}" fill="#fff" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>
+    <text x="0" y="8" text-anchor="middle" font-family="Bangers" font-size="22" letter-spacing=".5" fill="#d23a6b" stroke="${t.stroke}" stroke-width=".8">TOURNAMENT!</text>
+  </g>`;
+}
+
+const out = document.getElementById('out');
+for (const [name, draw] of [['A2 · glossy gold (layered light, rim light, stone grain)', glossy], ['A3 · anime cel shading (flat tones + ink outline)', cel]]) {
+  out.insertAdjacentHTML('beforeend', `<div class="label">${name}</div>`);
+  let html = `<div class="row"><svg class="big" viewBox="-30 -20 260 290">${draw()}</svg>`;
+  for (const key of ['day', 'night']) {
+    const t = themes[key];
+    html += `<div class="panel"><img src="${t.img}"><div class="cover" style="background:${t.bg}"></div>
+      <div class="clock"><div class="t" style="color:${t.ink}">06:58</div><div class="d" style="color:${t.muted}">Sat, Oct 3</div></div>
+      <svg class="trophy" viewBox="0 0 300 270"><g transform="translate(16,70) rotate(-7 100 140) scale(.76)">${draw()}</g>${shout(t)}</svg></div>`;
+    if (key === 'day') html += '</div><div class="row"><div style="width:300px"></div>';
+  }
+  out.insertAdjacentHTML('beforeend', html + '</div>');
+}
+</script></body></html>
