@@ -80,7 +80,7 @@ class ColourPadsMissionTest {
     m.begin()
     untilYourTurn(m)
     val first = m.game.value.sequence
-    m.tap(Pad.entries.first { it != first[0] })
+    m.tap(PadGrid.TWO.pads.first { it != first[0] })
     assertEquals(PadsPhase.SCOLD, m.game.value.phase)
     assertEquals(1, m.progress.value.activity)
 
@@ -98,7 +98,7 @@ class ColourPadsMissionTest {
     m.start()
     m.begin()
     untilYourTurn(m)
-    m.tap(Pad.entries.first { it != m.game.value.sequence[0] })
+    m.tap(PadGrid.TWO.pads.first { it != m.game.value.sequence[0] })
 
     // Her scold (4.3: her clips run 2.6-5.4 s) outlasts the 2.5 s pause: the game holds on her.
     testScheduler.advanceTimeBy(PadsRules().scoldMs + 3_000)

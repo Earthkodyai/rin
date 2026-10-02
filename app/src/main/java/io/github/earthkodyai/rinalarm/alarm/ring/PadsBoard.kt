@@ -68,13 +68,13 @@ import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.character.CharacterAssets
 import io.github.earthkodyai.rinalarm.mission.Pad
 import io.github.earthkodyai.rinalarm.mission.PadsPhase
-import io.github.earthkodyai.rinalarm.mission.PadsRules
+import io.github.earthkodyai.rinalarm.mission.PadGrid
 import io.github.earthkodyai.rinalarm.mission.PadsState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * The 2×2 colour pads (D17) over Rin's half of the ring screen: only her hand shows, gliding in from the top edge as if
+ * The colour pads (D17; 3×3 from Hard, G.2) over Rin's half of the ring screen: only her hand shows, gliding in from the top edge as if
  * she sat across the table (the user's pick), pressing each pad of the sequence. Taps count on touch-down, not on
  * release, so a quick tap is never lost. Native Compose only: the game runs the same when her 3D page is missing.
  *
@@ -87,36 +87,52 @@ internal fun PadsBoard(
   modifier: Modifier = Modifier,
   hand: @Composable (Modifier) -> Unit = { DrawnHand(it) },
 ) {
-  val rules = remember { PadsRules() }
+  val grid = state.grid
   BoxWithConstraints(
     // Nothing of its own behind the pads: they sit on the ring screen's patterned surface, joined to the sheet (UX.4).
     modifier.clipToBounds().testTag(PADS_BOARD_TAG),
     contentAlignment = Alignment.Center,
   ) {
     val side = minOf(maxWidth, maxHeight) - PANEL_MARGIN * 2
-    val gap = 12.dp
-    val pad = (side - gap) / 2
+    val gap = if (grid == PadGrid.THREE) 10.dp else 12.dp
+    val pad = (side - gap * (grid.size - 1)) / grid.size
     val left = (maxWidth - side) / 2
     val top = (maxHeight - side) / 2
-    Pad.entries.forEach { p ->
+    grid.pads.forEach { p ->
       PadTile(
         p,
         lit = state.lit == p,
         enabled = state.phase == PadsPhase.INPUT,
         onTap = onTap,
-        modifier = Modifier.align(Alignment.TopStart).offset(left + (pad + gap) * p.column, top + (pad + gap) * p.row).size(pad),
+        corner = if (grid == PadGrid.THREE) 18.dp else 24.dp,
+        modifier =
+          Modifier.align(Alignment.TopStart).offset(left + (pad + gap) * grid.column(p), top + (pad + gap) * grid.row(p)).size(pad),
       )
     }
-    // The fingertip rests a little below the pad's centre, so the pad's colour shows around her finger.
-    val handWidth = pad * 0.9f
+    // The fingertip rests a little below the pad's centre, so the pad's colour shows around her finger. Her hand keeps
+    // about its 2×2 size on the smaller 3×3 pads: a hand shrunk to fit one reads as a child's.
+    val handWidth = if (grid == PadGrid.THREE) pad * 1.15f else pad * 0.9f
     val handHeight = side
-    val target = state.hand
-    val tipX = if (target == null) maxWidth / 2 else left + (pad + gap) * target.column + pad / 2
-    val tipY = if (target == null) (-8).dp else top + (pad + gap) * target.row + pad * 0.6f + if (state.pressing) 6.dp else 0.dp
-    val move = tween<Dp>(rules.moveMs.toInt())
+    val target = state.hand?.takeIf { it in grid.pads }
+    val tipX = if (target == null) maxWidth / 2 else left + (pad + gap) * grid.column(target) + pad / 2
+    // A repeat (Hard and up): she lifts her finger well clear of the pad before pressing it again, so two presses on
+    // one pad read as two.
+    val lift = if (state.lifting) pad * 0.35f else 0.dp
+    val tipY =
+      if (target == null) (-8).dp else top + (pad + gap) * grid.row(target) + pad * 0.6f + (if (state.pressing) 6.dp else 0.dp) - lift
+    val move = tween<Dp>(state.moveMs.toInt())
     val x by animateDpAsState(tipX - handWidth / 2, move, label = "handX")
-    val y by animateDpAsState(tipY - handHeight, if (state.pressing) tween(90) else move, label = "handY")
-    val scale by animateFloatAsState(if (state.pressing) 0.95f else 1f, tween(90), label = "handPress")
+    val y by
+      animateDpAsState(
+        tipY - handHeight,
+        when {
+          state.pressing -> tween(90)
+          state.lifting -> tween((state.moveMs / 2).toInt())
+          else -> move
+        },
+        label = "handY",
+      )
+    val scale by animateFloatAsState(if (state.pressing) 0.95f else if (state.lifting) 1.06f else 1f, tween(90), label = "handPress")
     // Her forearm fades in over the top fifth instead of being cut by an edge nobody can see.
     Box(
       Modifier.fillMaxSize()
@@ -141,12 +157,12 @@ internal fun PadsBoard(
 }
 
 @Composable
-private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Unit, modifier: Modifier) {
+private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Unit, corner: Dp, modifier: Modifier) {
   val colour = PAD_COLOURS.getValue(pad)
   // Unlit pads are a solid darker shade (not see-through), so the screen's blue never tints them.
   val dim by animateFloatAsState(if (lit) 0f else 0.55f, tween(if (lit) 40 else 180), label = "padLit")
   val name = stringResource(PAD_NAMES.getValue(pad))
-  val shape = RoundedCornerShape(24.dp)
+  val shape = RoundedCornerShape(corner)
   // On the navy night ground an unlit pad (the blue most of all) nearly vanished: its own colour outlines it there.
   val night = RinTheme.palette.night
   Box(
@@ -154,7 +170,8 @@ private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Un
       .background(lerp(colour, Color.Black, dim), shape)
       .then(
         when {
-          lit -> Modifier.border(4.dp, Color.White, shape)
+          // The white pad lights white: its ring is the ink colour, so the lit one still stands out.
+          lit -> Modifier.border(4.dp, if (pad == Pad.WHITE) RinTheme.palette.ink else Color.White, shape)
           night -> Modifier.border(2.dp, colour.copy(alpha = 0.7f), shape)
           else -> Modifier
         }
@@ -289,9 +306,30 @@ internal fun DrawnHand(modifier: Modifier) {
 }
 
 private val PAD_COLOURS =
-  mapOf(Pad.RED to Color(0xFFE53935), Pad.BLUE to Color(0xFF1E88E5), Pad.YELLOW to Color(0xFFFDD835), Pad.GREEN to Color(0xFF43A047))
+  mapOf(
+    Pad.RED to Color(0xFFE53935),
+    Pad.BLUE to Color(0xFF1E88E5),
+    Pad.YELLOW to Color(0xFFFDD835),
+    Pad.GREEN to Color(0xFF43A047),
+    Pad.PURPLE to Color(0xFF8E24AA),
+    Pad.CYAN to Color(0xFF26C6DA),
+    Pad.WHITE to Color(0xFFF5F5F5),
+    Pad.ORANGE to Color(0xFFFB8C00),
+    Pad.PINK to Color(0xFFF06292),
+  )
 
-private val PAD_NAMES = mapOf(Pad.RED to R.string.pad_red, Pad.BLUE to R.string.pad_blue, Pad.YELLOW to R.string.pad_yellow, Pad.GREEN to R.string.pad_green)
+private val PAD_NAMES =
+  mapOf(
+    Pad.RED to R.string.pad_red,
+    Pad.BLUE to R.string.pad_blue,
+    Pad.YELLOW to R.string.pad_yellow,
+    Pad.GREEN to R.string.pad_green,
+    Pad.PURPLE to R.string.pad_purple,
+    Pad.CYAN to R.string.pad_cyan,
+    Pad.WHITE to R.string.pad_white,
+    Pad.ORANGE to R.string.pad_orange,
+    Pad.PINK to R.string.pad_pink,
+  )
 
 internal const val PADS_BOARD_TAG = "pads_board"
 internal const val PADS_START_TAG = "pads_start"

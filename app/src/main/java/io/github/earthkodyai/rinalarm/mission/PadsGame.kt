@@ -2,29 +2,49 @@ package io.github.earthkodyai.rinalarm.mission
 
 import kotlin.random.Random
 
-/** The four colour pads (D17), in grid order: red top left, blue top right, yellow bottom left, green bottom right. */
+/**
+ * The colour pads. Easy and Normal play D17's four on [PadGrid.TWO]; Hard and Nightmare add five on [PadGrid.THREE]
+ * (G.2). Where a pad sits depends on the grid, so it lives there. Stored nowhere but the ring log, by name.
+ */
 enum class Pad {
   RED,
   BLUE,
   YELLOW,
-  GREEN;
-
-  val row: Int
-    get() = ordinal / 2
-
-  val column: Int
-    get() = ordinal % 2
+  GREEN,
+  PURPLE,
+  CYAN,
+  WHITE,
+  ORANGE,
+  PINK,
 }
 
 /**
- * The numbers that shape one game. [lengths] and [tapTimeoutMs] are D17's; the demo timings and [scoldMs] are tuned
- * on the dev rings and then frozen before the held-out ones (docs/spikes/3.3-colour-pads.md).
+ * A board of pads in reading order. D17's four keep their corners on the 3×3 one, so a player moving up a level still
+ * finds red top left; the new ones sit so that hues within ~30° (red/orange, orange/yellow, red/pink, blue/cyan) never
+ * touch on a side, with white in the middle.
+ */
+enum class PadGrid(val size: Int, val pads: List<Pad>) {
+  TWO(2, listOf(Pad.RED, Pad.BLUE, Pad.YELLOW, Pad.GREEN)),
+  THREE(3, listOf(Pad.RED, Pad.PURPLE, Pad.BLUE, Pad.CYAN, Pad.WHITE, Pad.ORANGE, Pad.YELLOW, Pad.PINK, Pad.GREEN));
+
+  fun row(pad: Pad): Int = index(pad) / size
+
+  fun column(pad: Pad): Int = index(pad) % size
+
+  private fun index(pad: Pad): Int = pads.indexOf(pad).also { require(it >= 0) { "$pad is not on the $size×$size board" } }
+}
+
+/**
+ * The numbers that shape one game. Easy's are D17's [lengths] and [tapTimeoutMs] with the demo timings and [scoldMs]
+ * tuned on the dev rings and then frozen before the held-out ones (docs/spikes/3.3-colour-pads.md); [forLevel] gives
+ * the other levels theirs (G.2, draft until G.4 measures them).
  *
  * @property moveMs Rin's hand gliding onto the next pad (from above the grid for the first one).
  * @property pressMs the pad lit and its note playing under her finger.
  * @property exitMs her hand leaving the grid after the last press. The user may already answer while it leaves (dev-3:
  *   taps in that gap were ignored, so the next right tap read as wrong); it is added to their first tap's time.
  * @property scoldMs how long the screen stays on Rin after a miss before a new sequence.
+ * @property repeats whether a pad may come twice in a row: her hand lifts and presses it again.
  */
 data class PadsRules(
   val lengths: List<Int> = listOf(3, 4, 5),
@@ -35,9 +55,27 @@ data class PadsRules(
   val scoldMs: Long = 2_500,
   /** How long a pad stays lit after the user taps it. */
   val tapFlashMs: Long = 250,
+  val grid: PadGrid = PadGrid.TWO,
+  val repeats: Boolean = false,
 ) {
   init {
     require(lengths.isNotEmpty() && lengths.all { it >= 1 })
+  }
+
+  companion object {
+    /**
+     * Each level's game (plan phase-games, D33): longer sequences, a faster hand, less time per tap, then the 3×3
+     * board with repeats. Nightmare's 7–9 pads lie past most adults' spatial span (Corsi, ~5–6 on nine blocks).
+     */
+    fun forLevel(level: Difficulty): PadsRules =
+      when (level) {
+        Difficulty.EASY -> PadsRules()
+        Difficulty.NORMAL -> PadsRules(lengths = listOf(4, 5, 6), tapTimeoutMs = 2_500, moveMs = 350, pressMs = 350)
+        Difficulty.HARD ->
+          PadsRules(lengths = listOf(5, 6, 7), tapTimeoutMs = 2_000, moveMs = 300, pressMs = 300, grid = PadGrid.THREE, repeats = true)
+        Difficulty.NIGHTMARE ->
+          PadsRules(lengths = listOf(7, 8, 9), tapTimeoutMs = 1_200, moveMs = 220, pressMs = 200, grid = PadGrid.THREE, repeats = true)
+      }
   }
 }
 
@@ -87,6 +125,11 @@ data class PadsState(
   val tapTimeoutMs: Long = 3_000,
   /** Taps while Rin was still showing the sequence (ignored, logged). */
   val earlyTaps: Int = 0,
+  /** PadsRules.grid and PadsRules.moveMs, for the board and her hand's glide. */
+  val grid: PadGrid = PadGrid.TWO,
+  val moveMs: Long = 450,
+  /** Her hand is on the pad it just pressed and lifts to press it again (a repeat, Hard and up). */
+  val lifting: Boolean = false,
 )
 
 /**
@@ -99,7 +142,7 @@ data class PadsState(
  * [PadsRules.tapTimeoutMs], each later tap [PadsRules.tapTimeoutMs]. Taps during the demo are ignored and counted.
  */
 class PadsGame(private val rules: PadsRules = PadsRules(), private val random: Random) {
-  var state = PadsState(rounds = rules.lengths.size, tapTimeoutMs = rules.tapTimeoutMs)
+  var state = PadsState(rounds = rules.lengths.size, tapTimeoutMs = rules.tapTimeoutMs, grid = rules.grid, moveMs = rules.moveMs)
     private set
 
   private var demoStart = 0L
@@ -122,6 +165,8 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
   }
 
   fun tap(pad: Pad, now: Long): PadsState {
+    // Never a crash on the ring screen: a pad from another board is no tap at all.
+    if (pad !in rules.grid.pads) return state
     val s = state
     if (s.phase == PadsPhase.DEMO) return set(s.copy(earlyTaps = s.earlyTaps + 1))
     if (s.phase != PadsPhase.INPUT) return s
@@ -190,6 +235,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
         sequence = sequence,
         hand = sequence.first(),
         pressing = false,
+        lifting = false,
         lit = null,
         entered = 0,
         miss = null,
@@ -208,7 +254,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
       val end = demoStart + s.sequence.size * step
       waitFrom = end
       inputDeadline = end + rules.exitMs + rules.tapTimeoutMs
-      return s.copy(phase = PadsPhase.INPUT, hand = null, pressing = false, lit = null, nextAt = inputDeadline)
+      return s.copy(phase = PadsPhase.INPUT, hand = null, pressing = false, lifting = false, lit = null, nextAt = inputDeadline)
     }
     val stepStart = demoStart + i * step
     val pressing = now >= stepStart + rules.moveMs
@@ -216,6 +262,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
     return s.copy(
       hand = pad,
       pressing = pressing,
+      lifting = !pressing && i > 0 && s.sequence[i - 1] == pad,
       lit = if (pressing) pad else null,
       // A new press is a new note, even for a lit pad left over from the user's last tap.
       flash = if (pressing && !s.pressing) s.flash + 1 else s.flash,
@@ -229,6 +276,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
       phase = PadsPhase.SCOLD,
       hand = null,
       pressing = false,
+      lifting = false,
       lit = null,
       miss = miss,
       mistakes = s.mistakes + if (miss == Miss.WRONG) 1 else 0,
@@ -237,11 +285,14 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
     )
   }
 
-  /** No pad twice in a row, so every step of the demo is a visible move of her hand. */
+  /**
+   * Below Hard no pad twice in a row, so every step of the demo is a visible move of her hand. Easy draws exactly as
+   * before G.2 (same board order, same calls), so a logged seed still replays.
+   */
   private fun sequence(length: Int): List<Pad> {
     val out = ArrayList<Pad>(length)
     repeat(length) {
-      val options = Pad.entries.filter { it != out.lastOrNull() }
+      val options = if (rules.repeats) rules.grid.pads else rules.grid.pads.filter { it != out.lastOrNull() }
       out += options[random.nextInt(options.size)]
     }
     return out

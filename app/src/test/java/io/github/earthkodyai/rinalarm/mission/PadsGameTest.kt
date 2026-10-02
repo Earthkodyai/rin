@@ -106,7 +106,7 @@ class PadsGameTest {
     g.repeatSequence() // round 1 done
     g.runUntil(PadsPhase.INPUT)
     val first = g.state.sequence
-    val wrong = Pad.entries.first { it != first[0] }
+    val wrong = PadGrid.TWO.pads.first { it != first[0] }
 
     g.tap(wrong, now + 200)
     assertEquals("W2.1:$wrong/${first[0]}+200", g.missTrace())
@@ -128,7 +128,7 @@ class PadsGameTest {
     g.start(now)
     g.runUntil(PadsPhase.INPUT)
     val first = g.state.sequence
-    g.tap(Pad.entries.first { it != first[0] }, now)
+    g.tap(PadGrid.TWO.pads.first { it != first[0] }, now)
     val scold = g.state
     val missedAt = now
 
@@ -194,7 +194,7 @@ class PadsGameTest {
       val out = mutableListOf(g.state.sequence)
       repeat(30) {
         g.runUntil(PadsPhase.INPUT)
-        g.tap(Pad.entries.first { it != g.state.sequence[0] }, now + 1)
+        g.tap(PadGrid.TWO.pads.first { it != g.state.sequence[0] }, now + 1)
         g.runUntil(PadsPhase.DEMO)
         out += g.state.sequence
       }
@@ -202,7 +202,7 @@ class PadsGameTest {
     }
     val a = sequences(42)
     assertTrue(a.all { s -> s.zipWithNext().none { (x, y) -> x == y } })
-    assertTrue(a.flatten().toSet() == Pad.entries.toSet())
+    assertTrue(a.flatten().toSet() == PadGrid.TWO.pads.toSet())
     now = 10_000L
     assertEquals(a, sequences(42))
   }

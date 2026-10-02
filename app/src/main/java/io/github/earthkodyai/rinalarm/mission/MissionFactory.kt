@@ -31,25 +31,26 @@ constructor(
 
   override fun create(type: MissionType): Mission = create(type, Difficulty.EASY)
 
-  // G.1 carries the level this far; G.2 (pads) and G.3 (cups) give each level its own rules. Until then all play Easy.
+  // Pads take the level since G.2; cups still play Easy at every level until G.3.
   override fun create(type: MissionType, difficulty: Difficulty): Mission =
     when (type) {
       // A fresh seed per ring, logged with the result so a game can be replayed.
-      MissionType.PADS -> ColourPadsMission(PadsRules(), System.nanoTime(), AndroidPadNotes(), clock, quiet = RinMouth::awaitQuiet)
+      MissionType.PADS ->
+        ColourPadsMission(PadsRules.forLevel(difficulty), System.nanoTime(), AndroidPadNotes(), clock, quiet = RinMouth::awaitQuiet)
       MissionType.CUPS -> CupShuffleMission(CupsRules(), System.nanoTime(), clock, quiet = RinMouth::awaitQuiet)
       MissionType.SPEECH ->
         RepeatAfterRinMission(RepeatRules(), sentences, System.nanoTime(), AndroidRinVoice(context), VoskListener(context, vosk), clock)
     }
 
   /**
-   * The real game's first round only, at its frozen timings (3.3–3.5): pads of 3, one shuffle of 4 swaps, one
+   * The real game's first round only, at the level's timings: at Easy pads of 3, one shuffle of 4 swaps; one
    * sentence. Its sounds go to the media stream, as nothing is ringing.
    */
   override fun practice(type: MissionType, difficulty: Difficulty): Mission =
     when (type) {
       MissionType.PADS ->
         ColourPadsMission(
-          PadsRules(lengths = PadsRules().lengths.take(1)),
+          PadsRules.forLevel(difficulty).let { it.copy(lengths = it.lengths.take(1)) },
           System.nanoTime(),
           AndroidPadNotes(PRACTICE_NOTES),
           clock,

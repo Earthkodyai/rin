@@ -81,6 +81,11 @@
     <string name="pad_blue">Blue</string>
     <string name="pad_yellow">Yellow</string>
     <string name="pad_green">Green</string>
+    <string name="pad_purple">Purple</string>
+    <string name="pad_cyan">Cyan</string>
+    <string name="pad_white">White</string>
+    <string name="pad_orange">Orange</string>
+    <string name="pad_pink">Pink</string>
     <!-- Ring screen: cup shuffle (task 3.4). -->
     <string name="cups_title">Find the ball</string>
     <string name="cups_intro">Rin hides a ball under a cup and shuffles. Tap the cup with the ball, three times in a row.</string>

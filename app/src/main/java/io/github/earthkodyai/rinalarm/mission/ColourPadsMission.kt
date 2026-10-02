@@ -119,6 +119,8 @@ class ColourPadsMission(
     val rounds = if (s.phase == PadsPhase.PASSED) s.rounds else s.round
     return "game=colour_pads rounds=$rounds/${s.rounds} mistakes=${s.mistakes} timeouts=${s.timeouts} " +
       "rightTaps=$rightTaps earlyTaps=${s.earlyTaps} seed=$seed" +
+      // Above Easy, the rules the seed replays under (G.2); Easy's line reads as it did for the held-out rings.
+      (if (rules.grid == PadGrid.TWO && rules.lengths == PadsRules().lengths) "" else " board=${rules.grid.size} lengths=${rules.lengths.joinToString("-")}") +
       play.missTrace().let { if (it.isEmpty()) "" else " misses=$it" }
   }
 }
