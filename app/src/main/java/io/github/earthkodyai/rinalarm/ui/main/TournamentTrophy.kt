@@ -12,6 +12,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
@@ -23,13 +24,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -44,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import io.github.earthkodyai.rinalarm.theme.RinRounded
 import kotlin.math.PI
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -157,6 +163,8 @@ internal fun TournamentTrophy(kicks: Int, modifier: Modifier = Modifier) {
 private const val ROCK_KICK = 260f
 /** Landing back in is a softer knock, the other way. */
 private const val ROCK_KICK_IN = 200f
+/** The bubble's counter-swing: about 7° at first, on the trophy's spring. */
+private const val WIGGLE_KICK = 95f
 private const val ROCK_DAMPING = 0.12f
 private const val ROCK_STIFFNESS = 180f
 private const val TWINKLE_MS = 2_400
@@ -278,19 +286,11 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
             },
           )
         }
+        // Its wiggle is the trophy's rock in reverse: the same spring, knocked at the same moment the other way, so the
+        // two read as one thing springing apart rather than two shakes out of step (the user, on the first version).
         launch {
-          delay(SHOUT_OVERSHOOT_MS.toLong())
-          wiggle.animateTo(
-            0f,
-            keyframes {
-              durationMillis = 700
-              -9f at 90
-              8f at 200
-              -6f at 320
-              4f at 440
-              -2f at 560
-            },
-          )
+          delay(SHOUT_PEEK_MS)
+          wiggle.animateTo(0f, spring(dampingRatio = ROCK_DAMPING, stiffness = ROCK_STIFFNESS), initialVelocity = -WIGGLE_KICK)
         }
       }
     } else {
@@ -315,30 +315,15 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
       .graphicsLayer { rotationZ = wiggle.value },
     contentAlignment = Alignment.Center,
   ) {
-    Canvas(Modifier.matchParentSize()) {
-      val k = minOf(size.width / BUBBLE_W, size.height / BUBBLE_H)
-      translate(size.width / 2, size.height / 2) {
-        scale(k, pivot = Offset.Zero) {
-          translate(6f, 6f) { drawPath(outline, Color.Black.copy(alpha = .22f)) }
-          drawPath(outline, fill)
-          clipPath(outline, ClipOp.Intersect) {
-            var y = -84f
-            var row = 0
-            while (y <= 84f) {
-              var x = -168f + if (row % 2 == 1) 3f else 0f
-              while (x <= 168f) {
-                val r = ((hypot(x / 100f, y / 50f) - .45f) * 2.4f).coerceAtMost(2.3f)
-                if (r > .15f) drawCircle(dots, r, Offset(x, y))
-                x += 6f
-              }
-              y += 6f
-              row++
-            }
-          }
-          drawPath(outline, Ink, style = Stroke(5.5f, join = StrokeJoin.Round))
-        }
+    // Drawn once into a bitmap and then only moved: ~1,000 dots under a path clip, redrawn with every frame of the
+    // trophy's twinkle and Rin's page, cost 100–250 ms a frame on the 14T (≈20 fps while the bubble was up).
+    Spacer(
+      Modifier.matchParentSize().drawWithCache {
+        val bitmap = ImageBitmap(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1))
+        CanvasDrawScope().draw(this, layoutDirection, Canvas(bitmap), size) { drawBubble(outline, fill, dots) }
+        onDrawBehind { drawImage(bitmap) }
       }
-    }
+    )
     val style =
       TextStyle(
         fontFamily = RinRounded,
@@ -350,6 +335,31 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
       )
     Text("TOURNAMENT!", style = style.copy(color = Ink, drawStyle = Stroke(width = 7f, join = StrokeJoin.Round)))
     Text("TOURNAMENT!", style = style.copy(color = text))
+  }
+}
+
+private fun DrawScope.drawBubble(outline: Path, fill: Color, dots: Color) {
+  val k = minOf(size.width / BUBBLE_W, size.height / BUBBLE_H)
+  translate(size.width / 2, size.height / 2) {
+    scale(k, pivot = Offset.Zero) {
+      translate(6f, 6f) { drawPath(outline, Color.Black.copy(alpha = .22f)) }
+      drawPath(outline, fill)
+      clipPath(outline, ClipOp.Intersect) {
+        var y = -84f
+        var row = 0
+        while (y <= 84f) {
+          var x = -168f + if (row % 2 == 1) 3f else 0f
+          while (x <= 168f) {
+            val r = ((hypot(x / 100f, y / 50f) - .45f) * 2.4f).coerceAtMost(2.3f)
+            if (r > .15f) drawCircle(dots, r, Offset(x, y))
+            x += 6f
+          }
+          y += 6f
+          row++
+        }
+      }
+      drawPath(outline, Ink, style = Stroke(5.5f, join = StrokeJoin.Round))
+    }
   }
 }
 

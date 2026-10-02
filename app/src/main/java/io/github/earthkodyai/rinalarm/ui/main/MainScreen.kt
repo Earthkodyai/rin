@@ -381,7 +381,9 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
   val label = stringResource(R.string.home_tournament)
   Box(modifier) {
     PanelClock(
-      Modifier.align(Alignment.TopCenter).padding(top = clockTop).graphicsLayer {
+      // Moved by its layer, not its padding, so the slide never lays the panel out again each frame.
+      Modifier.align(Alignment.TopCenter).graphicsLayer {
+        translationY = clockTop.toPx()
         alpha = clockAlpha
         scaleX = clockScale
         scaleY = clockScale
