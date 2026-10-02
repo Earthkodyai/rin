@@ -18,6 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -56,10 +63,14 @@ import io.github.earthkodyai.rinalarm.mission.CupsTimeline
  * Taps count on touch-down, like the colour pads.
  */
 @Composable
-internal fun CupsLayer(state: CupsState, cupX: List<Float>?, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun CupsLayer(state: CupsState, cupX: List<Float>?, onPick: (Int) -> Unit, modifier: Modifier = Modifier, cupBase: Float? = null) {
   val n = state.cups
   val x = cupX?.takeIf { it.size == n } ?: boardX(n)
-  Box(modifier.testTag(CUPS_LAYER_TAG)) {
+  // Her view fills the window, so the page's [cupBase] (a fraction of it) is a window position; this layer may start
+  // lower (under the top bar), so its own top is taken off.
+  var layerTop by remember { mutableFloatStateOf(0f) }
+  val windowHeight = LocalWindowInfo.current.containerSize.height
+  Box(modifier.testTag(CUPS_LAYER_TAG).onGloballyPositioned { layerTop = it.positionInWindow().y }) {
     if (cupX == null) state.act?.let { CupsBoard2d(it, Modifier.fillMaxSize()) }
     val open = state.phase == CupsPhase.SHOW || state.phase == CupsPhase.SHUFFLE || state.phase == CupsPhase.PICK
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -79,14 +90,18 @@ internal fun CupsLayer(state: CupsState, cupX: List<Float>?, onPick: (Int) -> Un
             }
             .testTag(cupTag(slot))
         )
+        // Just under her cups when the page says where they stand (on any sheet height the same gap, G.5); else at the
+        // bottom of the open space, as before.
+        val underCups =
+          cupBase?.takeIf { cupX != null && windowHeight > 0 }?.let { with(LocalDensity.current) { (it * windowHeight - layerTop).toDp() } }
         Text(
           "${slot + 1}",
           style = MaterialTheme.typography.labelLarge,
           color = MaterialTheme.colorScheme.onSurface,
           textAlign = TextAlign.Center,
           modifier =
-            Modifier.align(Alignment.BottomStart)
-              .offset(x = maxWidth * x[slot] - 14.dp, y = (-4).dp)
+            (if (underCups != null) Modifier.align(Alignment.TopStart).offset(x = maxWidth * x[slot] - 14.dp, y = underCups + CUP_NUMBER_GAP)
+            else Modifier.align(Alignment.BottomStart).offset(x = maxWidth * x[slot] - 14.dp, y = (-4).dp))
               .width(28.dp)
               .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape),
         )
@@ -179,6 +194,9 @@ private val WOOD_EDGE = Color(0xFFB07A4F)
 internal val CUP = Color(0xFFD9534F)
 private val CUP_RIM = Color(0xFFB8403C)
 private val BALL = Color(0xFFFFD54A)
+
+/** The gap between the front of her cups' bases and their numbers. */
+private val CUP_NUMBER_GAP = 10.dp
 
 internal const val CUPS_LAYER_TAG = "cups_layer"
 internal const val CUPS_START_TAG = "cups_start"

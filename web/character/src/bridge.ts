@@ -40,7 +40,7 @@ export type ToNative =
   | { v: typeof PROTOCOL; type: 'gesture'; name: Gesture; ok: boolean }
   | ({ v: typeof PROTOCOL; type: 'stats' } & FrameStats)
   /** The cup table is fully in view (`x`: each slot's cup across the view, 0..1, for the tap zones) or fully away. */
-  | { v: typeof PROTOCOL; type: 'cups'; shown: boolean; x: number[] };
+  | { v: typeof PROTOCOL; type: 'cups'; shown: boolean; x: number[]; base?: number };
 
 /** Frame pacing over a window of rendered frames (paused time is left out). */
 export interface FrameStats {

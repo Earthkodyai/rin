@@ -208,7 +208,7 @@ internal fun TournamentScreen(
         if (padsUp) PadsBoard(checkNotNull(pads), onTapPad, Modifier.fillMaxSize()) { RinHand(it) }
         if (cups != null) {
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d && it.size == cups.cups }
-          if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
+          if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize(), (state.cupsView as? CupsView.Shown)?.base)
         }
       }
       Spacer(Modifier.height(bottom))
@@ -232,6 +232,14 @@ internal fun TournamentScreen(
       }
     }
 
+    if (state.phase == TournamentPhase.TABLE) {
+      Text(
+        stringResource(R.string.tournament_setting_table),
+        style = MaterialTheme.typography.titleMedium,
+        color = p.muted,
+        modifier = Modifier.align(Alignment.Center).padding(top = 160.dp),
+      )
+    }
     Countdown(state, Modifier.align(Alignment.Center))
     LevelBanner(state, Modifier.align(Alignment.Center))
     AnimatedVisibility(

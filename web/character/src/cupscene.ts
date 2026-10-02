@@ -212,6 +212,12 @@ export class CupScene {
     return new THREE.Vector3((slot - middle(l.cups)) * l.spacing, l.tableY + y * l.cupH, l.cupZ);
   }
 
+  /** The front edge of a slot's cup where it stands on the table: the nearest point of its base to the camera. */
+  baseFront(slot: number): THREE.Vector3 {
+    const l = this.layout;
+    return new THREE.Vector3((slot - middle(l.cups)) * l.spacing, l.tableY, l.cupZ + l.cupR);
+  }
+
   /** The points the table view keeps in frame: the top of her head as she leans, and the cups' reach. */
   framePoints(topY: number): THREE.Vector3[] {
     const l = this.layout;

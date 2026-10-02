@@ -222,6 +222,8 @@ class TournamentViewModelTest {
       assertEquals(TournamentPhase.TABLE, vm.uiState.value.phase)
       vm.onCupsView(CupsView.Shown(listOf(0.1f, 0.3f, 0.5f, 0.7f, 0.9f)))
       runCurrent()
+      assertEquals(TournamentPhase.TABLE, vm.uiState.value.phase) // a moment on the table first
+      wait(TournamentViewModel.TABLE_SETTLE_MS)
       assertEquals(TournamentPhase.COUNTDOWN, vm.uiState.value.phase)
       wait(countdownMs)
       val one = levels.single() as FakeCups

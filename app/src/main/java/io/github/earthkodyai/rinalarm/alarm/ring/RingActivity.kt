@@ -289,7 +289,7 @@ internal fun RingScreen(
         if (cups != null && cups.phase != CupsPhase.READY) {
           // Her page's cups once it shows them; until then (or if it never does) the native board.
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d && it.size == cups.cups }
-          if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
+          if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize(), (state.cupsView as? CupsView.Shown)?.base)
         }
         // Repeat after Rin: the sentence floats over her chest, so the sheet stays small and she stays big (the user).
         if (game == MissionType.SPEECH && playing && started) {

@@ -18,6 +18,7 @@
     <string name="tournament_start">Start</string>
     <string name="tournament_level">LEVEL %1$d</string>
     <string name="tournament_go">GO!</string>
+    <string name="tournament_setting_table">Setting the table…</string>
     <string name="tournament_game_over">Game over</string>
     <string name="tournament_new_best">New best!</string>
     <string name="tournament_cleared">Levels cleared: %1$d</string>

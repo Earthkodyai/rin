@@ -90,8 +90,11 @@ sealed interface CupsView {
   /** Loading, moving the camera, or not asked yet. */
   data object Pending : CupsView
 
-  /** The table is in view; [x] is each slot's cup across the view (0..1), for the tap zones. */
-  data class Shown(val x: List<Float>) : CupsView
+  /**
+   * The table is in view; [x] is each slot's cup across the view (0..1), for the tap zones, and [base] how far down the
+   * view the cups stand (0..1), for their numbers.
+   */
+  data class Shown(val x: List<Float>, val base: Float? = null) : CupsView
 
   /** The page is gone for good (the still image shows): only the 2D board can play. */
   data object Unavailable : CupsView
@@ -368,9 +371,9 @@ private class CharacterHost {
         is CharacterMessage.GestureStarted -> Log.i(TAG, "gesture ${parsed.name} ok=${parsed.ok}")
         is CharacterMessage.Stats -> Log.i(TAG, "stats $parsed")
         is CharacterMessage.CupsShown -> {
-          Log.i(TAG, "cups shown=${parsed.shown} x=${parsed.x}")
+          Log.i(TAG, "cups shown=${parsed.shown} x=${parsed.x} base=${parsed.base}")
           val shown = parsed.shown && parsed.x.size in CupsRules.CUPS_RANGE
-          onCups(if (shown) CupsView.Shown(parsed.x.map { it.toFloat() }) else CupsView.Pending)
+          onCups(if (shown) CupsView.Shown(parsed.x.map { it.toFloat() }, parsed.base?.toFloat()) else CupsView.Pending)
         }
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")

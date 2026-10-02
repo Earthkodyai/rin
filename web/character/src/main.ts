@@ -279,7 +279,10 @@ function reportCups() {
   if (state === null || state === cupsReported) return;
   cupsReported = state;
   const x = Array.from({ length: table.count }, (_, s) => Math.round(((table.slotPoint(s).project(camera).x + 1) / 2) * 1000) / 1000);
-  send({ v: PROTOCOL, type: 'cups', shown: state === 1, x });
+  // How far down the view the front of the cups' bases sits (0 top, 1 bottom): the app puts each cup's number just
+  // under it there, rather than at the bottom of the open space, which lay far below on a short sheet (G.5).
+  const base = Math.max(...Array.from({ length: table.count }, (_, s) => (1 - table.baseFront(s).project(camera).y) / 2));
+  send({ v: PROTOCOL, type: 'cups', shown: state === 1, x, base: Math.round(base * 1000) / 1000 });
 }
 
 onNativeMessage((message) => {

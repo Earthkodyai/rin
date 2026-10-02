@@ -137,9 +137,11 @@ constructor(
     next =
       viewModelScope.launch {
         if (game == TournamentGame.CUPS && !state.value.cups2d) {
-          // Her table first; a page that never shows it gives way to the 2D board.
+          // Her table first. A fresh screen loads her page (~1.3 s on the 14T) and then moves the camera to the table
+          // (~1.7 s more): 4 s was too close, and the 2D board took over just as her table came (the user). Only a page
+          // that has failed, or one still not there after TABLE_WAIT_MS, gives way to the 2D board.
           val shown = withTimeoutOrNull(TABLE_WAIT_MS) { state.first { it.cupsView is CupsView.Shown || it.cups2d } }
-          if (shown == null) state.update { it.copy(cups2d = true) }
+          if (shown == null) state.update { it.copy(cups2d = true) } else if (!shown.cups2d) delay(TABLE_SETTLE_MS)
         }
         for (count in 3 downTo 0) {
           state.update { it.copy(phase = TournamentPhase.COUNTDOWN, count = count) }
@@ -234,7 +236,9 @@ constructor(
     /** The intent extra (and saved-state key) naming the game by [TournamentGame.stored]. */
     const val EXTRA_GAME = "tournament.game"
 
-    const val TABLE_WAIT_MS = 4_000L
+    const val TABLE_WAIT_MS = 10_000L
+    /** A moment for the eye on the table before the count. */
+    const val TABLE_SETTLE_MS = 400L
     const val COUNT_MS = 700L
     const val GO_MS = 450L
     const val GO_CLEAR_MS = 180L

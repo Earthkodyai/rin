@@ -62,9 +62,10 @@ sealed interface CharacterMessage {
 
   /**
    * The cup table (task 3.4) is fully in view ([shown]), with each slot's cup at [x] across the view (0..1, for the tap
-   * zones), or fully away.
+   * zones), or fully away. [base]: how far down the view the front of the cups' bases is (0..1; G.5), null from an
+   * older page.
    */
-  @Serializable data class CupsShown(val shown: Boolean, val x: List<Double> = emptyList()) : CharacterMessage
+  @Serializable data class CupsShown(val shown: Boolean, val x: List<Double> = emptyList(), val base: Double? = null) : CharacterMessage
 
   @Serializable
   data class LoadTimings(
