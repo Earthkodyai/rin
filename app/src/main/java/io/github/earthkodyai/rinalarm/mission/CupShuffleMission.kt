@@ -109,6 +109,8 @@ class CupShuffleMission(
     val s = play.state
     return "game=cup_shuffle streak=${s.streak}/${s.target} picks=${s.picks} mistakes=${s.mistakes} " +
       "earlyTaps=${s.earlyTaps} seed=$seed" +
+      // Above Easy, the rules the seed replays under (G.3); Easy's line reads as it did for the held-out rings.
+      (if (rules.cups == 3 && rules.swaps == CupsRules().swaps) "" else " cups=${rules.cups} swaps=${rules.swaps.joinToString("-")}") +
       play.trace().let { if (it.isEmpty()) "" else " picks_trace=$it" }
   }
 }

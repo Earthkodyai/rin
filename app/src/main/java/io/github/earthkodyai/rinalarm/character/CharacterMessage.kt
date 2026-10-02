@@ -201,6 +201,7 @@ sealed interface CharacterCommand {
             buildJsonObject {
               put("ball", act.ball)
               put("at", act.at + epochOffset)
+              put("cups", act.cups)
               when (act) {
                 is CupsAct.Rest -> put("kind", "rest")
                 is CupsAct.Lift -> {

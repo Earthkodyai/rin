@@ -1,4 +1,4 @@
-// The cup shuffle on the page (task 3.4): a table in front of Rin with three cups and a ball, acted out from the app's
+// The cup shuffle on the page (task 3.4): a table in front of Rin with three cups (4–5 at Hard and up, G.3) and a ball, acted out from the app's
 // acts (cups.ts), her hands resting on the cups she moves (not a real grip, D17). The arms are posed live by the same
 // two-bone IK the gestures are built with (scripts/vrma.mjs solveArm), cleared of her body (clearArm). Everything is
 // sized from her skeleton, so the cups stay within reach for the sample and for Rin's own model alike.
@@ -10,12 +10,15 @@
 import * as THREE from 'three';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { clearArm, curlFingers, restArm, restFingers, restPosition, SKELETON, solveArm } from '../scripts/vrma.mjs';
-import { frameAt, handInSwap, smooth, type CupsAct, type CupsFrame, type HandPose } from './cups';
+import { frameAt, handInSwap, MAX_CUPS, middle, pairsFor, smooth, type CupsAct, type CupsFrame, type HandPose } from './cups';
 
 type Side = 'left' | 'right';
 
 /** The table and cups, in metres, sized from her arm (the VRoid sample's is 0.363 m). */
 export interface Layout {
+  /** How many cups, and how much smaller than the three-cup table's each is (CUP_SCALE). */
+  cups: number;
+  scale: number;
   /** Distance between slot centres. */
   spacing: number;
   /** Cup centres' distance in front of her (+Z). */
@@ -36,32 +39,48 @@ export interface Layout {
 const STRETCH = 0.9;
 const LEAN = 0.2;
 
+/**
+ * How big the cups (and the gaps between them) are against the three-cup table's (G.3). More cups on a wider table,
+ * each smaller: 4 cups span 1.2 times the width of 3 and 5 cups 1.36 times, which keeps the outer ones within her
+ * reach (her hands work only their own side, so the outer cups set how far she stretches).
+ */
+export const CUP_SCALE: Record<number, number> = { 3: 1, 4: 0.8, 5: 0.68 };
+
 /** Rotates `p` about her spine joint by her lean (forward, about +X). */
 function leaned(p: THREE.Vector3, pivot: THREE.Vector3, lean: number): THREE.Vector3 {
   return p.clone().sub(pivot).applyAxisAngle(new THREE.Vector3(1, 0, 0), lean).add(pivot);
 }
 
 /**
- * Sizes the scene from her skeleton (T-pose body space: +X her left, facing +Z): cups a third of an arm apart, 0.8 of
- * an arm in front of her shoulder, and the table as low as it can be while every point her right hand visits (the
- * left mirrors it) stays within STRETCH of her reach, measured with her leaning.
+ * Sizes the scene from her skeleton (T-pose body space: +X her left, facing +Z): three cups a third of an arm apart
+ * (more cups smaller and closer, CUP_SCALE), 0.8 of an arm in front of her shoulder, and the table as low as it can be
+ * while every point her right hand visits (the left mirrors it) stays within STRETCH of her reach, measured with her
+ * leaning.
  */
-export function layoutFor(joint: THREE.Vector3, pivot: THREE.Vector3, arm: number, grip: { back: number; up: number }): Layout {
-  const spacing = 0.34 * arm;
+export function layoutFor(
+  joint: THREE.Vector3,
+  pivot: THREE.Vector3,
+  arm: number,
+  grip: { back: number; up: number },
+  cups = 3,
+): Layout {
+  const scale = CUP_SCALE[cups] ?? 1;
+  const c = middle(cups);
+  const spacing = 0.34 * arm * scale;
   const cupZ = joint.z + 0.8 * arm;
-  const cupH = 0.26 * arm;
-  const arcFront = 0.22 * arm;
-  const arcBack = 0.08 * arm;
+  const cupH = 0.26 * arm * scale;
+  const arcFront = 0.22 * arm * scale;
+  const arcBack = 0.08 * arm * scale;
   const wristBack = grip.back * arm;
   const wristUp = grip.up * arm;
   // Every point her right hand visits in a swap, and her left hand's mirrored to her right side.
   const points: [number, number][] = [];
   const z = (pz: number) => (pz >= 0 ? pz * arcFront : pz * arcBack);
-  for (const [lo, hi] of [[0, 1], [0, 2], [1, 2]]) {
+  for (const [lo, hi] of pairsFor(cups)) {
     for (let f = 0; f <= 1.0001; f += 0.05) {
       const r = handInSwap(lo, hi, 'right', f);
       const l = handInSwap(lo, hi, 'left', f);
-      points.push([(r.x - 1) * spacing, z(r.z)], [-(l.x - 1) * spacing, z(l.z)]);
+      points.push([(r.x - c) * spacing, z(r.z)], [-(l.x - c) * spacing, z(l.z)]);
     }
   }
   const unlean = (p: THREE.Vector3) => leaned(p, pivot, -LEAN);
@@ -70,7 +89,7 @@ export function layoutFor(joint: THREE.Vector3, pivot: THREE.Vector3, arm: numbe
   let wristY = leaned(joint, pivot, LEAN).y;
   while (wristY > joint.y - arm && reach(wristY - 0.005)) wristY -= 0.005;
   const tableY = wristY - wristUp - cupH;
-  return { spacing, cupZ, arcFront, arcBack, tableY, cupH, cupR: 0.13 * arm, liftH: 0.3 * arm, lean: LEAN };
+  return { cups, scale, spacing, cupZ, arcFront, arcBack, tableY, cupH, cupR: 0.13 * arm * scale, liftH: 0.3 * arm * scale, lean: LEAN };
 }
 
 const WOOD = 0xb07a4f;
@@ -79,9 +98,12 @@ const BALL = 0xffd54a;
 
 export class CupScene {
   readonly group = new THREE.Group();
-  readonly layout: Layout;
+  /** The table for the current act's cup count; [layoutFor] each count once, on its first act. */
+  layout: Layout;
+  private readonly layouts = new Map<number, Layout>();
   private readonly cups: THREE.Mesh[] = [];
   private readonly ball: THREE.Mesh;
+  private readonly top: THREE.Mesh;
   private act: CupsAct | null = null;
   /** Hands as they were when the current act arrived, so its lead-in starts from there. */
   private readonly from: Record<Side, { pos: THREE.Vector3; w: number } | null> = { left: null, right: null };
@@ -105,20 +127,14 @@ export class CupScene {
   private readonly arm: number;
 
   constructor(private readonly vrm: VRM) {
-    const arm = (this.arm = Math.abs(SKELETON.rightLowerArm[1][0]) + Math.abs(SKELETON.rightHand[1][0]));
+    this.arm = Math.abs(SKELETON.rightLowerArm[1][0]) + Math.abs(SKELETON.rightHand[1][0]);
     this.pivot = restPosition('spine');
-    const l = (this.layout = layoutFor(restPosition('rightUpperArm'), this.pivot, arm, this.grip));
+    // The three-cup table's sizes: the shapes are built for it, and scaled for more cups.
+    const l = (this.layout = this.layoutOf(3));
 
-    // The back edge stops just behind the back of a swap, clear of her skirt; the front runs out of the view.
-    const width = 2 * l.spacing + 6 * l.cupR;
-    const back = l.cupZ - l.arcBack - l.cupR - 0.02;
-    const depth = 0.6;
-    const top = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.03, depth),
-      new THREE.MeshStandardMaterial({ color: WOOD, roughness: 0.8 }),
-    );
-    top.position.set(0, l.tableY - 0.015, back + depth / 2);
-    this.group.add(top);
+    // One unit wide, stretched to each table's width (fit).
+    this.top = new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, TABLE_DEPTH), new THREE.MeshStandardMaterial({ color: WOOD, roughness: 0.8 }));
+    this.group.add(this.top);
 
     // A cup upside down: wide rim on the table, closed top, open underneath (a lathe profile, drawn from both sides).
     const profile = [
@@ -130,7 +146,7 @@ export class CupScene {
     ];
     const cupGeometry = new THREE.LatheGeometry(profile, 32);
     const cupMaterial = new THREE.MeshStandardMaterial({ color: CUP, roughness: 0.45, side: THREE.DoubleSide });
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < MAX_CUPS; i++) {
       const cup = new THREE.Mesh(cupGeometry, cupMaterial);
       this.cups.push(cup);
       this.group.add(cup);
@@ -141,11 +157,38 @@ export class CupScene {
     );
     this.group.add(this.ball);
     this.group.visible = false;
-    this.place(frameAt({ kind: 'rest', ball: 1, at: 0 }, 0));
+    this.fit(3);
+  }
+
+  private layoutOf(cups: number): Layout {
+    let l = this.layouts.get(cups);
+    if (!l) this.layouts.set(cups, (l = layoutFor(restPosition('rightUpperArm'), this.pivot, this.arm, this.grip, cups)));
+    return l;
+  }
+
+  /** Sets the table up for `cups` cups: its width and height, the cups' size, the unused cups away. */
+  private fit(cups: number): void {
+    const l = (this.layout = this.layoutOf(cups));
+    // The back edge stops just behind the back of a swap, clear of her skirt; the front runs out of the view.
+    const back = l.cupZ - l.arcBack - l.cupR - 0.02;
+    this.top.scale.x = (cups - 1) * l.spacing + 6 * l.cupR;
+    this.top.position.set(0, l.tableY - 0.015, back + TABLE_DEPTH / 2);
+    this.cups.forEach((cup, i) => {
+      cup.scale.setScalar(l.scale);
+      cup.visible = i < cups;
+    });
+    this.ball.scale.setScalar(l.scale);
+    this.place(frameAt({ kind: 'rest', ball: 1, at: 0, cups }, 0));
+  }
+
+  /** How many cups the table has now. */
+  get count(): number {
+    return this.layout.cups;
   }
 
   /** The app's latest act, or null to put the table away. */
   setAct(act: CupsAct | null): void {
+    if (act && act.cups !== this.layout.cups) this.fit(act.cups);
     for (const s of ['left', 'right'] as const) {
       const was = this.last[s];
       this.from[s] = was ? { pos: was.pos.clone(), w: was.w } : null;
@@ -166,13 +209,13 @@ export class CupScene {
   /** Where a slot's cup stands, for the app's tap zones. */
   slotPoint(slot: number, y = 0.5): THREE.Vector3 {
     const l = this.layout;
-    return new THREE.Vector3((slot - 1) * l.spacing, l.tableY + y * l.cupH, l.cupZ);
+    return new THREE.Vector3((slot - middle(l.cups)) * l.spacing, l.tableY + y * l.cupH, l.cupZ);
   }
 
   /** The points the table view keeps in frame: the top of her head as she leans, and the cups' reach. */
   framePoints(topY: number): THREE.Vector3[] {
     const l = this.layout;
-    const w = l.spacing + 2 * l.cupR;
+    const w = middle(l.cups) * l.spacing + 2 * l.cupR;
     const front = l.cupZ + l.arcFront + l.cupR;
     return [
       leaned(new THREE.Vector3(0, topY, 0), this.pivot, l.lean),
@@ -239,7 +282,7 @@ export class CupScene {
     const l = this.layout;
     frame.cups.forEach((c, i) => {
       const z = c.z >= 0 ? c.z * l.arcFront : c.z * l.arcBack;
-      this.cups[i].position.set((c.x - 1) * l.spacing, l.tableY + c.lift * l.liftH, l.cupZ + z);
+      this.cups[i].position.set((c.x - middle(l.cups)) * l.spacing, l.tableY + c.lift * l.liftH, l.cupZ + z);
     });
     const under = this.cups[frame.ballCup].position;
     this.ball.position.set(under.x, l.tableY + l.cupR * 0.55, under.z);
@@ -250,7 +293,7 @@ export class CupScene {
     const l = this.layout;
     const z = h.z >= 0 ? h.z * l.arcFront : h.z * l.arcBack;
     return new THREE.Vector3(
-      (h.x - 1) * l.spacing,
+      (h.x - middle(l.cups)) * l.spacing,
       l.tableY + l.cupH + h.lift * l.liftH + this.grip.up * this.arm,
       l.cupZ + z - (this.grip.back + Math.max(-h.z, 0) * this.grip.backShift) * this.arm,
     );
@@ -362,7 +405,7 @@ export class CupScene {
       }
       let depth = 0;
       let gap: number | null = null;
-      for (const cup of this.cups) {
+      for (const cup of this.cups.slice(0, l.cups)) {
         const c = cup.position;
         for (const p of points) {
           const h = p.y - c.y;
@@ -387,6 +430,8 @@ export class CupScene {
 }
 
 const X = new THREE.Vector3(1, 0, 0);
+/** Metres of table from its back edge toward the user (it runs out of the view). */
+const TABLE_DEPTH = 0.6;
 /** How high (in arms) a hand hops over the cups when it moves between them. */
 const HOP = 0.12;
 /** How quickly an arm's body-clearing correction follows (seconds, time constant). */

@@ -3,25 +3,26 @@
 // judges the pick; this page only acts it out (cupscene.ts), and the native 2D board (CupsBoard.kt) draws the same
 // acts when this page is missing. Pure functions of time, so a dropped frame never puts a cup in the wrong place.
 //
-// Slots are 0, 1, 2 from the user's left to right. At the start of every act cup i stands in slot i, and the ball is
-// under the cup in slot `ball`. Her right hand works the user's left (slot 0 side), her left hand the right.
+// Slots are 0 .. cups-1 from the user's left to right (3 cups, or 4–5 at Hard and Nightmare, G.3). At the start of
+// every act cup i stands in slot i, and the ball is under the cup in slot `ball`. Her right hand works the user's left
+// (slot 0 side), her left hand the right.
 
 export type Swap = readonly [number, number];
 
-/** Times are epoch ms (the app's wall clock, which the page shares). */
+/** Times are epoch ms (the app's wall clock, which the page shares). `cups` is how many stand on the table. */
 export type CupsAct =
   /**
    * Cups lift (the ball shows under its cup if lifted), stay up for `holdMs` (null: until the next act), come down.
    * Her hands lift the cups in `hands` (she shows where the ball is); the others rise by themselves (the user's pick),
    * which leaves her arms free for a clap.
    */
-  | { kind: 'lift'; ball: number; at: number; lift: number[]; hands: number[]; leadMs: number; upMs: number; holdMs: number | null; downMs: number; exitMs: number }
+  | { kind: 'lift'; ball: number; at: number; cups: number; lift: number[]; hands: number[]; leadMs: number; upMs: number; holdMs: number | null; downMs: number; exitMs: number }
   /** Her hands slide pairs of cups past each other: the cup from the lower slot passes in front. */
-  | { kind: 'shuffle'; ball: number; at: number; swaps: Swap[]; leadMs: number; swapMs: number; gapMs: number; exitMs: number }
+  | { kind: 'shuffle'; ball: number; at: number; cups: number; swaps: Swap[]; leadMs: number; swapMs: number; gapMs: number; exitMs: number }
   /** Cups stand still, hands off (waiting for the pick). */
-  | { kind: 'rest'; ball: number; at: number };
+  | { kind: 'rest'; ball: number; at: number; cups: number };
 
-/** A cup: x in slot units (0..2), z from -1 (back, toward her) to 1 (front), lift from 0 (down) to 1 (up). */
+/** A cup: x in slot units (0 .. cups-1), z from -1 (back, toward her) to 1 (front), lift from 0 (down) to 1 (up). */
 export interface CupPose {
   x: number;
   z: number;
@@ -55,19 +56,43 @@ export const smooth = (u: number) => {
 };
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
 
-const isSlot = (x: unknown): x is number => x === 0 || x === 1 || x === 2;
+export const MIN_CUPS = 3;
+export const MAX_CUPS = 5;
+
+/** The slot in the middle of the table, under her chest (1 for 3 cups, 1.5 for 4, 2 for 5). */
+export const middle = (cups: number) => (cups - 1) / 2;
+
+/**
+ * The pairs of slots she may swap with `cups` on the table (CupsRules.pairs in the app has the same rule). Her arms
+ * cannot cross her middle (handInSwap), so a pair must span it, its halfway point at most half a slot off it: for 3
+ * cups every pair; for 5 not (0, 1), say, where her right hand would work far over on her left.
+ */
+export function pairsFor(cups: number): Swap[] {
+  const c = middle(cups);
+  const out: Swap[] = [];
+  for (let p = 0; p < cups; p++) {
+    for (let q = p + 1; q < cups; q++) if (p <= c && q >= c && Math.abs((p + q) / 2 - c) <= 0.5) out.push([p, q]);
+  }
+  return out;
+}
+
+const isCount = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x) && x >= MIN_CUPS && x <= MAX_CUPS;
 const isMs = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 60_000;
 
 /** Checks an act from the app; anything malformed is null (ignored). */
 export function parseAct(m: unknown): CupsAct | null {
   if (typeof m !== 'object' || m === null) return null;
   const a = m as Record<string, unknown>;
+  // An app from before G.3 sends no count: three cups.
+  const cups = a.cups ?? MIN_CUPS;
+  if (!isCount(cups)) return null;
+  const isSlot = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0 && x < cups;
   if (!isSlot(a.ball) || typeof a.at !== 'number' || !Number.isFinite(a.at)) return null;
-  const base = { ball: a.ball, at: a.at };
+  const base = { ball: a.ball, at: a.at, cups };
   if (a.kind === 'rest') return { kind: 'rest', ...base };
   if (a.kind === 'lift') {
     const lift = a.lift;
-    if (!Array.isArray(lift) || lift.length < 1 || lift.length > 3 || !lift.every(isSlot)) return null;
+    if (!Array.isArray(lift) || lift.length < 1 || lift.length > cups || !lift.every(isSlot)) return null;
     const hands = a.hands ?? lift;
     if (!Array.isArray(hands) || !hands.every((h) => lift.includes(h))) return null;
     if (![a.leadMs, a.upMs, a.downMs, a.exitMs].every(isMs)) return null;
@@ -98,18 +123,18 @@ export function afterSwaps(swaps: readonly Swap[], ball: number): number {
   return b;
 }
 
-const still = (): CupPose[] => [0, 1, 2].map((x) => ({ x, z: 0, lift: 0 }));
+const still = (cups: number): CupPose[] => Array.from({ length: cups }, (_, x) => ({ x, z: 0, lift: 0 }));
 
 /** The whole act at `now` (epoch ms). */
 export function frameAt(act: CupsAct, now: number): CupsFrame {
   const t = now - act.at;
-  if (act.kind === 'rest') return { cups: still(), ballCup: act.ball, right: null, left: null, busy: false };
+  if (act.kind === 'rest') return { cups: still(act.cups), ballCup: act.ball, right: null, left: null, busy: false };
   if (act.kind === 'lift') return liftAt(act, t);
   return shuffleAt(act, t);
 }
 
 function liftAt(act: Extract<CupsAct, { kind: 'lift' }>, t: number): CupsFrame {
-  const cups = still();
+  const cups = still(act.cups);
   const up = act.leadMs;
   const hold = up + act.upMs;
   const down = act.holdMs === null ? Infinity : hold + act.holdMs;
@@ -118,8 +143,9 @@ function liftAt(act: Extract<CupsAct, { kind: 'lift' }>, t: number): CupsFrame {
   for (const s of act.lift) cups[s].lift = lift;
   // Hands: one cup takes the nearer hand (the middle one her right); two take one each.
   const [first, second] = act.hands;
-  const rightSlot = act.hands.length === 1 ? (first === 2 ? null : first) : (first ?? null);
-  const leftSlot = act.hands.length === 1 ? (first === 2 ? 2 : null) : (second ?? null);
+  const rightSide = first !== undefined && first <= middle(act.cups);
+  const rightSlot = act.hands.length === 1 ? (rightSide ? first : null) : (first ?? null);
+  const leftSlot = act.hands.length === 1 ? (rightSide ? null : first) : (second ?? null);
   const w = t < up ? smooth(t / Math.max(act.leadMs, 1)) : t < end ? 1 : 1 - smooth((t - end) / Math.max(act.exitMs, 1));
   const hand = (slot: number | null): HandPose | null => (slot === null || w <= 0 ? null : { x: slot, z: 0, lift, w });
   return { cups, ballCup: act.ball, right: hand(rightSlot), left: hand(leftSlot), busy: t < end };
@@ -165,9 +191,9 @@ export function handInSwap(lo: number, hi: number, side: 'right' | 'left', f: nu
  * swap they go back to rest.
  */
 function shuffleAt(act: Extract<CupsAct, { kind: 'shuffle' }>, t: number): CupsFrame {
-  const slotOf = [0, 1, 2]; // cup -> slot
+  const slotOf = Array.from({ length: act.cups }, (_, i) => i); // cup -> slot
   const cupIn = (slot: number) => slotOf.indexOf(slot);
-  const cups = still();
+  const cups = still(act.cups);
   const step = act.swapMs + act.gapMs;
   const n = act.swaps.length;
   const end = act.leadMs + Math.max(n * step - act.gapMs, 0);
@@ -182,7 +208,7 @@ function shuffleAt(act: Extract<CupsAct, { kind: 'shuffle' }>, t: number): CupsF
     slotOf[a] = q;
     slotOf[b] = p;
   }
-  for (let c = 0; c < 3; c++) cups[c].x = slotOf[c];
+  for (let c = 0; c < act.cups; c++) cups[c].x = slotOf[c];
   const [p0, q0] = act.swaps[i];
   const lo = Math.min(p0, q0);
   const hi = Math.max(p0, q0);

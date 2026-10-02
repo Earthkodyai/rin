@@ -1,14 +1,16 @@
 package io.github.earthkodyai.rinalarm.mission
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
  * The numbers that shape one cup shuffle (D17, task 3.4). [swaps] rise with the streak (the user's pick: 4, 5, 6; a
- * wrong pick starts again at the first); the speeds are tuned on the dev rings and then frozen before the held-out ones
- * (docs/spikes/3.4-cup-shuffle.md).
+ * wrong pick starts again at the first); Easy's speeds were tuned on the dev rings and then frozen before the held-out
+ * ones (docs/spikes/3.4-cup-shuffle.md). [forLevel] gives the other levels theirs (G.3, draft until G.4).
  *
+ * @property cups how many cups stand on the table (3 to 5, G.3).
  * @property swaps swaps in the shuffle before the 1st, 2nd and 3rd pick of a streak; its size is the streak to win.
  * @property leadMs her hands reaching the cups before an act starts moving them; [firstLeadMs] for the first one, so the
  *   table settles in view before the ball shows.
@@ -28,23 +30,58 @@ data class CupsRules(
   val showMs: Long = 900,
   val rightMs: Long = 600,
   val scoldMs: Long = 2_500,
+  val cups: Int = 3,
 ) {
   init {
     require(swaps.isNotEmpty() && swaps.all { it >= 1 })
+    require(cups in CUPS_RANGE)
   }
 
   val streak: Int
     get() = swaps.size
+
+  companion object {
+    val CUPS_RANGE = 3..5
+
+    /**
+     * Each level's shuffle (plan phase-games, D33): more swaps, quicker swaps with shorter pauses, then a 4th and a
+     * 5th cup. Nightmare's 5 cups at about four swaps a second outrun the eye, and three right guesses are 1 in 125.
+     */
+    fun forLevel(level: Difficulty): CupsRules =
+      when (level) {
+        Difficulty.EASY -> CupsRules()
+        Difficulty.NORMAL -> CupsRules(swaps = listOf(5, 6, 7), swapMs = 380, gapMs = 120)
+        Difficulty.HARD -> CupsRules(swaps = listOf(6, 7, 8), swapMs = 320, gapMs = 100, cups = 4)
+        Difficulty.NIGHTMARE -> CupsRules(swaps = listOf(8, 10, 12), swapMs = 230, gapMs = 60, cups = 5)
+      }
+
+    /**
+     * The pairs of slots Rin may swap with [cups] on the table. Her arms cannot cross her middle (cups.ts handInSwap),
+     * so her right hand works the low slot and her left the high one, and they meet halfway: a pair must span her
+     * middle, its halfway point at most half a slot off it. For 3 cups that is every pair (in the order Easy's draws
+     * have always used); for 4 and 5 it still spreads the ball evenly (best blind guess 0.26 and 0.21 a pick).
+     * cups.ts pairsFor has the same rule.
+     */
+    fun pairs(cups: Int): List<Pair<Int, Int>> {
+      if (cups == 3) return listOf(0 to 1, 1 to 2, 0 to 2)
+      val middle = (cups - 1) / 2.0
+      return (0 until cups)
+        .flatMap { p -> (p + 1 until cups).map { q -> p to q } }
+        .filter { (p, q) -> p <= middle && q >= middle && abs((p + q) / 2.0 - middle) <= 0.5 }
+    }
+  }
 }
 
 /**
  * One act of the game, for the ring screen to draw: the character page (web/character/src/cups.ts, which has the same
  * rules for where each cup is) or the native 2D board. Times are the elapsed clock's. At the start of every act cup i
- * stands in slot i (0..2, the user's left to right) and the ball is under the cup in slot [ball].
+ * stands in slot i (0 until [cups], the user's left to right) and the ball is under the cup in slot [ball].
  */
 sealed interface CupsAct {
   val ball: Int
   val at: Long
+  /** How many cups are on the table (CupsRules.cups). */
+  val cups: Int
 
   /** Cups lift and stay up [holdMs] (null: until the next act). Rin's hands lift the ones in [hands]. */
   data class Lift(
@@ -57,10 +94,11 @@ sealed interface CupsAct {
     val holdMs: Long?,
     val downMs: Long,
     val exitMs: Long,
+    override val cups: Int = 3,
   ) : CupsAct
 
   /** Cups standing still, hands off: the table coming into view before the game starts. */
-  data class Rest(override val ball: Int, override val at: Long) : CupsAct
+  data class Rest(override val ball: Int, override val at: Long, override val cups: Int = 3) : CupsAct
 
   /** Her hands slide pairs of cups past each other; in a swap of slots p < q the cup from p passes in front. */
   data class Shuffle(
@@ -71,6 +109,7 @@ sealed interface CupsAct {
     val swapMs: Long,
     val gapMs: Long,
     val exitMs: Long,
+    override val cups: Int = 3,
   ) : CupsAct {
     /** When the cups come to rest: the pick opens then. */
     val endsAt: Long
@@ -108,6 +147,8 @@ data class CupsState(
   /** Taps while the cups were still moving (ignored, logged). */
   val earlyTaps: Int = 0,
   val nextAt: Long? = null,
+  /** CupsRules.cups, for the table and the tap zones before the first act. */
+  val cups: Int = 3,
 )
 
 /**
@@ -117,7 +158,7 @@ data class CupsState(
  * where the ball really is.
  */
 class CupsGame(private val rules: CupsRules = CupsRules(), private val random: Random) {
-  var state = CupsState(target = rules.streak)
+  var state = CupsState(target = rules.streak, cups = rules.cups)
     private set
 
   /** Where the ball really is. The screen learns it only from the acts. */
@@ -135,13 +176,14 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
   /** "Let's play": Rin shows the ball. Ignored once the game is under way. */
   fun start(now: Long): CupsState {
     if (state.phase != CupsPhase.READY) return state
-    ball = random.nextInt(3)
+    ball = random.nextInt(rules.cups)
     val act = lift(now, listOf(ball), hands = listOf(ball), hold = rules.showMs, lead = rules.firstLeadMs)
     return set(state.copy(phase = CupsPhase.SHOW, act = act, nextAt = liftEnd(act)))
   }
 
   fun pick(slot: Int, now: Long): CupsState {
-    require(slot in 0..2)
+    // Never a crash on the ring screen: a slot off this table (a stale tap zone) is no pick at all.
+    if (slot !in 0 until rules.cups) return state
     val s = state
     if (s.phase == CupsPhase.SHOW || s.phase == CupsPhase.SHUFFLE) return set(s.copy(earlyTaps = s.earlyTaps + 1))
     if (s.phase != CupsPhase.PICK) return s
@@ -209,17 +251,17 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
     val swaps = ArrayList<Pair<Int, Int>>(n)
     // Never the same pair twice in a row: a swap undone at once looks like nothing happened.
     while (swaps.size < n) {
-      val pair = PAIRS[random.nextInt(PAIRS.size)]
+      val pair = pairs[random.nextInt(pairs.size)]
       if (pair != swaps.lastOrNull()) swaps += pair
     }
-    val act = CupsAct.Shuffle(ball, now, swaps, rules.leadMs, rules.swapMs, rules.gapMs, rules.exitMs)
+    val act = CupsAct.Shuffle(ball, now, swaps, rules.leadMs, rules.swapMs, rules.gapMs, rules.exitMs, rules.cups)
     ball = CupsTimeline.afterSwaps(swaps, ball)
     shuffles++
     return set(state.copy(phase = CupsPhase.SHUFFLE, act = act, picked = null, right = null, nextAt = act.endsAt))
   }
 
   private fun lift(now: Long, slots: List<Int>, hands: List<Int>, hold: Long?, lead: Long = rules.leadMs) =
-    CupsAct.Lift(ball, now, slots, hands, lead, rules.upMs, hold, rules.downMs, rules.exitMs)
+    CupsAct.Lift(ball, now, slots, hands, lead, rules.upMs, hold, rules.downMs, rules.exitMs, rules.cups)
 
   private fun liftEnd(act: CupsAct.Lift): Long = act.at + act.leadMs + act.upMs + (act.holdMs ?: 0) + act.downMs
 
@@ -228,12 +270,10 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
     return next
   }
 
-  companion object {
-    private val PAIRS = listOf(0 to 1, 1 to 2, 0 to 2)
-  }
+  private val pairs = CupsRules.pairs(rules.cups)
 }
 
-/** A cup on the 2D board: [x] in slots (0..2), [z] from -1 (back) to 1 (front), [lift] 0 (down) to 1 (up). */
+/** A cup on the 2D board: [x] in slots (0 until the act's cups), [z] from -1 (back) to 1 (front), [lift] 0 (down) to 1 (up). */
 data class CupPose(val x: Float, val z: Float, val lift: Float)
 
 data class CupsFrame(val cups: List<CupPose>, val ballCup: Int)
@@ -255,7 +295,7 @@ object CupsTimeline {
   fun frameAt(act: CupsAct, now: Long): CupsFrame {
     val t = now - act.at
     return when (act) {
-      is CupsAct.Rest -> CupsFrame(List(3) { CupPose(it.toFloat(), 0f, 0f) }, act.ball)
+      is CupsAct.Rest -> CupsFrame(List(act.cups) { CupPose(it.toFloat(), 0f, 0f) }, act.ball)
       is CupsAct.Lift -> {
         val up = act.leadMs
         val hold = up + act.upMs
@@ -267,11 +307,11 @@ object CupsTimeline {
             t < down -> 1f
             else -> smooth(1 - (t - down).toFloat() / act.downMs)
           }
-        CupsFrame(List(3) { CupPose(it.toFloat(), 0f, if (it in act.lift) lift else 0f) }, act.ball)
+        CupsFrame(List(act.cups) { CupPose(it.toFloat(), 0f, if (it in act.lift) lift else 0f) }, act.ball)
       }
       is CupsAct.Shuffle -> {
-        val slotOf = intArrayOf(0, 1, 2)
-        val cups = MutableList(3) { CupPose(it.toFloat(), 0f, 0f) }
+        val slotOf = IntArray(act.cups) { it }
+        val cups = MutableList(act.cups) { CupPose(it.toFloat(), 0f, 0f) }
         val step = act.swapMs + act.gapMs
         val n = act.swaps.size
         if (n > 0) {
@@ -285,7 +325,7 @@ object CupsTimeline {
             slotOf[a] = q
             slotOf[b] = p
           }
-          for (c in 0..2) cups[c] = CupPose(slotOf[c].toFloat(), 0f, 0f)
+          for (c in slotOf.indices) cups[c] = CupPose(slotOf[c].toFloat(), 0f, 0f)
           val f = into.toFloat() / act.swapMs
           if (f in 0f..<1f) {
             val (p, q) = act.swaps[i]

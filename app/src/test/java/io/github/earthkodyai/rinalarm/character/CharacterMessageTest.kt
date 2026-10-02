@@ -60,12 +60,12 @@ class CharacterMessageTest {
     val offset = 1_700_000_000_000
     val shuffle = CupsAct.Shuffle(ball = 2, at = 5_000, swaps = listOf(0 to 1, 2 to 0), leadMs = 300, swapMs = 450, gapMs = 150, exitMs = 250)
     assertEquals(
-      """{"type":"cups","act":{"ball":2,"at":1700000005000,"kind":"shuffle","swaps":[[0,1],[2,0]],"leadMs":300,"swapMs":450,"gapMs":150,"exitMs":250}}""",
+      """{"type":"cups","act":{"ball":2,"at":1700000005000,"cups":3,"kind":"shuffle","swaps":[[0,1],[2,0]],"leadMs":300,"swapMs":450,"gapMs":150,"exitMs":250}}""",
       CharacterCommand.Cups(shuffle, offset).json,
     )
     val lift = CupsAct.Lift(1, 10, listOf(0, 1), listOf(1), leadMs = 300, upMs = 250, holdMs = null, downMs = 250, exitMs = 250)
     assertEquals(
-      """{"type":"cups","act":{"ball":1,"at":1700000000010,"kind":"lift","lift":[0,1],"hands":[1],"leadMs":300,"upMs":250,"holdMs":null,"downMs":250,"exitMs":250}}""",
+      """{"type":"cups","act":{"ball":1,"at":1700000000010,"cups":3,"kind":"lift","lift":[0,1],"hands":[1],"leadMs":300,"upMs":250,"holdMs":null,"downMs":250,"exitMs":250}}""",
       CharacterCommand.Cups(lift, offset).json,
     )
     assertEquals("""{"type":"cups","act":null}""", CharacterCommand.Cups(null, offset).json)

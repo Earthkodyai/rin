@@ -29,7 +29,7 @@ import { addVroidSmile } from './vroid';
 import { keepArmsOffSkirt } from './skirt';
 import { BodyCheck, type Depth } from './inspect';
 import { CupScene } from './cupscene';
-import { actLength, afterSwaps, smooth, type CupsAct, type Swap } from './cups';
+import { actLength, afterSwaps, pairsFor, smooth, type CupsAct, type Swap } from './cups';
 
 const q = new URLSearchParams(location.search);
 const num = (key: string, fallback: number) => {
@@ -261,8 +261,11 @@ function setAct(act: CupsAct | null) {
     return;
   }
   const was = cups.active;
+  const count = cups.count;
   cups.setAct(act);
   if (was !== cups.active) cupsReported = -1;
+  // Another number of cups is another table (G.3): the view fits it anew, and the tap zones move.
+  if (count !== cups.count) frame();
 }
 
 /**
@@ -275,7 +278,7 @@ function reportCups() {
   const state = table.active && table.shown >= 1 ? 1 : !table.active && table.shown <= 0 ? 0 : null;
   if (state === null || state === cupsReported) return;
   cupsReported = state;
-  const x = [0, 1, 2].map((s) => Math.round(((table.slotPoint(s).project(camera).x + 1) / 2) * 1000) / 1000);
+  const x = Array.from({ length: table.count }, (_, s) => Math.round(((table.slotPoint(s).project(camera).x + 1) / 2) * 1000) / 1000);
   send({ v: PROTOCOL, type: 'cups', shown: state === 1, x });
 }
 
@@ -684,19 +687,20 @@ if (!window.RinBridge) {
 }
 
 /**
- * Desktop preview (`cups=demo`): the game as the app plays it, without the app. Show the ball, shuffle 4, 5, then 6
- * swaps, lift the ball's cup, and again. The timings are CupsRules' defaults.
+ * Desktop preview (`cups=demo`, `&n=4` or `&n=5` for more cups): the game as the app plays it, without the app. Show
+ * the ball, shuffle 4, 5, then 6 swaps, lift the ball's cup, and again. The timings are CupsRules' defaults.
  */
 function cupsDemo() {
+  const cupsN = Math.min(Math.max(Number(q.get('n')) || 3, 3), 5);
   let ball = 1;
   let n = 4;
-  const T = { leadMs: 300, upMs: 250, downMs: 250, exitMs: 250, swapMs: 450, gapMs: 150 };
-  const pairs: Swap[] = [[0, 1], [1, 2], [0, 2]];
+  const T = { leadMs: 300, upMs: 250, downMs: 250, exitMs: 250, swapMs: 450, gapMs: 150, cups: cupsN };
+  const pairs = pairsFor(cupsN);
   const lift = (): CupsAct => ({ kind: 'lift', ball, at: Date.now(), lift: [ball], hands: [ball], holdMs: 900, ...T });
   const shuffle = (): Extract<CupsAct, { kind: 'shuffle' }> => {
     const swaps: Swap[] = [];
     while (swaps.length < n) {
-      const s = pairs[Math.floor(Math.random() * 3)];
+      const s = pairs[Math.floor(Math.random() * pairs.length)];
       if (swaps.at(-1) !== s) swaps.push(s);
     }
     return { kind: 'shuffle', ball, at: Date.now(), swaps, ...T };

@@ -61,6 +61,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.mission.CupsAct
+import io.github.earthkodyai.rinalarm.mission.CupsRules
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -368,7 +369,8 @@ private class CharacterHost {
         is CharacterMessage.Stats -> Log.i(TAG, "stats $parsed")
         is CharacterMessage.CupsShown -> {
           Log.i(TAG, "cups shown=${parsed.shown} x=${parsed.x}")
-          onCups(if (parsed.shown && parsed.x.size == 3) CupsView.Shown(parsed.x.map { it.toFloat() }) else CupsView.Pending)
+          val shown = parsed.shown && parsed.x.size in CupsRules.CUPS_RANGE
+          onCups(if (shown) CupsView.Shown(parsed.x.map { it.toFloat() }) else CupsView.Pending)
         }
         is CharacterMessage.Tap -> {
           Log.i(TAG, "tap ${parsed.part}")

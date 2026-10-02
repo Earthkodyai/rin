@@ -183,7 +183,7 @@ internal fun RingRoute(viewModel: RingViewModel, onFinish: () -> Unit, onCommand
         cups =
           when {
             state.cups2d -> null
-            state.cupsStaging && state.cups?.act == null -> CupsAct.Rest(ball = 1, at = 0)
+            state.cupsStaging && state.cups?.act == null -> CupsAct.Rest(ball = 1, at = 0, cups = state.cups?.cups ?: 3)
             else -> state.cups?.act
           },
         onCups = viewModel::onCupsView,
@@ -288,7 +288,7 @@ internal fun RingScreen(
         if (padsUp) PadsBoard(checkNotNull(pads), onTapPad, Modifier.fillMaxSize(), hand)
         if (cups != null && cups.phase != CupsPhase.READY) {
           // Her page's cups once it shows them; until then (or if it never does) the native board.
-          val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d }
+          val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d && it.size == cups.cups }
           if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize())
         }
         // Repeat after Rin: the sentence floats over her chest, so the sheet stays small and she stays big (the user).

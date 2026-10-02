@@ -57,13 +57,14 @@ import io.github.earthkodyai.rinalarm.mission.CupsTimeline
  */
 @Composable
 internal fun CupsLayer(state: CupsState, cupX: List<Float>?, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
-  val x = cupX ?: BOARD_X
+  val n = state.cups
+  val x = cupX?.takeIf { it.size == n } ?: boardX(n)
   Box(modifier.testTag(CUPS_LAYER_TAG)) {
     if (cupX == null) state.act?.let { CupsBoard2d(it, Modifier.fillMaxSize()) }
     val open = state.phase == CupsPhase.SHOW || state.phase == CupsPhase.SHUFFLE || state.phase == CupsPhase.PICK
     BoxWithConstraints(Modifier.fillMaxSize()) {
-      val edges = listOf(0f, (x[0] + x[1]) / 2, (x[1] + x[2]) / 2, 1f)
-      for (slot in 0..2) {
+      val edges = listOf(0f) + x.zipWithNext { a, b -> (a + b) / 2 } + 1f
+      for (slot in 0 until n) {
         val name = stringResource(R.string.cups_cup, slot + 1)
         Box(
           Modifier.offset(x = maxWidth * edges[slot])
@@ -94,8 +95,8 @@ internal fun CupsLayer(state: CupsState, cupX: List<Float>?, onPick: (Int) -> Un
   }
 }
 
-/** Where the 2D board draws each slot's cup, across its width. */
-private val BOARD_X = listOf(1 / 6f, 1 / 2f, 5 / 6f)
+/** Where the 2D board draws each slot's cup, across its width: the middles of [cups] equal columns. */
+private fun boardX(cups: Int): List<Float> = List(cups) { (2 * it + 1) / (2f * cups) }
 
 /**
  * The native board: a table seen a little from above, the cup passing in front lower and the one behind higher, a
@@ -116,9 +117,11 @@ private fun CupsBoard2d(act: CupsAct, modifier: Modifier) {
     val tableSize = Size(w * 0.96f, h * 0.46f)
     drawRoundRect(WOOD, tableAt, tableSize, CornerRadius(w * 0.03f))
     drawRoundRect(WOOD_EDGE, tableAt, tableSize, CornerRadius(w * 0.03f), style = Stroke(w * 0.012f))
-    val cupW = minOf(w * 0.22f, h * 0.3f)
+    // Three cups keep their 3.4 size; more share the same width (G.3).
+    val n = act.cups
+    val cupW = minOf(w * 0.22f * 3 / n, h * 0.3f)
     val cupH = cupW * 1.15f
-    val base = { x: Float, z: Float -> Offset(w * (1 / 6f + x / 3f), h * 0.8f + z * h * 0.08f) }
+    val base = { x: Float, z: Float -> Offset(w * (2 * x + 1) / (2 * n), h * 0.8f + z * h * 0.08f) }
     val ball = frame.cups[frame.ballCup]
     base(ball.x, ball.z).let { drawCircle(BALL, cupW * 0.22f, it - Offset(0f, cupW * 0.22f)) }
     // Back to front, so the cup passing in front covers the one behind.

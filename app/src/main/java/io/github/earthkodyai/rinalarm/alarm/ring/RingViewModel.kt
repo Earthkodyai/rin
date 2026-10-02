@@ -428,6 +428,9 @@ constructor(
   /** What the character page says about the cup table (CharacterView). */
   fun onCupsView(view: CupsView) {
     if (state.value.cups2d) return
+    // A table of another size (her page still on an earlier act) is not this game's table yet.
+    val cups = state.value.cups?.cups
+    if (view is CupsView.Shown && cups != null && view.x.size != cups) return onCupsView(CupsView.Pending)
     state.update { it.copy(cupsView = view) }
     when (view) {
       is CupsView.Shown -> {
