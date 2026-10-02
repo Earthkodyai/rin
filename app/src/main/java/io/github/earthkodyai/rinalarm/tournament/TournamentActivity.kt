@@ -65,9 +65,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.ring.CupsLayer
+import io.github.earthkodyai.rinalarm.alarm.ring.Glow
 import io.github.earthkodyai.rinalarm.alarm.ring.PadsBoard
 import io.github.earthkodyai.rinalarm.alarm.ring.RinHand
 import io.github.earthkodyai.rinalarm.alarm.ring.RingState
+import io.github.earthkodyai.rinalarm.alarm.ring.Sheet
+import io.github.earthkodyai.rinalarm.alarm.ring.Stars
 import io.github.earthkodyai.rinalarm.character.CharacterInsets
 import io.github.earthkodyai.rinalarm.character.CharacterView
 import io.github.earthkodyai.rinalarm.character.CupsView
@@ -184,6 +187,9 @@ internal fun TournamentScreen(
   val cups = state.cups?.takeIf { state.game == TournamentGame.CUPS && it.phase != CupsPhase.READY }
 
   Box(Modifier.fillMaxSize().background(p.ground)) {
+    // The ring screen's sky (the user: the same finish as the alarm's games).
+    Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
+    if (p.night) Stars(Modifier.fillMaxSize())
     if (topPx > 0 && bottomPx > 0) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
     AnimatedVisibility(padsUp, enter = fadeIn(), exit = fadeOut()) {
       Box(Modifier.fillMaxSize().padding(top = top + 4.dp).rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true))
@@ -201,7 +207,8 @@ internal fun TournamentScreen(
     }
 
     TopBar(state, Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topPx = it.height }.statusBarsPadding())
-    Hint(state, Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomPx = it.height }.navigationBarsPadding())
+    // The ring screen's sheet, joined to the pads' surface while they are up, so the bottom edge is finished.
+    Sheet(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomPx = it.height }, joined = padsUp) { Hint(state) }
 
     Countdown(state, Modifier.align(Alignment.Center))
     LevelBanner(state, Modifier.align(Alignment.Center))
@@ -230,27 +237,31 @@ private fun TopBar(state: TournamentUiState, modifier: Modifier) {
     }
   val elapsed = if (started == null) 0L else ((state.endedAt ?: now) - started).coerceAtLeast(0)
   Row(
-    modifier.background(p.ground.copy(alpha = 0.92f)).padding(horizontal = 20.dp, vertical = 10.dp),
+    modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
     Text(
       stringResource(R.string.tournament_level, state.level),
-      style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-      color = p.ink,
+      style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+      color = p.onPrimary,
+      modifier = Modifier.sticker(fill = p.primary, shadow = p.primaryShadow, radius = 20.dp, depth = 3.dp).padding(horizontal = 14.dp, vertical = 8.dp),
     )
-    Column(horizontalAlignment = Alignment.End) {
-      Text(formatTime(elapsed), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = p.primary)
+    Column(
+      Modifier.sticker(radius = 20.dp, depth = 3.dp).padding(horizontal = 14.dp, vertical = 6.dp),
+      horizontalAlignment = Alignment.End,
+    ) {
+      Text(formatTime(elapsed), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold), color = p.ink)
       state.best?.let {
-        Text(stringResource(R.string.tournament_best_short, it.levels, formatTime(it.timeMs)), style = MaterialTheme.typography.labelMedium, color = p.muted)
+        Text(stringResource(R.string.tournament_best_short, it.levels, formatTime(it.timeMs)), style = MaterialTheme.typography.labelSmall, color = p.muted)
       }
     }
   }
 }
 
-/** One line of whose turn it is, in a fixed-height panel so her framing never moves. */
+/** One line of whose turn it is, in a row of fixed height so the sheet (and her framing) never moves. */
 @Composable
-private fun Hint(state: TournamentUiState, modifier: Modifier) {
+private fun Hint(state: TournamentUiState) {
   val p = RinTheme.palette
   val text =
     when {
@@ -258,7 +269,7 @@ private fun Hint(state: TournamentUiState, modifier: Modifier) {
       state.game == TournamentGame.PADS -> stringResource(if (state.pads?.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch)
       else -> stringResource(if (state.cups?.phase == CupsPhase.PICK) R.string.cups_pick else R.string.cups_watch)
     }
-  Box(modifier.background(p.ground.copy(alpha = 0.92f)).padding(vertical = 18.dp).height(36.dp), contentAlignment = Alignment.Center) {
+  Box(Modifier.fillMaxWidth().height(HINT_HEIGHT), contentAlignment = Alignment.Center) {
     Text(
       text,
       style = MaterialTheme.typography.headlineSmall,
@@ -332,6 +343,9 @@ private fun Results(score: TournamentScore, best: TournamentScore?, newBest: Boo
     QuietPillButton(stringResource(R.string.tournament_done), onDone, Modifier.fillMaxWidth())
   }
 }
+
+/** The ring screen's game row is at least this tall too (GAME_ROW_MIN): one line, never a jump. */
+private val HINT_HEIGHT = 60.dp
 
 private val BigShout = TextStyle(fontFamily = RinRounded, fontSize = 96.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
 

@@ -429,14 +429,14 @@ private fun Score(state: RingUiState, game: MissionType?) {
 
 /** The sun by day and the moon at night, behind her, as on the home panel. */
 @Composable
-private fun Glow(modifier: Modifier) {
+internal fun Glow(modifier: Modifier) {
   val p = RinTheme.palette
   Box(modifier.offset(x = 60.dp).size(220.dp).background(if (p.night) p.glow.copy(alpha = 0.85f) else p.glow, CircleShape))
 }
 
 /** A few fixed stars on the night ground: decoration, so nothing reads them out. */
 @Composable
-private fun Stars(modifier: Modifier) {
+internal fun Stars(modifier: Modifier) {
   Canvas(modifier.clearAndSetSemantics {}) {
     STARS.forEachIndexed { i, (x, y) ->
       drawCircle(Color.White, radius = (if (i % 2 == 0) 1.5f else 1f).dp.toPx(), center = Offset(x * size.width, y * size.height), alpha = 0.6f)
@@ -454,7 +454,7 @@ private val STARS = listOf(0.08f to 0.06f, 0.9f to 0.04f, 0.16f to 0.32f, 0.82f 
  * vanished on the night sheet (Repeat after Rin's sentence, UX.4 test ring).
  */
 @Composable
-private fun Sheet(modifier: Modifier, joined: Boolean, content: @Composable ColumnScope.() -> Unit) {
+internal fun Sheet(modifier: Modifier, joined: Boolean, content: @Composable ColumnScope.() -> Unit) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
   CompositionLocalProvider(LocalContentColor provides p.ink) {
