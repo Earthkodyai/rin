@@ -517,6 +517,23 @@ androidComponents {
   }
 }
 
+/**
+ * An app bundle only ever goes to Google Play (D32), so `bundleRelease` refuses one that would ship without Rin's own
+ * model, her voice pack or the alarm themes, or with the VRoid sample (its licence forbids redistribution, D25).
+ */
+val playBundleProblems = buildList {
+  if (rinModel == null) add("rin.model is not set: Rin's own model is missing")
+  if (devModelInRelease != null) add("rin.devModelInRelease=true would ship the VRoid sample")
+  if (rinVoice == null) add("rin.voice is not set: Rin would have no voice")
+  if (rinMusic == null) add("rin.music is not set: the alarm themes would be missing")
+}
+val checkPlayBundle =
+  tasks.register("checkPlayBundle") {
+    val problems = playBundleProblems
+    doLast { if (problems.isNotEmpty()) throw GradleException("Not a Play bundle (D32): " + problems.joinToString("; ")) }
+  }
+tasks.matching { it.name == "bundleRelease" }.configureEach { dependsOn(checkPlayBundle) }
+
 room {
     // Exported schemas are committed so every future migration can be tested against them.
     schemaDirectory("$projectDir/schemas")
