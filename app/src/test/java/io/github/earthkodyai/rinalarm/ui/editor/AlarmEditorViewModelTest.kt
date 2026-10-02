@@ -56,6 +56,22 @@ class AlarmEditorViewModelTest {
   // --- mission (task 3.1) ---
 
   @Test
+  fun firstAlarmWalkthrough_stepsThroughEveryPart_skippingTryForNone_andSoundWithoutThemes() {
+    fun walk(mission: MissionChoice, hasSounds: Boolean) =
+      generateSequence(GuideStep.TIME) { it.next(mission, hasSounds) }.toList()
+    assertEquals(GuideStep.entries, walk(MissionChoice.RinPicks, hasSounds = true))
+    assertEquals(
+      listOf(GuideStep.TIME, GuideStep.DAYS, GuideStep.GAME, GuideStep.SOUND, GuideStep.SAVE),
+      walk(MissionChoice.None, hasSounds = true),
+    )
+    assertEquals(
+      listOf(GuideStep.TIME, GuideStep.DAYS, GuideStep.GAME, GuideStep.TRY, GuideStep.SAVE),
+      walk(MissionChoice.Only(MissionType.CUPS), hasSounds = false),
+    )
+    assertTrue(GuideStep.SAVE.last)
+  }
+
+  @Test
   fun tryThisGame_isTheChosenGame_RinsPickForTheNextRing_orNothingForNone() = runTest {
     missions = MissionType.entries.associateWith { Readiness.READY }
     val editor = editor(7)

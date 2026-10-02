@@ -46,13 +46,10 @@ class MainScreenViewModelTest {
   }
 
   @Test
-  fun tourSteps_skipTheAlarmStep_whenTheListIsEmpty() {
-    assertEquals(
-      listOf(TourStep.HELLO, TourStep.ADD, TourStep.DAY_MODE, TourStep.TOP, TourStep.GAMES),
-      TourStep.steps(hasAlarms = false),
-    )
+  fun tourSteps_skipTheAlarmStep_whenTheListIsEmpty_andEndOnTheHandsOnAdd() {
+    assertEquals(listOf(TourStep.HELLO, TourStep.DAY_MODE, TourStep.TOP, TourStep.ADD), TourStep.steps(hasAlarms = false))
     assertEquals(TourStep.entries, TourStep.steps(hasAlarms = true))
-    assertEquals(TourStep.GAMES, TourStep.steps(hasAlarms = true).last())
+    assertEquals(listOf(TourStep.ADD), TourStep.entries.filter { it.handsOn })
   }
 
   @Test

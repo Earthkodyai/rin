@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -42,6 +44,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -95,6 +99,9 @@ import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RinTopBar
 import io.github.earthkodyai.rinalarm.ui.common.SectionTitle
+import io.github.earthkodyai.rinalarm.ui.common.Spot
+import io.github.earthkodyai.rinalarm.ui.common.SpotTargets
+import io.github.earthkodyai.rinalarm.ui.common.spotTarget
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
@@ -142,10 +149,19 @@ interface AlarmEditorActions {
 }
 
 @Composable
-fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
+fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, guided: Boolean = false, onGuideDone: () -> Unit = {}) {
   val viewModel =
     hiltViewModel<AlarmEditorViewModel, AlarmEditorViewModel.Factory>(creationCallback = { it.create(alarmId) })
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  // The first alarm's walkthrough (the home tour's last step): the step on screen, kept through a rotation.
+  var guideStep by rememberSaveable { mutableStateOf(if (guided) GuideStep.TIME else null) }
+  val nextGuideStep: () -> Unit = {
+    (state as? AlarmEditorUiState.Editing)?.let { guideStep = guideStep?.next(it.draft.mission, it.themes.isNotEmpty()) }
+  }
+  val skipGuide = {
+    guideStep = null
+    onGuideDone()
+  }
   // D15: a mission's permission is asked when the user picks it, never at install. Once Android stops showing the
   // dialog (denied twice, or "don't ask again"), Allow opens the app's info page instead.
   val activity = LocalActivity.current
@@ -194,6 +210,8 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
         val game = viewModel.gameToTry() ?: return
         viewModel.stopPreview()
         context.startActivity(PracticeActivity.intent(context, game))
+        // The walkthrough's Try step is done once the round opens; the user comes back to the next one.
+        if (guideStep == GuideStep.TRY) nextGuideStep()
       }
 
       override fun save() = viewModel.save()
@@ -212,6 +230,8 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
     when (state) {
       is AlarmEditorUiState.Saved -> {
         savedText?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        // The first alarm is set: the tour is over (home then plays her "alarm set" line).
+        if (guided) onGuideDone()
         onClose()
       }
       AlarmEditorUiState.Deleted,
@@ -220,12 +240,30 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
     }
   }
 
-  AlarmEditorScreen(state, actions, onClose)
+  AlarmEditorScreen(state, actions, onClose, guide = guideStep, onGuideNext = nextGuideStep, onGuideSkip = skipGuide)
 }
 
 @Composable
-internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorActions, onClose: () -> Unit) {
+internal fun AlarmEditorScreen(
+  state: AlarmEditorUiState,
+  actions: AlarmEditorActions,
+  onClose: () -> Unit,
+  guide: GuideStep? = null,
+  onGuideNext: () -> Unit = {},
+  onGuideSkip: () -> Unit = {},
+) {
   val editing = state as? AlarmEditorUiState.Editing
+  val targets = remember { SpotTargets<GuideTarget>() }
+  val scroll = rememberScrollState()
+  val density = LocalDensity.current
+  // Each step scrolls its part to the top of the page, clear of the tip card at the bottom (Save stays where it is).
+  LaunchedEffect(guide, editing != null) {
+    if (guide == null || guide.last || editing == null) return@LaunchedEffect
+    withFrameNanos {}
+    val page = targets.bounds[GuideTarget.PAGE]?.bounds ?: return@LaunchedEffect
+    val part = targets.bounds[guide.target]?.bounds ?: return@LaunchedEffect
+    scroll.animateScrollBy(part.top - page.top - with(density) { GUIDE_TOP_GAP.toPx() })
+  }
   var confirmDiscard by rememberSaveable { mutableStateOf(false) }
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
@@ -244,7 +282,7 @@ internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorAc
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       RinTopBar(stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new), leave)
       if (editing != null) {
-        EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f))
+        EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f), targets, scroll)
       } // else loading, or closing after a save/delete
     }
     if (editing != null) {
@@ -256,8 +294,14 @@ internal fun AlarmEditorScreen(state: AlarmEditorUiState, actions: AlarmEditorAc
           .navigationBarsPadding()
           .padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 16.dp)
       ) {
-        PillButton(stringResource(R.string.editor_save), actions::save, Modifier.fillMaxWidth(), enabled = !editing.busy)
+        PillButton(
+          stringResource(R.string.editor_save),
+          actions::save,
+          Modifier.fillMaxWidth().spotTarget(targets, GuideTarget.SAVE, radius = Spot.PILL, depth = 5.dp),
+          enabled = !editing.busy,
+        )
       }
+      guide?.let { EditorGuide(it, targets, onGuideNext, onGuideSkip) }
     }
   }
 
@@ -309,13 +353,16 @@ private fun EditorContent(
   actions: AlarmEditorActions,
   onDelete: () -> Unit,
   modifier: Modifier = Modifier,
+  targets: SpotTargets<GuideTarget>? = null,
+  scroll: ScrollState = rememberScrollState(),
 ) {
   val p = RinTheme.palette
   val draft = state.draft
   Column(
     modifier
       .fillMaxWidth()
-      .verticalScroll(rememberScrollState())
+      .spotTarget(targets, GuideTarget.PAGE, radius = 0.dp)
+      .verticalScroll(scroll)
       .padding(horizontal = 16.dp)
       .padding(top = 8.dp, bottom = SAVE_BUTTON_ROOM)
       .navigationBarsPadding(),
@@ -326,7 +373,10 @@ private fun EditorContent(
     }
 
     // The time: the wheels in a card, and when it will ring.
-    Column(Modifier.fillMaxWidth().sticker(radius = 28.dp).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+      Modifier.fillMaxWidth().spotTarget(targets, GuideTarget.TIME, radius = 28.dp, depth = 4.dp).sticker(radius = 28.dp).padding(vertical = 14.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
       TimeWheels(draft.time, actions::setTime)
       state.ringsIn?.let {
         Text(
@@ -339,7 +389,7 @@ private fun EditorContent(
     }
 
     SectionTitle(stringResource(R.string.editor_repeat))
-    RepeatDayPicker(draft.repeatDays, actions::toggleDay)
+    Box(Modifier.spotTarget(targets, GuideTarget.DAYS, radius = Spot.PILL)) { RepeatDayPicker(draft.repeatDays, actions::toggleDay) }
     Text(repeatSummary(draft.repeatDays), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(start = 4.dp))
 
     OutlinedTextField(
@@ -363,10 +413,10 @@ private fun EditorContent(
     )
 
     SectionTitle(stringResource(R.string.editor_mission))
-    MissionEditor(state, actions)
+    MissionEditor(state, actions, targets)
 
     SectionTitle(stringResource(R.string.editor_ringing))
-    RingOptionsEditor(draft.ring, state.themes, state.previewing, actions)
+    RingOptionsEditor(draft.ring, state.themes, state.previewing, actions, targets)
 
     if (!state.isNew) {
       // Outlined, not filled: never the button a thumb lands on by mistake; the dialog asks again.
@@ -388,10 +438,11 @@ private fun EditorContent(
 
 /** Rin picks / each game / None as tiles, two to a row, what the choice means, and what stops it on this phone. */
 @Composable
-private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEditorActions) {
+private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEditorActions, targets: SpotTargets<GuideTarget>?) {
   val p = RinTheme.palette
   val choice = state.draft.mission
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.spotTarget(targets, GuideTarget.GAME, radius = 18.dp, depth = 3.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     RingChoices.MISSIONS.chunked(2).forEach { pair ->
       Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         pair.forEach { option ->
@@ -405,6 +456,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
         }
         if (pair.size == 1) Spacer(Modifier.weight(1f))
       }
+    }
     }
     Text(
       stringResource(
@@ -428,7 +480,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
       QuietPillButton(
         stringResource(R.string.editor_try_game),
         actions::tryGame,
-        Modifier.fillMaxWidth().testTag(EDITOR_TRY_TAG),
+        Modifier.fillMaxWidth().spotTarget(targets, GuideTarget.TRY, radius = Spot.PILL).testTag(EDITOR_TRY_TAG),
         height = 46.dp,
         enabled = !state.busy,
       )
@@ -564,11 +616,21 @@ private fun SoundChooser(sound: AlarmSound, themes: List<MusicTheme>, previewing
 
 /** How it rings, in one card: the sound, gentle start, vibrate, how many snoozes and how long each. */
 @Composable
-private fun RingOptionsEditor(ring: RingOptions, themes: List<MusicTheme>, previewing: AlarmSound?, actions: AlarmEditorActions) {
+private fun RingOptionsEditor(
+  ring: RingOptions,
+  themes: List<MusicTheme>,
+  previewing: AlarmSound?,
+  actions: AlarmEditorActions,
+  targets: SpotTargets<GuideTarget>? = null,
+) {
   val p = RinTheme.palette
   Column(Modifier.fillMaxWidth().sticker(radius = 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     // A build without the music only beeps: nothing to choose.
-    if (themes.isNotEmpty()) SoundChooser(ring.sound, themes, previewing, actions::pickSound)
+    if (themes.isNotEmpty()) {
+      Column(Modifier.spotTarget(targets, GuideTarget.SOUND, radius = 18.dp, depth = 3.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SoundChooser(ring.sound, themes, previewing, actions::pickSound)
+      }
+    }
 
     OptionLabel(stringResource(R.string.editor_ramp))
     val rampOff = stringResource(R.string.ramp_off)
@@ -651,6 +713,9 @@ private val SAVE_BUTTON_ROOM = 110.dp
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
 internal const val EDITOR_TRY_TAG = "editor_try_game"
+
+/** Where the walkthrough scrolls each part to: just under the top of the page. */
+private val GUIDE_TOP_GAP = 12.dp
 
 private object PreviewActions : AlarmEditorActions {
   override fun setTime(value: LocalTime) = Unit

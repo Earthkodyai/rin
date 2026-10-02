@@ -92,6 +92,8 @@ import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
 import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
+import io.github.earthkodyai.rinalarm.ui.common.Spot
+import io.github.earthkodyai.rinalarm.ui.common.spotTarget
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.DayOfWeek
 import java.time.Duration
@@ -112,7 +114,7 @@ fun MainScreen(
   onEdit: (Long) -> Unit,
   onDiagnostics: () -> Unit,
   onSettings: () -> Unit,
-  onPractice: () -> Unit,
+  onGuidedAdd: () -> Unit,
   viewModel: MainScreenViewModel = hiltViewModel(),
   rin: HomeRinViewModel = hiltViewModel(),
 ) {
@@ -129,7 +131,9 @@ fun MainScreen(
     viewModel.endTour()
     tourIndex = 0
   }
-  LaunchedEffect(step) { if (step == TourStep.GAMES) rin.onTourGames() }
+  // Ended elsewhere too (the editor's walkthrough saves the first alarm): the next tour starts from the top.
+  LaunchedEffect(tourPending) { if (!tourPending) tourIndex = 0 }
+  LaunchedEffect(step) { if (step == TourStep.ADD) rin.onTourGames() }
   BackHandler(enabled = step != null, onBack = endTour)
   LifecycleResumeEffect(viewModel) {
     viewModel.refreshSetup()
@@ -154,10 +158,8 @@ fun MainScreen(
     tour = step?.let { TourState(it, steps.indexOf(it) + 1, steps.size) },
     onTourNext = { tourIndex++ },
     onTourSkip = endTour,
-    onTryGames = {
-      endTour()
-      onPractice()
-    },
+    // The tour's hands-on step: the real Add alarm opens the editor's walkthrough of the first alarm.
+    onTourAdd = onGuidedAdd,
     character = { modifier ->
       val mood = rememberDefaultMood()
       CharacterView(
@@ -202,7 +204,7 @@ internal fun MainScreen(
   tour: TourState? = null,
   onTourNext: () -> Unit = {},
   onTourSkip: () -> Unit = {},
-  onTryGames: () -> Unit = {},
+  onTourAdd: () -> Unit = {},
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable (Modifier) -> Unit = {},
 ) {
@@ -213,21 +215,21 @@ internal fun MainScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       TopBar(onDiagnostics, onSettings, targets)
       if (setupIssue) SetupBanner(onDiagnostics)
-      RinPanel(rinLine, character, Modifier.tourTarget(targets, TourTarget.PANEL))
-      DayModeRow(dayMode, onDayMode, Modifier.tourTarget(targets, TourTarget.DAY_MODE))
+      RinPanel(rinLine, character, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
+      DayModeRow(dayMode, onDayMode, Modifier.spotTarget(targets, TourTarget.DAY_MODE, radius = Spot.PILL, depth = 3.dp))
       ListHeader(state)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth(), targets)
     }
     PillButton(
       stringResource(R.string.alarm_add),
-      onAdd,
+      if (tour?.step == TourStep.ADD) onTourAdd else onAdd,
       Modifier.align(Alignment.BottomEnd)
         .navigationBarsPadding()
         .padding(end = 18.dp, bottom = 20.dp)
-        .tourTarget(targets, TourTarget.ADD),
+        .spotTarget(targets, TourTarget.ADD, radius = Spot.PILL, depth = 5.dp),
       icon = R.drawable.ic_add,
     )
-    tour?.let { HomeTour(it.step, it.number, it.count, targets, onTourNext, onTourSkip, onTryGames) }
+    tour?.let { HomeTour(it.step, it.number, it.count, targets, onTourNext, onTourSkip) }
   }
 }
 
@@ -250,7 +252,7 @@ private fun TopBar(onDiagnostics: () -> Unit, onSettings: () -> Unit, targets: T
         modifier = Modifier.height(LOGO_HEIGHT).semantics { heading() },
       )
     }
-    Row(Modifier.tourTarget(targets, TourTarget.TOP_BUTTONS)) {
+    Row(Modifier.spotTarget(targets, TourTarget.TOP_BUTTONS, radius = Spot.PILL, depth = 3.dp)) {
       RoundIconButton(R.drawable.ic_pulse, stringResource(R.string.diagnostics_title), onDiagnostics)
       Spacer(Modifier.size(10.dp))
       RoundIconButton(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings)
@@ -466,7 +468,7 @@ private fun AlarmList(
               row.alarm,
               onEdit = { onEdit(row.alarm.id) },
               onToggle = { onToggle(row.alarm.id, it) },
-              if (index == 0) Modifier.tourTarget(targets, TourTarget.FIRST_ALARM) else Modifier,
+              if (index == 0) Modifier.spotTarget(targets, TourTarget.FIRST_ALARM, radius = 22.dp, depth = 4.dp) else Modifier,
             )
           }
         }
@@ -611,8 +613,8 @@ private fun MainScreenTourPreview() {
       {},
       {},
       { _, _ -> },
-      rinLine = stringResource(R.string.tour_add),
-      tour = TourState(TourStep.ADD, 2, 6),
+      rinLine = stringResource(R.string.tour_day_mode),
+      tour = TourState(TourStep.DAY_MODE, 2, 5),
     )
   }
 }

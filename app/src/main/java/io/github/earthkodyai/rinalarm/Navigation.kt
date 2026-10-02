@@ -26,12 +26,19 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** Whether the first screen is onboarding; null for the frame or two before DataStore answers. */
 @HiltViewModel
-class StartViewModel @Inject constructor(settings: AppSettings) : ViewModel() {
+class StartViewModel @Inject constructor(private val settings: AppSettings) : ViewModel() {
   val onboardingCompleted: StateFlow<Boolean?> =
     settings.onboardingCompleted.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+
+  /** The home tour ended in the editor: the first alarm's walkthrough saved it, or was skipped (UX.8). */
+  fun endTour() {
+    viewModelScope.launch { settings.setTutorialPending(false) }
+  }
 }
 
 @Composable
@@ -39,11 +46,11 @@ fun MainNavigation(start: StartViewModel = hiltViewModel()) {
   val completed by start.onboardingCompleted.collectAsStateWithLifecycle()
   // Blank until known, so the list never flashes before onboarding. The back stack then remembers where it is, so
   // finishing onboarding (which flips the flag) does not rebuild it.
-  completed?.let { AppNavigation(if (it) Main else Onboarding) }
+  completed?.let { AppNavigation(if (it) Main else Onboarding, onTourEnd = start::endTour) }
 }
 
 @Composable
-private fun AppNavigation(first: NavKey) {
+private fun AppNavigation(first: NavKey, onTourEnd: () -> Unit) {
   val backStack = rememberNavBackStack(first)
 
   NavDisplay(
@@ -70,12 +77,17 @@ private fun AppNavigation(first: NavKey) {
             onEdit = { backStack.add(AlarmEditor(it)) },
             onDiagnostics = { if (backStack.lastOrNull() == Main) backStack.add(Diagnostics) },
             onSettings = { if (backStack.lastOrNull() == Main) backStack.add(Settings) },
-            onPractice = { if (backStack.lastOrNull() == Main) backStack.add(Practice) },
+            onGuidedAdd = { if (backStack.lastOrNull() == Main) backStack.add(AlarmEditor(AlarmEditorViewModel.NEW_ALARM_ID, guided = true)) },
           )
         }
         entry<AlarmEditor> { key ->
           // Guarded: a finished editor can ask to close again while its exit animation runs.
-          AlarmEditorScreen(key.alarmId, onClose = { if (backStack.lastOrNull() == key) backStack.removeLastOrNull() })
+          AlarmEditorScreen(
+            key.alarmId,
+            onClose = { if (backStack.lastOrNull() == key) backStack.removeLastOrNull() },
+            guided = key.guided,
+            onGuideDone = onTourEnd,
+          )
         }
         entry<Settings> {
           SettingsScreen(

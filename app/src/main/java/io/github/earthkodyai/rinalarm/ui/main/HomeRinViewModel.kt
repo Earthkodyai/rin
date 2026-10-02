@@ -104,7 +104,7 @@ constructor(
     say(Pools.HEAD_TAP)
   }
 
-  /** The home tour's last step (UX.8): the one existing clip that says what the games are for. */
+  /** The home tour's last step (UX.8), before the first alarm: the one existing clip that says what the games do. */
   fun onTourGames() {
     say { book.line(TOUR_GAMES_LINE) }
   }

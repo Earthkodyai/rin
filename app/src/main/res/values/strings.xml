@@ -254,16 +254,20 @@
     <string name="settings_pout_summary">Rin stays calm when you snooze or miss in a game, and skips her teasing lines.</string>
     <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
     <string name="tour_hello">I\'m Rin! Let me show you around.</string>
-    <string name="tour_add">Tap here to set an alarm: time, days, game and sound.</string>
+    <string name="tour_add">Let\'s set your first alarm. Tap Add alarm!</string>
     <string name="tour_day_mode">Day off, or sick? One tap, and your next alarm has no game.</string>
     <string name="tour_alarm">Tap an alarm to change it. The switch turns it off.</string>
     <string name="tour_top">Left: can your phone ring? Right: Settings, and this tour.</string>
-    <string name="tour_games">Want to try my games? No alarm, just practice.</string>
-    <string name="tour_games_card">One short round of each game. No alarm rings, and nothing is saved.</string>
     <string name="tour_skip">Skip tour</string>
+    <string name="guide_time">Scroll the wheels to the time you want to wake up.</string>
+    <string name="guide_days">Tap the days it repeats. No days means just once.</string>
+    <string name="guide_game">Pick the game that stops it, or let me pick a new one each day.</string>
+    <string name="guide_try">Try it now! It\'s only practice, no alarm.</string>
+    <string name="guide_sound">Pick a sound. Tap one to hear it.</string>
+    <string name="guide_save">All set? Tap Save alarm, and I\'ll be there.</string>
+    <string name="guide_next">Next</string>
+    <string name="guide_skip">Skip</string>
     <string name="tour_next">Next · %1$d/%2$d</string>
-    <string name="tour_try_games">Try the games</string>
-    <string name="tour_not_now">Not now</string>
     <string name="practice_title">Try the games</string>
     <string name="practice_intro">One short round of each game, with no alarm. Nothing is saved.</string>
     <string name="practice_hint_pads">Watch Rin\'s hand, then tap the same 3 colours.</string>
