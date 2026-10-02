@@ -122,8 +122,10 @@ export class CupScene {
    * How her hand holds a cup: the wrist `back` behind the top's centre and `up` above it (in arms), the hand tipped
    * down by `pitch` (radians), fingers curled by `curl` (0 flat .. 1 fist). On a cup passing behind, the wrist sits
    * `backShift` further back at the height of the pass, so her fingers stay off the cup passing in front.
+   * `thumbTuck`: how far (radians, times how much a cup shrank) her straight thumb turns in alongside her fingers on
+   * the smaller cups of 4 and 5 (G.5, the user's pick H: 0.38 rad at five cups).
    */
-  readonly grip = { back: 0.12, up: 0.025, pitch: 0, curl: 0.1, backShift: 0.08 };
+  readonly grip = { back: 0.12, up: 0.025, pitch: 0, curl: 0.1, backShift: 0.08, thumbTuck: 1.2 };
   private readonly arm: number;
 
   constructor(private readonly vrm: VRM) {
@@ -367,7 +369,18 @@ export class CupScene {
     upper.quaternion.slerp(this.rig(solved.upper), w);
     lower.quaternion.slerp(this.rig(solved.lower), w);
     hand.quaternion.slerp(this.rig(handLocal), w);
-    for (const [bone, q] of Object.entries(curlFingers(s, this.grip.curl))) {
+    const curl = curlFingers(s, this.grip.curl);
+    // Smaller cups (4–5, CUP_SCALE) but the same hand: her thumb, lying along the rim of a three-cup table's cup, stuck
+    // out past the small ones into the air (the user, G.5). It folds in toward her fingers by as much as the cup
+    // shrank, so it rests on the rim again; three cups keep the thumb the user chose in 3.4.
+    const tuck = this.grip.thumbTuck * (1 - this.layout.scale);
+    if (tuck > 0) {
+      // Turned from its root, the joint at the wrist, so it stays straight and lies alongside her fingers (the user: bent
+      // at its knuckles it hooked); its own joints keep the shared curl.
+      const root = `${s}ThumbMetacarpal`;
+      curl[root] = (curl[root] ?? new THREE.Quaternion()).clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, sign * tuck, 0)));
+    }
+    for (const [bone, q] of Object.entries(curl)) {
       node(bone as VRMHumanBoneName)?.quaternion.slerp(this.rig(q), w);
     }
   }
