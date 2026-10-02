@@ -384,7 +384,7 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
         transformOrigin = TransformOrigin(0.5f, 0f)
       }
     )
-    ShoutBubble(bubbleUp, p.night, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
+    ShoutBubble(bubbleUp, p.night, ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
     TournamentTrophy(
       bubbleUp,
       TrophySize.align(Alignment.BottomCenter)
@@ -398,8 +398,8 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
 private const val HELLO_WAIT_MS = 5_000L
 private const val SHOUT_AFTER_LINE_MS = 800L
 private const val CLOCK_SLIDE_MS = 350
-/** ShoutBubble's shrink when it hides. */
-private const val SHOUT_OUT_MS = 180L
+/** The bubble's sink back into the cup, before the clock comes down. */
+private const val SHOUT_OUT_MS = SHOUT_SINK_MS
 /**
  * Measured on the 14T: the bubble sits halfway between the date and the trophy, by the nearest points of their ink
  * (9.5 dp each way at 64.2 dp; the user's ask). Up, the clock shrinks to 80%; down, its ink is centred on the 132 dp
@@ -409,6 +409,12 @@ private val CLOCK_TOP_UP = 0.dp
 private const val CLOCK_SCALE_UP = 0.8f
 private val CLOCK_TOP_DOWN = 22.dp
 private val SHOUT_TOP = 64.2.dp
+
+/**
+ * Where the bubble comes out of: the middle of the trophy's bowl (90 of its 252 units down), as a fraction of the
+ * bubble's box. The panel is 216 dp, the trophy 84 dp on its edge, the bubble 76 dp tall from SHOUT_TOP.
+ */
+private val ShoutFrom = TransformOrigin(0.5f, ((216f - 84f + 84f * 90f / 252f) - 64.2f) / 76f)
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the

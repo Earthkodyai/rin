@@ -1,9 +1,10 @@
 package io.github.earthkodyai.rinalarm.ui.main
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
@@ -45,6 +46,7 @@ import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /*
@@ -57,6 +59,10 @@ import kotlinx.coroutines.launch
 /** How long the bubble stays up, then how long it is gone: up 3 s once every 10 s (the user's pick, 2026-10-03). */
 internal const val SHOUT_SHOWN_MS = 3_000L
 internal const val SHOUT_HIDDEN_MS = 7_000L
+
+/** The bubble rising out of the cup, and sinking back into it. */
+private const val SHOUT_RISE_MS = 520
+internal const val SHOUT_SINK_MS = 260L
 
 private val Gold = Color(0xFFFCB918)
 private val GoldShade = Color(0xFFEAA012)
@@ -235,18 +241,31 @@ private fun bubblePath(): Path {
 
 /**
  * The TOURNAMENT! bubble: pink by day, white by night, halftone dots that grow toward its edge, a thick ink outline and
- * a soft drop shadow. [shown] pops it up with a wiggle; hiding shrinks it away.
+ * a soft drop shadow. [shown] springs it out of the trophy with a wiggle; hiding sinks it back in, faster as it goes
+ * (the user: it should come out of the cup and go back into it). [from] is that point in the cup, as a fraction of
+ * this box (below it, so past 1); drawn behind the trophy, the bubble is hidden by the cup while it is small.
  */
 @Composable
-internal fun ShoutBubble(shown: Boolean, night: Boolean, modifier: Modifier = Modifier) {
+internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, modifier: Modifier = Modifier) {
   val pop = remember { Animatable(0f) }
   val wiggle = remember { Animatable(0f) }
   LaunchedEffect(shown) {
     if (shown) {
       wiggle.snapTo(0f)
       coroutineScope {
-        launch { pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow)) }
+        // It peeks out of the cup first, slowly enough to be seen there, then is flung up past its place and settles.
         launch {
+          pop.animateTo(
+            1f,
+            keyframes {
+              durationMillis = SHOUT_RISE_MS
+              0.16f at 170 using FastOutSlowInEasing
+              1.08f at 400 using FastOutSlowInEasing
+            },
+          )
+        }
+        launch {
+          delay(SHOUT_RISE_MS * 2L / 3)
           wiggle.animateTo(
             0f,
             keyframes {
@@ -261,7 +280,7 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, modifier: Modifier = Mo
         }
       }
     } else {
-      pop.animateTo(0f, tween(180))
+      pop.animateTo(0f, tween(SHOUT_SINK_MS.toInt(), easing = FastOutLinearInEasing))
     }
   }
   val fill = if (night) Color.White else Color(0xFFEC5A8C)
@@ -269,12 +288,17 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, modifier: Modifier = Mo
   val text = if (night) Color(0xFFEC5A8C) else Color.White
   val outline = remember { bubblePath() }
   Box(
-    modifier.graphicsLayer {
-      scaleX = pop.value
-      scaleY = pop.value
-      alpha = pop.value.coerceIn(0f, 1f)
-      rotationZ = wiggle.value
-    },
+    modifier
+      // Out of the cup: grows from [from], so it also rises from there.
+      .graphicsLayer {
+        scaleX = pop.value
+        scaleY = pop.value
+        transformOrigin = from
+        // Solid until it is nearly back in, so it is seen going into the cup rather than fading.
+        alpha = (pop.value * 4f).coerceIn(0f, 1f)
+      }
+      // The wiggle turns it about its own middle.
+      .graphicsLayer { rotationZ = wiggle.value },
     contentAlignment = Alignment.Center,
   ) {
     Canvas(Modifier.matchParentSize()) {
