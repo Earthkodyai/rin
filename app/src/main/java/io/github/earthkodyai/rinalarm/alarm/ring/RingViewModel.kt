@@ -187,9 +187,11 @@ constructor(
   /** No pouting: scold off, or a rest or sick day's ring (it never scolds). */
   private fun calm(): Boolean = !scold || state.value.ring?.dayMode != null
 
-  /** A gesture for Rin, unless it is a pouty one and she is [calm]. */
+  /** A gesture for Rin, unless it is a pouty one and she is [calm], or it moves her arms while a game is on. */
   private fun cue(gesture: Gesture) {
-    if (!(gesture.pouty && calm())) cueFlow.tryEmit(gesture.onRing())
+    if (gesture.pouty && calm()) return
+    if (state.value.inGame && !gesture.onRing().armsStill) return
+    cueFlow.tryEmit(gesture.onRing())
   }
 
   private fun pushHush() {
@@ -304,7 +306,7 @@ constructor(
     mission = running
     started = false
     introDone = false
-    state.update { it.copy(missionType = type) }
+    state.update { it.copy(missionType = type, inGame = false) }
     missionStartedAt = clock.now()
     val levelText = if (type.hasLevels) " level=${level.stored}" else ""
     log(RingEventType.MISSION_STARTED, ring, "type=${type.stored} target=${running.progress.value.target}$levelText$logExtra")
@@ -494,6 +496,7 @@ constructor(
     // second tap there did nothing (device test, G.1). Every tap after the first starts the game now.
     if (started) return skip()
     started = true
+    state.update { it.copy(inGame = true) }
     (running as? CupsMission)?.let(::startCups)
     introJob =
       viewModelScope.launch {
@@ -581,7 +584,7 @@ constructor(
       MissionState.RUNNING -> Unit
       MissionState.PASSED -> {
         if (state.value.passed) return
-        state.update { it.copy(passed = true) }
+        state.update { it.copy(passed = true, inGame = false) }
         log(
           RingEventType.MISSION_PASSED,
           ring,
@@ -692,7 +695,7 @@ constructor(
   /** Her line as the ring stops without a pass; the screen shows nothing else and waits for it (a tap closes it). */
   private fun leave(pool: String) {
     if (state.value.ring == null || state.value.passed || state.value.leaving) return
-    state.update { it.copy(leaving = true) }
+    state.update { it.copy(leaving = true, inGame = false) }
     farewell = say(pool)
   }
 
@@ -783,6 +786,8 @@ constructor(
  * @property line Rin's line on screen (the subtitle), or null.
  * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
  * @property calm no pouting (scold off, or a rest or sick day): a pouty mood shows as cheerful.
+ * @property inGame from "Let's play" to the win (or a snooze, the emergency stop): her arms are in the game, so only
+ *   head-and-shoulder gestures play (Gesture.armsStill).
  * @property quietMiss a miss with scolding off: the red cross and glow show, Rin stays out of it (the pads stay up).
  * @property scold the scold switch's position (G.1); [scoldSwitched]: it was flipped on this screen, so it stays in view
  *   for the rest of that scold even when off.
@@ -811,6 +816,7 @@ data class RingUiState(
   val scold: Boolean = true,
   val scoldSwitched: Boolean = false,
   val quietMiss: Boolean = false,
+  val inGame: Boolean = false,
 ) {
   /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood

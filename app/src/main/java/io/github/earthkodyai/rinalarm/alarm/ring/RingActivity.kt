@@ -191,6 +191,7 @@ internal fun RingRoute(viewModel: RingViewModel, onFinish: () -> Unit, onCommand
         onVisible = viewModel::onCharacterVisible,
         // No head taps here: a tap on her is a tap on the screen (skip her, or close once the ring is over).
         touchable = false,
+        armsStill = state.inGame,
       )
     },
     hand = { modifier -> RinHand(modifier) },

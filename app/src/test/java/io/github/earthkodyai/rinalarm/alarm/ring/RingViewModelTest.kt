@@ -8,6 +8,8 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingLog
 import io.github.earthkodyai.rinalarm.character.CupsView
 import io.github.earthkodyai.rinalarm.character.Gesture
 import io.github.earthkodyai.rinalarm.character.Mood
+import io.github.earthkodyai.rinalarm.dialogue.LineBook
+import io.github.earthkodyai.rinalarm.dialogue.Line
 import io.github.earthkodyai.rinalarm.dialogue.RinSpeaker
 import io.github.earthkodyai.rinalarm.character.Speaking
 import io.github.earthkodyai.rinalarm.mission.CupsMission
@@ -706,6 +708,29 @@ class RingViewModelTest {
       runCurrent()
       assertNull(viewModel.line)
       assertEquals(listOf("begin"), pads.calls)
+    }
+
+  @Test
+  fun inAGame_herLinesArmGesturesAreLeftOut_butTheWinStillClaps() =
+    runTest(main.dispatcher) {
+      // Every intro raises her arms (joy, as game.intro.07 does); the won line has no gesture, so the win claps.
+      book = LineBook { pool, _, _ -> if (pool.startsWith("game.intro")) Line("i", pool, "Go!", Mood.CHEERFUL, Gesture.JOY) else null }
+      val pads = FakePadsMission()
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
+      viewModel.onCharacterVisible()
+      val cues = mutableListOf<Gesture>()
+      backgroundScope.launch { viewModel.cues.collect { cues += it } }
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      runCurrent()
+      viewModel.startGame()
+      runCurrent()
+      assertTrue(viewModel.uiState.value.inGame)
+      assertFalse(Gesture.JOY in cues)
+
+      pads.progress.value = MissionProgress(3, 3, MissionState.PASSED)
+      runCurrent()
+      assertFalse(viewModel.uiState.value.inGame)
+      assertEquals(Gesture.CLAP, cues.last())
     }
 
   @Test

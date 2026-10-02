@@ -112,7 +112,8 @@ private enum class Phase {
  * gestures now and then (GestureDirector), and plays each gesture from [cues] (the ring screen's mission moments).
  * [onHeadTap] hears each tap on her head, for the screen's own answer (her line on the home screen). With [touchable]
  * off (the ring screen, G.1) she takes no touches at all, so a tap on her reaches the screen around her: the WebView
- * took every tap there, and "tap anywhere to skip her" never heard one (device test, 2026-10-02).
+ * took every tap there, and "tap anywhere to skip her" never heard one (device test, 2026-10-02). With [armsStill]
+ * (a game is on) her idle gestures keep to the head and shoulders.
  * Voice lines play natively (VoicePlayer, here or in a game's [speech]) and only move her mouth here.
  *
  * Before the first unlock after a reboot (a ring can come then) the WebView has no credential-encrypted storage to
@@ -133,6 +134,7 @@ fun CharacterView(
   greetOnShow: Boolean = true,
   insets: CharacterInsets = CharacterInsets(),
   touchable: Boolean = true,
+  armsStill: Boolean = false,
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -160,6 +162,7 @@ fun CharacterView(
   }
   val director = remember { GestureDirector() }
   val currentMood by rememberUpdatedState(shown.first)
+  val currentArmsStill by rememberUpdatedState(armsStill)
   // A screen can turn the greeting off; the ring screen keeps it and drops its first line's gesture instead (4.3).
   SideEffect { host.onShown = { away -> if (greetOnShow) director.greetOnShow(currentMood, away)?.let(host::gesture) } }
   // Her face is up (the page is ready) or the still image is here to stay: a screen may wait for this to speak (4.3).
@@ -204,7 +207,8 @@ fun CharacterView(
     if (phase != Phase.READY) return@LaunchedEffect
     while (true) {
       delay(director.nextIdleDelayMs())
-      host.gesture(director.idle(currentMood)) // dropped while off screen
+      // During a game only head-and-shoulder gestures (Gesture.armsStill); dropped while off screen.
+      (if (currentArmsStill) director.idleInGame(currentMood) else director.idle(currentMood))?.let(host::gesture)
     }
   }
   LaunchedEffect(host, cues) { cues?.collect { host.gesture(it) } }

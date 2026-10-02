@@ -72,4 +72,15 @@ class GestureDirectorTest {
     val director = GestureDirector(Random(3))
     repeat(500) { assertTrue(director.nextIdleDelayMs() in 30_000L..60_000L) }
   }
+
+  @Test
+  fun inAGame_onlyHeadAndShoulderGesturesPlay_andIdleOnesNeverMoveHerArms() {
+    assertEquals(setOf(Gesture.NOD, Gesture.SHAKE, Gesture.HUFF), Gesture.entries.filter { it.armsStill }.toSet())
+    // The stretch the user saw over the pads and away from the cups (G.1).
+    assertFalse(Gesture.STRETCH.armsStill)
+    val director = GestureDirector(kotlin.random.Random(3))
+    repeat(200) {
+      for (mood in Mood.entries) director.idleInGame(mood)?.let { assertTrue(it.armsStill) }
+    }
+  }
 }

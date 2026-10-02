@@ -38,6 +38,14 @@ enum class Gesture(val wire: String) {
    */
   fun onRing(): Gesture = if (this == POUT) HUFF else this
 
+  /**
+   * Head and shoulders only: what she may still do while a game is on (G.1, the user). Her arms are in the game: her
+   * hand plays the pads (and anything else rose over the board), her hands shuffle the cups (a stretch there left the
+   * cups and came back), and Repeat after Rin's sentence sits over her chest.
+   */
+  val armsStill: Boolean
+    get() = this == NOD || this == SHAKE || this == HUFF
+
   companion object {
     fun fromWire(wire: String): Gesture? = entries.firstOrNull { it.wire == wire }
   }
@@ -63,6 +71,9 @@ class GestureDirector(private val random: Random = Random.Default) {
     last = pick
     return pick
   }
+
+  /** The next idle gesture while a game is on: one of [idle]'s that keeps her arms still, or null for none this time. */
+  fun idleInGame(mood: Mood): Gesture? = idle(mood).takeIf { it.armsStill }
 
   /** Milliseconds until the next idle gesture: 30–60 s. */
   fun nextIdleDelayMs(): Long = random.nextLong(IDLE_MIN_MS, IDLE_MAX_MS + 1)
