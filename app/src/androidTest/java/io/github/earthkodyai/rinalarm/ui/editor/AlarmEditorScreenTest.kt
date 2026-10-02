@@ -78,6 +78,10 @@ class AlarmEditorScreenTest {
         calls += "allow ${type.stored}"
       }
 
+      override fun tryGame() {
+        calls += "try"
+      }
+
       override fun save() {
         calls += "save"
       }

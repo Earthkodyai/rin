@@ -29,6 +29,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import io.github.earthkodyai.rinalarm.mission.MissionPlanner
 import org.junit.Rule
 import org.junit.Test
 
@@ -53,6 +54,27 @@ class AlarmEditorViewModelTest {
   private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes }, previews)
 
   // --- mission (task 3.1) ---
+
+  @Test
+  fun tryThisGame_isTheChosenGame_RinsPickForTheNextRing_orNothingForNone() = runTest {
+    missions = MissionType.entries.associateWith { Readiness.READY }
+    val editor = editor(7)
+    editor.editing()
+    // Work rings next on Mon 28 Sep (06:30, switched on for the question): Rin's pick for that day.
+    val day = java.time.LocalDate.of(2026, 9, 28)
+    assertEquals(MissionPlanner.rotate(MissionType.entries, day), editor.gameToTry())
+
+    editor.setMission(MissionChoice.Only(MissionType.CUPS))
+    assertEquals(MissionType.CUPS, editor.gameToTry())
+    // A game that is not ready still plays its practice round.
+    missions = mapOf(MissionType.SPEECH to Readiness.NO_PERMISSION)
+    editor.refreshMissions()
+    editor.setMission(MissionChoice.Only(MissionType.SPEECH))
+    assertEquals(MissionType.SPEECH, editor.gameToTry())
+
+    editor.setMission(MissionChoice.None)
+    assertNull(editor.gameToTry())
+  }
 
   @Test
   fun newAlarm_letsRinPick_andSavesAChangedMission() = runTest {

@@ -17,6 +17,8 @@ import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
+import io.github.earthkodyai.rinalarm.mission.MissionPlan
+import io.github.earthkodyai.rinalarm.mission.MissionPlanner
 import io.github.earthkodyai.rinalarm.mission.MissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.mission.Readiness
@@ -158,6 +160,23 @@ constructor(
   /** Re-reads which missions can run: on resume, and after a permission answer (the user may change it in Settings). */
   fun refreshMissions() {
     readiness.value = readMissions()
+  }
+
+  /**
+   * "Try this game" (the user, 2026-10-02): the game this alarm would play on its next ring, for a practice round.
+   * Rin picks gives the game she would pick that day (as the sound preview plays her pick); None gives null. A game
+   * that is not ready still plays: Repeat after Rin without the mic falls back to tapping the words.
+   */
+  fun gameToTry(): MissionType? {
+    val open = session.value as? Session.Open ?: return null
+    val draft = open.draft
+    val zone = time.zone()
+    val day = (draft.copy(enabled = true).nextTrigger(time.now(), zone) ?: time.now()).atZone(zone).toLocalDate()
+    return when (val choice = draft.mission) {
+      MissionChoice.None -> null
+      is MissionChoice.Only -> choice.type
+      MissionChoice.RinPicks -> (MissionPlanner.plan(choice, readiness.value, day) as? MissionPlan.Run)?.type
+    }
   }
 
   private fun readMissions(): Map<MissionType, Readiness> = runCatching { missionReadiness.check() }.getOrDefault(emptyMap())

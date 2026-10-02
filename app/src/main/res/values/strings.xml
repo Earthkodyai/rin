@@ -276,6 +276,7 @@
     <string name="practice_label">Practice round</string>
     <string name="practice_passed">Nice work! You won.</string>
     <string name="settings_practice_summary">A practice round of each game, with no alarm.</string>
+    <string name="editor_try_game">▶  Try this game</string>
     <string name="settings_tour">Home tour</string>
     <string name="settings_tour_summary">Rin shows you around the home screen again.</string>
 </resources>

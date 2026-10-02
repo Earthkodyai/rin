@@ -79,6 +79,7 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.AlarmSound
 import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
+import io.github.earthkodyai.rinalarm.alarm.ring.PracticeActivity
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -90,6 +91,7 @@ import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
+import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RinTopBar
 import io.github.earthkodyai.rinalarm.ui.common.SectionTitle
@@ -131,6 +133,9 @@ interface AlarmEditorActions {
   /** Makes [type] ready: asks for its permission, or opens Settings once Android won't ask again. */
   fun allowMission(type: MissionType)
 
+  /** A practice round of the chosen game, without leaving the editor's draft. */
+  fun tryGame()
+
   fun save()
 
   fun delete()
@@ -160,6 +165,7 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
       permissionLauncher.launch(permission)
     }
   }
+  val context = LocalContext.current
   val actions =
     object : AlarmEditorActions {
       override fun setTime(value: LocalTime) = viewModel.setTime(value)
@@ -184,6 +190,12 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
         requestMissionPermission(type)
       }
 
+      override fun tryGame() {
+        val game = viewModel.gameToTry() ?: return
+        viewModel.stopPreview()
+        context.startActivity(PracticeActivity.intent(context, game))
+      }
+
       override fun save() = viewModel.save()
 
       override fun delete() = viewModel.delete()
@@ -194,7 +206,6 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit) {
     // A preview never plays on behind another app, the lock screen or a ringing alarm.
     onPauseOrDispose { viewModel.stopPreview() }
   }
-  val context = LocalContext.current
   val savedText =
     (state as? AlarmEditorUiState.Saved)?.ringsIn?.let { stringResource(R.string.alarm_set_toast, durationText(it)) }
   LaunchedEffect(state) {
@@ -412,6 +423,16 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
       color = p.muted,
       modifier = Modifier.padding(start = 4.dp),
     )
+    // A practice round right here (the user, 2026-10-02): the chosen game, or Rin's pick for the next ring.
+    if (choice != MissionChoice.None) {
+      QuietPillButton(
+        stringResource(R.string.editor_try_game),
+        actions::tryGame,
+        Modifier.fillMaxWidth().testTag(EDITOR_TRY_TAG),
+        height = 46.dp,
+        enabled = !state.busy,
+      )
+    }
     state.missionProblems.forEach { (type, readiness) -> MissionProblem(type, readiness, actions) }
   }
 }
@@ -629,6 +650,7 @@ private val SAVE_BUTTON_ROOM = 110.dp
 
 internal const val VIBRATE_TAG = "editor_vibrate"
 internal const val MISSION_PROBLEM_TAG = "editor_mission_problem"
+internal const val EDITOR_TRY_TAG = "editor_try_game"
 
 private object PreviewActions : AlarmEditorActions {
   override fun setTime(value: LocalTime) = Unit
@@ -650,6 +672,8 @@ private object PreviewActions : AlarmEditorActions {
   override fun pickSound(value: AlarmSound) = Unit
 
   override fun allowMission(type: MissionType) = Unit
+
+  override fun tryGame() = Unit
 
   override fun save() = Unit
 
