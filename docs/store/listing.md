@@ -30,7 +30,7 @@ A CHARACTER, NOT A BEEP
 MADE FOR REAL MORNINGS
 • Rest day and sick day: one tap, and your next alarm has no game (and a sick day rings softer).
 • Snooze when you need it, and a 3-second hold to stop the alarm in an emergency.
-• A short tour and a practice round of each game when you start.
+• When you start, Rin walks you through your first alarm, with a practice round of its game. Try any game again from the alarm editor.
 • Diagnostics checks that your phone lets alarms ring on time, with fixes for phones that block them.
 
 PRIVATE BY DESIGN
@@ -69,7 +69,7 @@ The app is in English. Meant for adults (18+).
 ออกแบบมาสำหรับเช้าจริงๆ
 • วันพักและวันป่วย: แตะครั้งเดียว การปลุกครั้งถัดไปจะไม่มีเกม (วันป่วยเสียงจะเบากว่าปกติ)
 • เลื่อนปลุกได้เมื่อจำเป็น และกดค้าง 3 วินาทีเพื่อหยุดปลุกในกรณีฉุกเฉิน
-• มีทัวร์สั้นๆ และรอบลองเล่นของแต่ละเกมตอนเริ่มใช้
+• ตอนเริ่มใช้ รินจะพาตั้งปลุกแรกทีละขั้นพร้อมรอบลองเล่นเกม และลองเกมไหนก็ได้อีกจากหน้าตั้งปลุก
 • หน้า Diagnostics ตรวจว่าเครื่องของคุณยอมให้ปลุกดังตรงเวลา พร้อมวิธีแก้สำหรับเครื่องที่บล็อกไว้
 
 เป็นส่วนตัวตั้งแต่การออกแบบ
