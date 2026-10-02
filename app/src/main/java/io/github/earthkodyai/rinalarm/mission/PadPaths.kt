@@ -48,7 +48,7 @@ object PadPaths {
   fun inBand(seq: List<Pad>, grid: PadGrid): Boolean {
     if (seq.size < 2) return true
     val low = minCrossings(seq.size, grid)
-    return pathLength(seq, grid) / (seq.size - 1) >= minStep(grid) && crossings(seq, grid) in low..low + 2
+    return pathLength(seq, grid) / (seq.size - 1) >= minStep(grid) && crossings(seq, grid) in low..maxCrossings(seq.size, low)
   }
 
   /** The shortest mean step allowed, in pads: about the median of a free draw on each board. */
@@ -57,6 +57,15 @@ object PadPaths {
   /** The fewest crossings a path of [length] pads must have: about the median of a free draw, so most rounds qualify. */
   fun minCrossings(length: Int, grid: PadGrid): Int =
     if (grid == PadGrid.THREE) maxOf(0, (length - 4) / 2) else if (length >= 6) 1 else 0
+
+  /**
+   * The most crossings in the band: 2 above the fewest, so rounds of a level stay alike. Past [LONG] pads (tournament
+   * levels past 14) crossings pile up faster than that band moves and almost no draw fit (0 of 20 at 35 pads, 180 ms of
+   * tries each, measured); there more crossings only make it harder, so the band is open above.
+   */
+  private fun maxCrossings(length: Int, low: Int): Int = if (length <= LONG) low + 2 else Int.MAX_VALUE
+
+  private const val LONG = 20
 
   /** How far her finger travels, in pads (a side is 1, a diagonal √2). */
   fun pathLength(seq: List<Pad>, grid: PadGrid): Double =

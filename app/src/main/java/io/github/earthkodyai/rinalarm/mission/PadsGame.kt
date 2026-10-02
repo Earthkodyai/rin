@@ -154,6 +154,12 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
   /** Time from each right tap's wait to the tap (G.2): next to a miss's +ms, it tells a skipped pad from a lost tap. */
   private val tapGaps = mutableListOf<Long>()
 
+  /**
+   * The time the user spent answering, over every right tap so far: from her last press (or their previous tap) to each
+   * tap. Rin's demo is not in it. The tournament's tie-break (G.5).
+   */
+  fun thinkMs(): Long = tapGaps.sum()
+
   /** The median of [tapGaps], or null before the first right tap. */
   fun medianTapMs(): Long? = tapGaps.sorted().let { if (it.isEmpty()) null else it[it.size / 2] }
 
