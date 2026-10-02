@@ -8,19 +8,18 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The pads at each level (G.2): every level's rules, the 3×3 board, repeats, and Easy unchanged. */
+/** The pads at each level (G.2, G.4): every level's rules, the 3×3 board, shaped sequences, and Easy unchanged. */
 class PadsLevelsTest {
   private var now = 10_000L
 
-  /** Ticks the game at each moment it asks for until [phase], collecting the pads it lights and the lifts on the way. */
-  private fun PadsGame.runUntil(phase: PadsPhase, lit: MutableList<Pad> = mutableListOf(), lifts: MutableList<Pad> = mutableListOf()): List<Pad> {
+  /** Ticks the game at each moment it asks for until [phase], collecting the pads it lights on the way. */
+  private fun PadsGame.runUntil(phase: PadsPhase, lit: MutableList<Pad> = mutableListOf()): List<Pad> {
     var guard = 0
     while (state.phase != phase) {
       now = checkNotNull(state.nextAt) { "stuck in ${state.phase}" }
       val before = state
       tick(now)
       if (state.flash != before.flash) lit += checkNotNull(state.lit)
-      if (state.lifting && !before.lifting) lifts += checkNotNull(state.hand)
       check(guard++ < 500)
     }
     return lit
@@ -34,7 +33,7 @@ class PadsLevelsTest {
       assertEquals(3_000L, tapTimeoutMs)
       assertEquals(450L to 450L, moveMs to pressMs)
       assertEquals(PadGrid.TWO, grid)
-      assertFalse(repeats)
+      assertFalse(shaped)
     }
   }
 
@@ -73,7 +72,7 @@ class PadsLevelsTest {
       assertTrue(harder.grid.size >= easier.grid.size)
     }
     assertEquals(listOf(PadGrid.TWO, PadGrid.TWO, PadGrid.THREE, PadGrid.THREE), rules.map { it.grid })
-    assertEquals(listOf(false, false, true, true), rules.map { it.repeats })
+    assertEquals(listOf(false, true, true, true), rules.map { it.shaped })
     assertEquals(listOf(7, 8, 9), rules.last().lengths)
   }
 
@@ -116,42 +115,57 @@ class PadsLevelsTest {
   }
 
   @Test
-  fun hardAndUp_useAllNinePads_andRepeatOne_herHandLiftingBetweenThePresses() {
-    for (level in listOf(Difficulty.HARD, Difficulty.NIGHTMARE)) {
+  fun aboveEasy_everySequenceKeepsThePathRules_andEveryPadIsUsed() {
+    for (level in listOf(Difficulty.NORMAL, Difficulty.HARD, Difficulty.NIGHTMARE)) {
       val rules = PadsRules.forLevel(level)
       val used = mutableSetOf<Pad>()
-      var repeats = 0
-      for (seed in 0L until 40) {
+      for (seed in 0L until 200) {
         val g = PadsGame(rules, Random(seed))
         g.start(now)
         val sequence = g.state.sequence
-        val lifts = mutableListOf<Pad>()
-        // Both presses of a repeated pad light it: the demo shows exactly the sequence.
-        assertEquals(sequence, g.runUntil(PadsPhase.INPUT, lifts = lifts))
-        val expected = sequence.zipWithNext().filter { (a, b) -> a == b }.map { it.first }
-        assertEquals(expected, lifts)
-        repeats += expected.size
+        assertTrue("$level seed $seed: $sequence", PadPaths.keepsTheRules(sequence, rules.grid))
+        // The demo shows exactly the sequence, one press per pad.
+        assertEquals(sequence, g.runUntil(PadsPhase.INPUT))
         used += sequence
       }
-      assertEquals(PadGrid.THREE.pads.toSet(), used)
-      assertTrue("$level: $repeats", repeats > 0)
+      assertEquals("$level", rules.grid.pads.toSet(), used)
     }
   }
 
   @Test
-  fun aRepeatedPad_isTappedTwice() {
-    val rules = PadsRules.forLevel(Difficulty.HARD)
-    val seed = (0L until 200).first { s -> PadsGame(rules, Random(s)).start(0).sequence.zipWithNext().any { (a, b) -> a == b } }
-    val g = PadsGame(rules, Random(seed))
-    g.start(now)
-    g.runUntil(PadsPhase.INPUT)
-    val sequence = g.state.sequence
-    val at = sequence.zipWithNext().indexOfFirst { (a, b) -> a == b }
-    sequence.take(at + 1).forEach { g.tap(it, ++now) }
-    // The same pad again is the next right tap, not a miss.
-    g.tap(sequence[at + 1], ++now)
-    assertEquals(PadsPhase.INPUT, g.state.phase)
-    assertEquals(at + 2, g.state.entered)
+  fun aShapedSequence_hasNoEasyShape() {
+    // Every length a level or a tournament round asks of each board (2×2: Normal's 4–6).
+    val lengths = mapOf(PadGrid.TWO to listOf(4, 5, 6, 7), PadGrid.THREE to listOf(5, 6, 7, 8, 9, 12, 20))
+    for ((grid, all) in lengths) for (length in all) {
+      val random = Random(length * 31L + grid.ordinal)
+      repeat(100) {
+        val seq = PadPaths.draw(length, grid, random)
+        assertEquals(length, seq.size)
+        for (i in seq.indices) {
+          if (i >= 1) assertTrue("twice in a row: $seq", seq[i] != seq[i - 1])
+          if (i >= 2) assertTrue("A-B-A: $seq", seq[i] != seq[i - 2])
+        }
+        val pairs = seq.zipWithNext()
+        assertEquals("a pair twice: $seq", pairs.size, pairs.toSet().size)
+        assertTrue("band: $seq", PadPaths.inBand(seq, grid))
+      }
+    }
+  }
+
+  @Test
+  fun thePathRules_rejectTheShapesTheyName() {
+    val three = PadGrid.THREE
+    // Red, purple, blue: the top row, a straight line.
+    assertFalse(PadPaths.keepsTheRules(listOf(Pad.RED, Pad.PURPLE, Pad.BLUE), three))
+    // Round the 2×2 board: red, blue, green, yellow.
+    assertFalse(PadPaths.keepsTheRules(listOf(Pad.RED, Pad.BLUE, Pad.GREEN, Pad.YELLOW), PadGrid.TWO))
+    // A spiral in from the top-left corner never crosses itself: below Nightmare's band (at least 2 crossings).
+    assertEquals(2, PadPaths.minCrossings(9, three))
+    val noCrossing = listOf(Pad.RED, Pad.PURPLE, Pad.BLUE, Pad.ORANGE, Pad.GREEN, Pad.PINK, Pad.YELLOW, Pad.CYAN, Pad.WHITE)
+    assertEquals(0, PadPaths.crossings(noCrossing, three))
+    assertFalse(PadPaths.inBand(noCrossing, three))
+    // The two diagonals of the 2×2 board cross once.
+    assertEquals(1, PadPaths.crossings(listOf(Pad.RED, Pad.GREEN, Pad.BLUE, Pad.YELLOW), PadGrid.TWO))
   }
 
   @Test

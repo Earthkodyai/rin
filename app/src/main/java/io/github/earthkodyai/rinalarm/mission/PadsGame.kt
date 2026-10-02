@@ -44,7 +44,8 @@ enum class PadGrid(val size: Int, val pads: List<Pad>) {
  * @property exitMs her hand leaving the grid after the last press. The user may already answer while it leaves (dev-3:
  *   taps in that gap were ignored, so the next right tap read as wrong); it is added to their first tap's time.
  * @property scoldMs how long the screen stays on Rin after a miss before a new sequence.
- * @property repeats whether a pad may come twice in a row: her hand lifts and presses it again.
+ * @property shaped sequences from [PadPaths] (G.4): no easy shapes, every round in one band of path length and
+ *   crossings. Off at Easy, which keeps its held-out draws.
  */
 data class PadsRules(
   val lengths: List<Int> = listOf(3, 4, 5),
@@ -56,7 +57,7 @@ data class PadsRules(
   /** How long a pad stays lit after the user taps it. */
   val tapFlashMs: Long = 250,
   val grid: PadGrid = PadGrid.TWO,
-  val repeats: Boolean = false,
+  val shaped: Boolean = false,
 ) {
   init {
     require(lengths.isNotEmpty() && lengths.all { it >= 1 })
@@ -65,16 +66,17 @@ data class PadsRules(
   companion object {
     /**
      * Each level's game (plan phase-games, D33): longer sequences, a faster hand, less time per tap, then the 3×3
-     * board with repeats. Nightmare's 7–9 pads lie past most adults' spatial span (Corsi, ~5–6 on nine blocks).
+     * board; above Easy every sequence is shaped (G.4). Nightmare's 7–9 pads lie past most adults' spatial span
+     * (Corsi, ~5–6 on nine blocks).
      */
     fun forLevel(level: Difficulty): PadsRules =
       when (level) {
         Difficulty.EASY -> PadsRules()
-        Difficulty.NORMAL -> PadsRules(lengths = listOf(4, 5, 6), tapTimeoutMs = 2_500, moveMs = 350, pressMs = 350)
+        Difficulty.NORMAL -> PadsRules(lengths = listOf(4, 5, 6), tapTimeoutMs = 2_500, moveMs = 350, pressMs = 350, shaped = true)
         Difficulty.HARD ->
-          PadsRules(lengths = listOf(5, 6, 7), tapTimeoutMs = 2_000, moveMs = 300, pressMs = 300, grid = PadGrid.THREE, repeats = true)
+          PadsRules(lengths = listOf(5, 6, 7), tapTimeoutMs = 2_000, moveMs = 300, pressMs = 300, grid = PadGrid.THREE, shaped = true)
         Difficulty.NIGHTMARE ->
-          PadsRules(lengths = listOf(7, 8, 9), tapTimeoutMs = 1_200, moveMs = 220, pressMs = 200, grid = PadGrid.THREE, repeats = true)
+          PadsRules(lengths = listOf(7, 8, 9), tapTimeoutMs = 1_200, moveMs = 220, pressMs = 200, grid = PadGrid.THREE, shaped = true)
       }
   }
 }
@@ -128,8 +130,6 @@ data class PadsState(
   /** PadsRules.grid and PadsRules.moveMs, for the board and her hand's glide. */
   val grid: PadGrid = PadGrid.TWO,
   val moveMs: Long = 450,
-  /** Her hand is on the pad it just pressed and lifts to press it again (a repeat, Hard and up). */
-  val lifting: Boolean = false,
 )
 
 /**
@@ -244,7 +244,6 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
         sequence = sequence,
         hand = sequence.first(),
         pressing = false,
-        lifting = false,
         lit = null,
         entered = 0,
         miss = null,
@@ -263,7 +262,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
       val end = demoStart + s.sequence.size * step
       waitFrom = end
       inputDeadline = end + rules.exitMs + rules.tapTimeoutMs
-      return s.copy(phase = PadsPhase.INPUT, hand = null, pressing = false, lifting = false, lit = null, nextAt = inputDeadline)
+      return s.copy(phase = PadsPhase.INPUT, hand = null, pressing = false, lit = null, nextAt = inputDeadline)
     }
     val stepStart = demoStart + i * step
     val pressing = now >= stepStart + rules.moveMs
@@ -271,7 +270,6 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
     return s.copy(
       hand = pad,
       pressing = pressing,
-      lifting = !pressing && i > 0 && s.sequence[i - 1] == pad,
       lit = if (pressing) pad else null,
       // A new press is a new note, even for a lit pad left over from the user's last tap.
       flash = if (pressing && !s.pressing) s.flash + 1 else s.flash,
@@ -285,7 +283,6 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
       phase = PadsPhase.SCOLD,
       hand = null,
       pressing = false,
-      lifting = false,
       lit = null,
       miss = miss,
       mistakes = s.mistakes + if (miss == Miss.WRONG) 1 else 0,
@@ -295,13 +292,14 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
   }
 
   /**
-   * Below Hard no pad twice in a row, so every step of the demo is a visible move of her hand. Easy draws exactly as
-   * before G.2 (same board order, same calls), so a logged seed still replays.
+   * Never a pad twice in a row, so every step of the demo is a visible move of her hand. Easy draws exactly as before
+   * G.2 (same board order, same calls), so a logged seed still replays; the levels above it draw from [PadPaths].
    */
   private fun sequence(length: Int): List<Pad> {
+    if (rules.shaped) return PadPaths.draw(length, rules.grid, random)
     val out = ArrayList<Pad>(length)
     repeat(length) {
-      val options = if (rules.repeats) rules.grid.pads else rules.grid.pads.filter { it != out.lastOrNull() }
+      val options = rules.grid.pads.filter { it != out.lastOrNull() }
       out += options[random.nextInt(options.size)]
     }
     return out

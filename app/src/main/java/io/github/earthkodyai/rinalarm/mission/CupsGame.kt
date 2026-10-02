@@ -11,9 +11,8 @@ import kotlin.random.Random
  * ones (docs/spikes/3.4-cup-shuffle.md). [forLevel] gives the other levels theirs (G.3, draft until G.4).
  *
  * @property cups how many cups stand on the table (3 to 5, G.3).
- * @property balanced every shuffle moves the ball's cup in at least half its swaps, and with as many swaps as cups
- *   every cup at least once, while the ball still ends anywhere with equal odds (G.3, the user: "some rounds Rin
- *   barely touches the ball's cup, so it is easy to guess"). Off at Easy, which keeps its held-out draws.
+ * @property shaped every shuffle is drawn to one band of difficulty (G.3, G.4: see [CupsGame]'s shapedSwaps), while
+ *   the ball still ends anywhere with equal odds. Off at Easy, which keeps its held-out draws.
  * @property swaps swaps in the shuffle before the 1st, 2nd and 3rd pick of a streak; its size is the streak to win.
  * @property leadMs her hands reaching the cups before an act starts moving them; [firstLeadMs] for the first one, so the
  *   table settles in view before the ball shows.
@@ -34,7 +33,7 @@ data class CupsRules(
   val rightMs: Long = 600,
   val scoldMs: Long = 2_500,
   val cups: Int = 3,
-  val balanced: Boolean = false,
+  val shaped: Boolean = false,
 ) {
   init {
     require(swaps.isNotEmpty() && swaps.all { it >= 1 })
@@ -54,9 +53,9 @@ data class CupsRules(
     fun forLevel(level: Difficulty): CupsRules =
       when (level) {
         Difficulty.EASY -> CupsRules()
-        Difficulty.NORMAL -> CupsRules(swaps = listOf(5, 6, 7), swapMs = 380, gapMs = 120, balanced = true)
-        Difficulty.HARD -> CupsRules(swaps = listOf(6, 7, 8), swapMs = 320, gapMs = 100, cups = 4, balanced = true)
-        Difficulty.NIGHTMARE -> CupsRules(swaps = listOf(8, 10, 12), swapMs = 230, gapMs = 60, cups = 5, balanced = true)
+        Difficulty.NORMAL -> CupsRules(swaps = listOf(5, 6, 7), swapMs = 380, gapMs = 120, shaped = true)
+        Difficulty.HARD -> CupsRules(swaps = listOf(6, 7, 8), swapMs = 320, gapMs = 100, cups = 4, shaped = true)
+        Difficulty.NIGHTMARE -> CupsRules(swaps = listOf(8, 10, 12), swapMs = 230, gapMs = 60, cups = 5, shaped = true)
       }
 
     /**
@@ -252,47 +251,48 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
 
   private fun shuffle(now: Long): CupsState {
     val n = rules.swaps[state.streak]
-    val swaps = if (rules.balanced) balancedSwaps(n) else draw(n)
+    val swaps = if (rules.shaped) shapedSwaps(n) else draw(n)
     val act = CupsAct.Shuffle(ball, now, swaps, rules.leadMs, rules.swapMs, rules.gapMs, rules.exitMs, rules.cups)
     ball = CupsTimeline.afterSwaps(swaps, ball)
     shuffles++
     return set(state.copy(phase = CupsPhase.SHUFFLE, act = act, picked = null, right = null, nextAt = act.endsAt))
   }
 
-  /** [n] swaps, never the same pair twice in a row: a swap undone at once looks like nothing happened. */
-  private fun draw(n: Int): List<Pair<Int, Int>> {
+  /**
+   * [n] swaps, never the same pair twice in a row: a swap undone at once looks like nothing happened. [far] weighs each
+   * pair by how many slots apart its cups are, so long swaps that pass the other cups come more often.
+   */
+  private fun draw(n: Int, far: Boolean = false): List<Pair<Int, Int>> {
     val swaps = ArrayList<Pair<Int, Int>>(n)
     while (swaps.size < n) {
-      val pair = pairs[random.nextInt(pairs.size)]
+      val pair = if (far) farPair() else pairs[random.nextInt(pairs.size)]
       if (pair != swaps.lastOrNull()) swaps += pair
     }
     return swaps
   }
 
-  /**
-   * A shuffle that keeps the ball's cup busy (CupsRules.balanced). The slot the ball ends in is drawn first, then
-   * shuffles until one ends there and moves the ball enough: asking only for enough moves would tie where it ends to
-   * how often it moved (with 4 cups every pair crosses her middle, so 7 swaps with at least 4 moves left a blind guess
-   * right 41% of the time). Takes ~10 draws, rarely 200 (simulated); after [BALANCE_TRIES] a plain draw.
-   */
-  private fun balancedSwaps(n: Int): List<Pair<Int, Int>> {
-    val end = random.nextInt(rules.cups)
-    repeat(BALANCE_TRIES) {
-      val swaps = draw(n)
-      if (CupsTimeline.afterSwaps(swaps, ball) == end && busy(swaps, ball)) return swaps
+  private fun farPair(): Pair<Int, Int> {
+    var r = random.nextInt(pairs.sumOf { it.second - it.first })
+    for (pair in pairs) {
+      r -= pair.second - pair.first
+      if (r < 0) return pair
     }
-    return draw(n)
+    return pairs.last()
   }
 
-  private fun busy(swaps: List<Pair<Int, Int>>, from: Int): Boolean {
-    var at = from
-    var moves = 0
-    for ((p, q) in swaps) {
-      if (at == p || at == q) moves++
-      at = if (at == p) q else if (at == q) p else at
+  /**
+   * A shuffle in one band of difficulty (CupsRules.shaped). The slot the ball ends in is drawn first, then shuffles
+   * until one ends there and [fair] holds: asking only for how the ball moves would tie where it ends to how often it
+   * moved (with 4 cups every pair crosses her middle, so 7 swaps with at least 4 moves left a blind guess right 41% of
+   * the time). Takes ~10 draws, rarely 100 (simulated); after [SHAPE_TRIES] a plain draw.
+   */
+  private fun shapedSwaps(n: Int): List<Pair<Int, Int>> {
+    val end = random.nextInt(rules.cups)
+    repeat(SHAPE_TRIES) {
+      val swaps = draw(n, far = true)
+      if (CupsTimeline.afterSwaps(swaps, ball) == end && fair(swaps, ball, rules.cups)) return swaps
     }
-    val touched = swaps.flatMap { listOf(it.first, it.second) }.toSet()
-    return 2 * moves >= swaps.size && (swaps.size < rules.cups || touched.size == rules.cups)
+    return draw(n)
   }
 
   private fun lift(now: Long, slots: List<Int>, hands: List<Int>, hold: Long?, lead: Long = rules.leadMs) =
@@ -307,8 +307,45 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
 
   private val pairs = CupsRules.pairs(rules.cups)
 
-  private companion object {
-    const val BALANCE_TRIES = 5_000
+  companion object {
+    private const val SHAPE_TRIES = 5_000
+
+    /**
+     * Whether a shuffle starting with the ball in slot [from] is neither easier nor harder than the rest of its level
+     * (G.4). What makes eyes lose a cup is a close pass with the others (multiple-object tracking), and what lets them
+     * keep it is a cup that sits still or one followed through move after move, so:
+     * - the ball's cup moves in 40–60% of the swaps (G.3: rounds where it barely moved were guessed);
+     * - never in more than 2 swaps in a row (the user: a cup swapped again and again is easy to follow);
+     * - at most half the swaps, and half the ball's, are between cups side by side (the user: too many of those; on 3
+     *   cups only 0–2 is long and it never comes twice in a row, so half is as far as it goes);
+     * - with as many swaps as cups, every cup moves at least once.
+     */
+    fun fair(swaps: List<Pair<Int, Int>>, from: Int, cups: Int): Boolean {
+      val n = swaps.size
+      var at = from
+      var moves = 0
+      var run = 0
+      var longestRun = 0
+      var ballSideBySide = 0
+      for ((p, q) in swaps) {
+        if (at == p || at == q) {
+          moves++
+          run++
+          longestRun = maxOf(longestRun, run)
+          if (q - p == 1) ballSideBySide++
+        } else {
+          run = 0
+        }
+        at = if (at == p) q else if (at == q) p else at
+      }
+      val sideBySide = swaps.count { (p, q) -> q - p == 1 }
+      val touched = swaps.flatMap { listOf(it.first, it.second) }.toSet()
+      return moves in 2 * n / 5..(3 * n + 4) / 5 &&
+        longestRun <= 2 &&
+        sideBySide <= (n + 1) / 2 &&
+        ballSideBySide <= (moves + 1) / 2 &&
+        (n < cups || touched.size == cups)
+    }
   }
 }
 

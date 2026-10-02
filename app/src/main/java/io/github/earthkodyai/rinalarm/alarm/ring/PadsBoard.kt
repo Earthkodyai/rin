@@ -124,24 +124,12 @@ internal fun PadsBoard(
     val handHeight = side
     val target = state.hand?.takeIf { it in grid.pads }
     val tipX = if (target == null) maxWidth / 2 else left + (pad + gap) * grid.column(target) + pad / 2
-    // A repeat (Hard and up): she lifts her finger well clear of the pad before pressing it again, so two presses on
-    // one pad read as two.
-    val lift = if (state.lifting) pad * 0.35f else 0.dp
-    val tipY =
-      if (target == null) (-8).dp else top + (pad + gap) * grid.row(target) + pad * 0.6f + (if (state.pressing) 6.dp else 0.dp) - lift
+    val tipY = if (target == null) (-8).dp else top + (pad + gap) * grid.row(target) + pad * 0.6f + (if (state.pressing) 6.dp else 0.dp)
     val move = tween<Dp>(state.moveMs.toInt())
     val x by animateDpAsState(tipX - handWidth / 2, move, label = "handX")
     val y by
-      animateDpAsState(
-        tipY - handHeight,
-        when {
-          state.pressing -> tween(90)
-          state.lifting -> tween((state.moveMs / 2).toInt())
-          else -> move
-        },
-        label = "handY",
-      )
-    val scale by animateFloatAsState(if (state.pressing) 0.95f else if (state.lifting) 1.06f else 1f, tween(90), label = "handPress")
+      animateDpAsState(tipY - handHeight, if (state.pressing) tween(90) else move, label = "handY")
+    val scale by animateFloatAsState(if (state.pressing) 0.95f else 1f, tween(90), label = "handPress")
     // Her forearm fades in over the top fifth instead of being cut by an edge nobody can see.
     Box(
       Modifier.fillMaxSize()

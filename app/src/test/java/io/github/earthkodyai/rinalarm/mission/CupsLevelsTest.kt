@@ -151,44 +151,67 @@ class CupsLevelsTest {
   }
 
   @Test
-  fun aboveEasy_everyShuffleKeepsTheBallsCupBusy_andTouchesEveryCup() {
+  fun aboveEasy_everyShuffleIsFair() {
     for (level in listOf(Difficulty.NORMAL, Difficulty.HARD, Difficulty.NIGHTMARE)) {
       val rules = CupsRules.forLevel(level)
-      assertTrue(rules.balanced)
+      assertTrue(rules.shaped)
       for (seed in 0L until 150) {
         val g = CupsGame(rules, Random(seed))
         g.start(0)
         g.untilPick(0)
         val shuffle = g.state.act as CupsAct.Shuffle
-        var at = shuffle.ball
-        var moves = 0
-        for ((p, q) in shuffle.swaps) {
-          if (at == p || at == q) moves++
-          at = if (at == p) q else if (at == q) p else at
-        }
-        assertTrue("$level seed $seed: $moves of ${shuffle.swaps.size}", 2 * moves >= shuffle.swaps.size)
-        val touched = shuffle.swaps.flatMap { listOf(it.first, it.second) }.toSet()
-        if (shuffle.swaps.size >= rules.cups) assertEquals((0 until rules.cups).toSet(), touched)
+        assertTrue("$level seed $seed: ${shuffle.swaps} from ${shuffle.ball}", CupsGame.fair(shuffle.swaps, shuffle.ball, rules.cups))
       }
     }
-    assertFalse(CupsRules.forLevel(Difficulty.EASY).balanced)
+    assertFalse(CupsRules.forLevel(Difficulty.EASY).shaped)
   }
 
   @Test
-  fun aBalancedShuffle_stillEndsAnywhere_withEvenOdds() {
-    // From every start, where the ball ends after Nightmare's first shuffle: a blind guess should do no better than 1 in 5.
+  fun fair_rejectsTheShufflesTheUserCalledEasy() {
+    // The ball's cup (slot 0) in three swaps in a row.
+    assertFalse(CupsGame.fair(listOf(0 to 2, 1 to 2, 0 to 1, 0 to 2, 1 to 2), from = 0, cups = 3))
+    // The ball's cup moved once in eight swaps.
+    assertFalse(CupsGame.fair(listOf(0 to 3, 1 to 2, 1 to 4, 0 to 4, 1 to 2, 1 to 4, 0 to 4, 1 to 2), from = 0, cups = 5))
+    // Six side-by-side swaps out of eight.
+    assertFalse(CupsGame.fair(listOf(1 to 2, 2 to 3, 1 to 2, 0 to 4, 2 to 3, 1 to 2, 0 to 3, 2 to 3), from = 1, cups = 5))
+    // Long swaps, the ball in 4 of 8 and never 3 in a row, every cup moved.
+    assertTrue(CupsGame.fair(listOf(0 to 4, 1 to 3, 0 to 3, 1 to 4, 2 to 3, 0 to 4, 1 to 3, 0 to 3), from = 0, cups = 5))
+  }
+
+  @Test
+  fun aboveEasy_sideBySideSwapsAreRarer_thanInAPlainDraw() {
+    // A plain draw on 5 cups is a third side by side (1–2 and 2–3 of 6 pairs); far pairs weigh more above Easy.
     val rules = CupsRules.forLevel(Difficulty.NIGHTMARE)
-    val ends = Array(5) { IntArray(5) }
-    for (seed in 0L until 3_000) {
+    var sideBySide = 0
+    var all = 0
+    for (seed in 0L until 500) {
       val g = CupsGame(rules, Random(seed))
       g.start(0)
       g.untilPick(0)
-      val shuffle = g.state.act as CupsAct.Shuffle
-      ends[shuffle.ball][CupsTimeline.afterSwaps(shuffle.swaps, shuffle.ball)]++
+      val swaps = (g.state.act as CupsAct.Shuffle).swaps
+      sideBySide += swaps.count { (p, q) -> q - p == 1 }
+      all += swaps.size
     }
-    for (row in ends) {
-      val best = row.max().toDouble() / row.sum()
-      assertTrue("best blind guess $best", best < 0.27)
+    assertTrue("$sideBySide of $all", sideBySide.toDouble() / all < 0.25)
+  }
+
+  @Test
+  fun aShapedShuffle_stillEndsAnywhere_withEvenOdds() {
+    // From every start, where the ball ends after the first shuffle: a blind guess should do no better than 1 in n.
+    for (level in listOf(Difficulty.NORMAL, Difficulty.HARD, Difficulty.NIGHTMARE)) {
+      val rules = CupsRules.forLevel(level)
+      val ends = Array(rules.cups) { IntArray(rules.cups) }
+      for (seed in 0L until 3_000) {
+        val g = CupsGame(rules, Random(seed))
+        g.start(0)
+        g.untilPick(0)
+        val shuffle = g.state.act as CupsAct.Shuffle
+        ends[shuffle.ball][CupsTimeline.afterSwaps(shuffle.swaps, shuffle.ball)]++
+      }
+      for (row in ends) {
+        val best = row.max().toDouble() / row.sum()
+        assertTrue("$level: best blind guess $best", best < 1.0 / rules.cups + 0.07)
+      }
     }
   }
 }

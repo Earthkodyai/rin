@@ -68,32 +68,48 @@ class PadsReplayTest {
     return Replay(loggedRightTaps, g.state.round, ahead, misses.size)
   }
 
+  /**
+   * The rings of 2026-10-02 (G.2) replayed here until G.4 changed how sequences above Easy are drawn; their seeds now
+   * draw other games. This plays one under today's rules, logs it the way ColourPadsMission does, and replays the log,
+   * so the next "that was right!" can be checked the same way.
+   */
   @Test
-  fun nightmareRing_2026_10_02() {
-    val r =
-      replay(
-        PadsRules.forLevel(Difficulty.NIGHTMARE),
-        seed = 30994926827693,
-        trace = "W1.5:CYAN/BLUE+344,W1.4:GREEN/CYAN+337,W2.1:CYAN/YELLOW+1011,S2.1",
-        loggedRightTaps = 14,
-      )
-    assertEquals(1, r.roundsPassed)
-    println("nightmare: ${r.skippedAhead}/${r.misses} misses on the next pad")
-  }
-
-  @Test
-  fun hardRing_2026_10_02() {
-    val r =
-      replay(
-        PadsRules.forLevel(Difficulty.HARD),
-        seed = 31235253602169,
-        trace =
-          "W2.4:CYAN/ORANGE+607,W2.6:RED/PURPLE+546,W3.5:PURPLE/CYAN+655,W3.5:PINK/ORANGE+564,W3.3:WHITE/YELLOW+526," +
-            "W3.3:WHITE/PURPLE+569,W3.3:CYAN/YELLOW+535,W3.4:ORANGE/GREEN+616,W3.2:CYAN/PURPLE+624,W3.4:ORANGE/BLUE+754," +
-            "W3.1:GREEN/ORANGE+1595,W3.2:RED/BLUE+509,W3.3:PINK/RED+697,W3.4:CYAN/GREEN+542",
-        loggedRightTaps = 46,
-      )
-    assertEquals(2, r.roundsPassed)
-    println("hard: ${r.skippedAhead}/${r.misses} misses on the next pad")
+  fun aLoggedGame_replaysFromItsSeedAndTrace() {
+    for (level in listOf(Difficulty.NORMAL, Difficulty.HARD, Difficulty.NIGHTMARE)) {
+      val rules = PadsRules.forLevel(level)
+      val seed = 30994926827693 + level.ordinal
+      var now = 1_000L
+      val g = PadsGame(rules, Random(seed))
+      var right = 0
+      fun toInput() {
+        while (g.state.phase != PadsPhase.INPUT) {
+          now = checkNotNull(g.state.nextAt)
+          g.tick(now)
+        }
+      }
+      fun rightTaps(n: Int) = g.state.sequence.take(n).forEach { g.tap(it, ++now).also { right++ } }
+      fun wrongAt(i: Int) {
+        rightTaps(i)
+        g.tap(rules.grid.pads.first { it != g.state.sequence[i] }, ++now)
+        now = checkNotNull(g.state.nextAt)
+        g.tick(now)
+      }
+      g.start(now)
+      toInput()
+      wrongAt(3)
+      toInput()
+      rightTaps(g.state.sequence.size)
+      toInput()
+      rightTaps(2)
+      now += rules.tapTimeoutMs
+      g.tick(now)
+      now = checkNotNull(g.state.nextAt)
+      g.tick(now)
+      toInput()
+      rightTaps(1)
+      val r = replay(rules, seed, g.missTrace(), loggedRightTaps = right)
+      assertEquals("$level", 1, r.roundsPassed)
+      assertEquals("$level", 2, r.misses)
+    }
   }
 }
