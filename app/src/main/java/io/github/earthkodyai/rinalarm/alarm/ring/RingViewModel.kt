@@ -500,6 +500,9 @@ constructor(
     if (started) return skip()
     started = true
     state.update { it.copy(inGame = true) }
+    // The tap itself shows the user is up (G.4 device ring): quiet from now, not from when her intro ends. Waiting for
+    // the game's own first activity let the tone come back at full for a moment between her intro and the game.
+    markActive()
     (running as? CupsMission)?.let(::startCups)
     introJob =
       viewModelScope.launch {
@@ -568,21 +571,24 @@ constructor(
     log(RingEventType.SCOLD_SWITCHED, ring, "scold=$on")
   }
 
+  /** Progress or a sign of it: the tone stays quiet and Rin's mood follows for RingPolicy.MISSION_IDLE. */
+  private fun markActive() {
+    if (practice != null) practiceProgressAt = clock.now() else ringState.reportProgress(clock.now())
+    refreshPhase()
+    // No event marks the idle timeout, so a timer does: STALLED arrives when progress simply stops. Each step
+    // restarts it; a one-shot rather than a ticker, so nothing keeps running once the ring is over.
+    stallJob?.cancel()
+    stallJob =
+      viewModelScope.launch {
+        delay(RingPolicy.MISSION_IDLE.toMillis())
+        refreshPhase()
+      }
+  }
+
   private fun onProgress(ring: ActiveRing, progress: MissionProgress) {
     val before = state.value.progress
     state.update { it.copy(progress = progress) }
-    if (before != null && (progress.done > before.done || progress.activity > before.activity)) {
-      if (practice != null) practiceProgressAt = clock.now() else ringState.reportProgress(clock.now())
-      refreshPhase()
-      // No event marks the idle timeout, so a timer does: STALLED arrives when progress simply stops. Each step
-      // restarts it; a one-shot rather than a ticker, so nothing keeps running once the ring is over.
-      stallJob?.cancel()
-      stallJob =
-        viewModelScope.launch {
-          delay(RingPolicy.MISSION_IDLE.toMillis())
-          refreshPhase()
-        }
-    }
+    if (before != null && (progress.done > before.done || progress.activity > before.activity)) markActive()
     when (progress.state) {
       MissionState.RUNNING -> Unit
       MissionState.PASSED -> {

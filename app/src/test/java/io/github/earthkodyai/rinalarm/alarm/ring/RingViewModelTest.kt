@@ -180,6 +180,21 @@ class RingViewModelTest {
     }
 
   @Test
+  fun letsPlay_quietsTheToneAtOnce_beforeHerIntroEnds() =
+    runTest(main.dispatcher) {
+      val pads = FakePadsMission()
+      val viewModel = RingViewModel(ringState, { pads }, log, backgroundScope, { clockMs }, readiness, time, book, { voice }, settings, alarms, SavedStateHandle())
+      ringState.set(ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      runCurrent()
+      assertEquals(null, ringState.lastProgressAt)
+      clockMs = 7_000
+      viewModel.startGame()
+      // No runCurrent: her intro has not even started, and the game has not begun.
+      assertEquals(7_000L, ringState.lastProgressAt)
+      assertEquals(emptyList<String>(), pads.calls)
+    }
+
+  @Test
   fun colourPads_forwardsPlayAndTaps_andAMissCutsToRinSulking() =
     runTest(main.dispatcher) {
       val pads = FakePadsMission()
