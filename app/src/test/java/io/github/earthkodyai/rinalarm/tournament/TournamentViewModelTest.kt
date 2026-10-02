@@ -120,7 +120,8 @@ class TournamentViewModelTest {
     runCurrent()
   }
 
-  private val countdownMs = 3 * TournamentViewModel.COUNT_MS + TournamentViewModel.GO_MS
+  private val goMs = 3 * TournamentViewModel.COUNT_MS + TournamentViewModel.GO_MS
+  private val countdownMs = goMs + TournamentViewModel.GO_CLEAR_MS
 
   @Test
   fun padsRun_countsDown_playsLevels_andEndsAtTheFirstMiss_withTheAnswerShown() =
@@ -130,10 +131,13 @@ class TournamentViewModelTest {
       assertEquals(3, vm.uiState.value.count)
       wait(TournamentViewModel.COUNT_MS)
       assertEquals(2, vm.uiState.value.count)
-      wait(countdownMs - TournamentViewModel.COUNT_MS)
+      wait(goMs - TournamentViewModel.COUNT_MS)
+      assertEquals(-1, vm.uiState.value.count) // GO is fading; the level waits for it
+      assertEquals(TournamentPhase.COUNTDOWN, vm.uiState.value.phase)
+      wait(TournamentViewModel.GO_CLEAR_MS)
       assertEquals(TournamentPhase.PLAYING, vm.uiState.value.phase)
       val go = vm.uiState.value.startedAt
-      assertEquals(countdownMs, go)
+      assertEquals(goMs, go)
       val one = levels.single() as FakePads
       assertTrue(one.begun)
 
@@ -163,7 +167,7 @@ class TournamentViewModelTest {
       val result = vm.uiState.value
       assertEquals(TournamentPhase.RESULTS, result.phase)
       // Timed from GO to the level passed, not to the miss.
-      assertEquals(TournamentScore(TournamentGame.PADS, 1, 9_000), result.score)
+      assertEquals(TournamentScore(TournamentGame.PADS, 1, 9_000 + TournamentViewModel.GO_CLEAR_MS), result.score)
       assertTrue(result.newBest)
       assertEquals(result.score, store.bests.value[TournamentGame.PADS])
     }

@@ -12,6 +12,8 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,9 +27,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -47,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -179,7 +185,9 @@ internal fun TournamentScreen(
   var topPx by remember { mutableIntStateOf(0) }
   var bottomPx by remember { mutableIntStateOf(0) }
   val top = with(density) { topPx.toDp() }
-  val bottom = with(density) { bottomPx.toDp() }
+  // The sheet is the cups' only (the user: elsewhere it just got in the way); the pads run down to the screen's edge.
+  val navBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+  val bottom = if (state.game == TournamentGame.CUPS) with(density) { bottomPx.toDp() } else navBar
   val pads = state.pads.takeIf { state.game == TournamentGame.PADS }
   val padsUp =
     pads != null &&
@@ -190,7 +198,7 @@ internal fun TournamentScreen(
     // The ring screen's sky (the user: the same finish as the alarm's games).
     Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
     if (p.night) Stars(Modifier.fillMaxSize())
-    if (topPx > 0 && bottomPx > 0) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
+    if (topPx > 0 && (state.game == TournamentGame.PADS || bottomPx > 0)) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
     AnimatedVisibility(padsUp, enter = fadeIn(), exit = fadeOut()) {
       Box(Modifier.fillMaxSize().padding(top = top + 4.dp).rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true))
     }
@@ -207,8 +215,22 @@ internal fun TournamentScreen(
     }
 
     TopBar(state, Modifier.align(Alignment.TopCenter).fillMaxWidth().onSizeChanged { topPx = it.height }.statusBarsPadding())
-    // The ring screen's sheet, joined to the pads' surface while they are up, so the bottom edge is finished.
-    Sheet(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomPx = it.height }, joined = padsUp) { Hint(state) }
+    if (state.game == TournamentGame.CUPS) {
+      // The ring screen's sheet, up only once the cups game has started. It is always laid out and only slides, so
+      // her table is framed for it from the first moment and never moves when it comes (a reframe, 4.3).
+      val sheetUp =
+        state.phase == TournamentPhase.PLAYING || state.phase == TournamentPhase.BANNER || state.phase == TournamentPhase.REVEAL
+      val shown by animateFloatAsState(if (sheetUp) 1f else 0f, tween(SHEET_SLIDE_MS), label = "sheet")
+      Sheet(
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomPx = it.height }.graphicsLayer {
+          translationY = (1f - shown) * size.height
+          alpha = shown
+        },
+        joined = false,
+      ) {
+        Hint(state)
+      }
+    }
 
     Countdown(state, Modifier.align(Alignment.Center))
     LevelBanner(state, Modifier.align(Alignment.Center))
@@ -259,14 +281,13 @@ private fun TopBar(state: TournamentUiState, modifier: Modifier) {
   }
 }
 
-/** One line of whose turn it is, in a row of fixed height so the sheet (and her framing) never moves. */
+/** The cups' line of whose turn it is, in a row of fixed height so the sheet (and her framing) never moves. */
 @Composable
 private fun Hint(state: TournamentUiState) {
   val p = RinTheme.palette
   val text =
     when {
       state.phase != TournamentPhase.PLAYING -> ""
-      state.game == TournamentGame.PADS -> stringResource(if (state.pads?.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch)
       else -> stringResource(if (state.cups?.phase == CupsPhase.PICK) R.string.cups_pick else R.string.cups_watch)
     }
   Box(Modifier.fillMaxWidth().height(HINT_HEIGHT), contentAlignment = Alignment.Center) {
@@ -284,7 +305,7 @@ private fun Hint(state: TournamentUiState) {
 @Composable
 private fun Countdown(state: TournamentUiState, modifier: Modifier) {
   val p = RinTheme.palette
-  AnimatedVisibility(state.phase == TournamentPhase.COUNTDOWN, modifier, enter = fadeIn(), exit = fadeOut()) {
+  AnimatedVisibility(state.phase == TournamentPhase.COUNTDOWN && state.count >= 0, modifier, enter = fadeIn(), exit = fadeOut(tween(GO_FADE_MS))) {
     AnimatedContent(
       state.count,
       transitionSpec = { (scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 2.2f) + fadeIn()) togetherWith fadeOut() },
@@ -346,6 +367,10 @@ private fun Results(score: TournamentScore, best: TournamentScore?, newBest: Boo
 
 /** The ring screen's game row is at least this tall too (GAME_ROW_MIN): one line, never a jump. */
 private val HINT_HEIGHT = 60.dp
+
+private const val SHEET_SLIDE_MS = 300
+/** GO! fades out this fast, within the pause before the first level (TournamentViewModel.GO_CLEAR_MS). */
+private const val GO_FADE_MS = 150
 
 private val BigShout = TextStyle(fontFamily = RinRounded, fontSize = 96.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
 

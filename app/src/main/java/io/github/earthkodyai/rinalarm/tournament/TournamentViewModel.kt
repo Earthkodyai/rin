@@ -45,7 +45,7 @@ enum class TournamentPhase {
 }
 
 /**
- * @property count during [TournamentPhase.COUNTDOWN]: 3, 2, 1, then 0 for GO.
+ * @property count during [TournamentPhase.COUNTDOWN]: 3, 2, 1, then 0 for GO, then -1 as GO fades.
  * @property startedAt GO on the elapsed clock (the running timer); [endedAt] the miss, where the timer stops.
  * @property score the run's result, from [TournamentPhase.RESULTS] on; [newBest] whether it beat [best].
  */
@@ -147,7 +147,9 @@ constructor(
         }
         val go = clock.now()
         run.start(go)
-        state.update { it.copy(startedAt = go) }
+        // GO! fades before the first level shows (it stood over the pads as they came).
+        state.update { it.copy(startedAt = go, count = -1) }
+        delay(GO_CLEAR_MS)
         startLevel(1)
       }
   }
@@ -235,6 +237,7 @@ constructor(
     const val TABLE_WAIT_MS = 4_000L
     const val COUNT_MS = 700L
     const val GO_MS = 450L
+    const val GO_CLEAR_MS = 180L
     const val PASS_HOLD_MS = 450L
     const val BANNER_MS = 1_000L
     const val REVEAL_MS = 1_800L
