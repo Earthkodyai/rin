@@ -83,7 +83,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * after the win her won line, then "Play again" or "Done" ([RingUiState.practice]).
  *
  * G.1: every button works while she talks and cuts her line short ([cutLine]); a tap anywhere skips her intro or her
- * scold ([skip]). While she scolds, a switch turns her scolding off ([setScold]) for this alarm and new ones.
+ * scold ([skip]). While she scolds, a switch turns her scolding off ([setScold]) for this alarm and new ones. With
+ * scolding off a miss is quiet ([RingUiState.quietMiss], the user): no Rin, a red cross and a red glow at the screen's
+ * edges for a moment, and the game goes on.
  */
 @HiltViewModel
 class RingViewModel
@@ -149,6 +151,8 @@ constructor(
   private var farewell: Job? = null
   /** Her intro line after "Let's play", while she says it: a tap cuts it and the game starts. */
   private var introLine: Job? = null
+  /** A quiet miss's moment, after which the game goes on by itself. */
+  private var quietMissJob: Job? = null
 
   private var mission: Mission? = null
   private var missionJob: Job? = null
@@ -377,8 +381,14 @@ constructor(
 
   private fun onCups(game: CupsState) {
     val before = state.value.cups
-    // A flipped scold switch stays in view for the rest of that scold only.
-    state.update { it.copy(cups = game, scoldSwitched = it.scoldSwitched && game.phase == CupsPhase.REVEAL && game.right == false) }
+    val wrong = game.phase == CupsPhase.REVEAL && game.right == false
+    // A flipped scold switch stays in view for the rest of that scold only; so does a quiet miss.
+    state.update { it.copy(cups = game, scoldSwitched = it.scoldSwitched && wrong, quietMiss = it.quietMiss && wrong) }
+    if (wrong && game.picks != before?.picks && calm()) {
+      trouble = true
+      quietMiss(QUIET_MISS_CUPS_MS)
+      return
+    }
     if (game.phase == CupsPhase.REVEAL && game.right == false && game.picks != before?.picks) {
       // A wrong pick: she sulks with a huff while both cups are up (the same beat as the colour pads' scold).
       cue(Gesture.HUFF)
@@ -443,13 +453,34 @@ constructor(
 
   private fun onGame(game: PadsState) {
     val before = state.value.pads
-    state.update { it.copy(pads = game, scoldSwitched = it.scoldSwitched && game.phase == PadsPhase.SCOLD) }
+    val missed = game.phase == PadsPhase.SCOLD
+    state.update { it.copy(pads = game, scoldSwitched = it.scoldSwitched && missed, quietMiss = it.quietMiss && missed) }
+    if (missed && before?.phase != PadsPhase.SCOLD && calm()) {
+      trouble = true
+      quietMiss(QUIET_MISS_PADS_MS)
+      return
+    }
     if (game.phase == PadsPhase.SCOLD && before?.phase != PadsPhase.SCOLD) {
       // The cut to Rin (D17): she sulks with a huff for the length of the scold.
       cue(Gesture.HUFF)
       trouble = true
       say(Pools.padsScold(game.miss ?: Miss.WRONG), gesture = false)
     }
+  }
+
+  /**
+   * A miss with scolding off: no Rin and no line, only the red cross and glow for [ms], then the next try (the same
+   * skip a tap makes, so a tap still ends it sooner).
+   */
+  private fun quietMiss(ms: Long) {
+    state.update { it.copy(quietMiss = true) }
+    quietMissJob?.cancel()
+    quietMissJob =
+      viewModelScope.launch {
+        delay(ms)
+        (mission as? PadsMission)?.skipScold()
+        (mission as? CupsMission)?.skipScold()
+      }
   }
 
   /**
@@ -673,6 +704,8 @@ constructor(
     cupsWaitJob = null
     voiceJobs.forEach(Job::cancel)
     voiceJobs = emptyList()
+    quietMissJob?.cancel()
+    quietMissJob = null
     introJob?.cancel()
     introJob = null
     gameHush = Hush.NONE
@@ -701,6 +734,13 @@ constructor(
 
     /** After her page is ready, a moment for its first frames before she speaks. */
     const val OPENING_SETTLE_MS = 300L
+
+    /**
+     * A quiet miss's moment (scolding off, the user: "just a moment"): the pads come back with a new demo after it; the
+     * cups, which must first rise to show the ball, come down and shuffle after theirs (up at 550 ms, so ~0.45 s seen).
+     */
+    const val QUIET_MISS_PADS_MS = 700L
+    const val QUIET_MISS_CUPS_MS = 1_000L
 
     /** How long Rin claps after a pass before the ring screen closes, when she has no lines to say. */
     const val CELEBRATE_MS = 2_500L
@@ -740,6 +780,7 @@ constructor(
  * @property line Rin's line on screen (the subtitle), or null.
  * @property leaving a snooze or the emergency stop was tapped: the screen shows only Rin until her line is over.
  * @property calm no pouting (scold off, or a rest or sick day): a pouty mood shows as cheerful.
+ * @property quietMiss a miss with scolding off: the red cross and glow show, Rin stays out of it (the pads stay up).
  * @property scold the scold switch's position (G.1); [scoldSwitched]: it was flipped on this screen, so it stays in view
  *   for the rest of that scold even when off.
  * @property practice a practice round (UX.8): no ring behind it, "Done" instead of Snooze and the emergency hold.
@@ -766,12 +807,13 @@ data class RingUiState(
   val practice: Boolean = false,
   val scold: Boolean = true,
   val scoldSwitched: Boolean = false,
+  val quietMiss: Boolean = false,
 ) {
   /** Rin's mood: her line's while she says it, otherwise the phase's, except while she scolds a missed round. */
   val mood: Mood
     get() {
       val mood =
-        line?.emotion ?: if (pads?.phase == PadsPhase.SCOLD || cupsScold) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
+        line?.emotion ?: if ((pads?.phase == PadsPhase.SCOLD || cupsScold) && !quietMiss) RingMoods.SCOLD_MOOD else RingMoods.mood(phase)
       return if (calm && mood.pouty) Mood.CHEERFUL else mood
     }
 

@@ -13,6 +13,7 @@ import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.view.MotionEvent
 import android.widget.FrameLayout
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -109,7 +110,9 @@ private enum class Phase {
  * the screen is paused. [mood] blends in on the page (≤ 300 ms, logged by tag RinChar); a tap on her head makes her
  * happy for a moment there (no vibration: the user cut it in UX.3, too faint to feel). She greets the user when the app opens and
  * gestures now and then (GestureDirector), and plays each gesture from [cues] (the ring screen's mission moments).
- * [onHeadTap] hears each tap on her head, for the screen's own answer (her line on the home screen).
+ * [onHeadTap] hears each tap on her head, for the screen's own answer (her line on the home screen). With [touchable]
+ * off (the ring screen, G.1) she takes no touches at all, so a tap on her reaches the screen around her: the WebView
+ * took every tap there, and "tap anywhere to skip her" never heard one (device test, 2026-10-02).
  * Voice lines play natively (VoicePlayer, here or in a game's [speech]) and only move her mouth here.
  *
  * Before the first unlock after a reboot (a ring can come then) the WebView has no credential-encrypted storage to
@@ -129,6 +132,7 @@ fun CharacterView(
   onVisible: () -> Unit = {},
   greetOnShow: Boolean = true,
   insets: CharacterInsets = CharacterInsets(),
+  touchable: Boolean = true,
 ) {
   val context = LocalContext.current
   val model = remember {
@@ -150,7 +154,10 @@ fun CharacterView(
     host.setCups(cups)
   }
   val currentOnHeadTap by rememberUpdatedState(onHeadTap)
-  SideEffect { host.onHeadTap = { currentOnHeadTap() } }
+  SideEffect {
+    host.onHeadTap = { currentOnHeadTap() }
+    host.touchable = touchable
+  }
   val director = remember { GestureDirector() }
   val currentMood by rememberUpdatedState(shown.first)
   // A screen can turn the greeting off; the ring screen keeps it and drops its first line's gesture instead (4.3).
@@ -299,6 +306,8 @@ private class CharacterHost {
   var onCups: (CupsView) -> Unit = {}
   /** The user tapped her head; the page has already reacted (task 2.2), the screen may add a line (4.2). */
   var onHeadTap: () -> Unit = {}
+  /** Whether her page takes touches (head taps); see CharacterView's touchable. */
+  var touchable = true
 
   @SuppressLint("SetJavaScriptEnabled") // our own page from APK assets; nothing else can load (see the client)
   fun create(
@@ -390,7 +399,11 @@ private class CharacterHost {
     // Hosting the WebView directly in AndroidView froze a WebGL page after its first frames on the 14T (WebView 153,
     // HyperOS 2): the WebView stopped invalidating, so Rin never appeared. Plain HTML kept updating, and a FrameLayout
     // parent fixed WebGL (task 2.1 bisect: invalidates 6 -> 140 in 8 s).
-    return FrameLayout(context).apply { addView(web) }
+    return object : FrameLayout(context) {
+        // Not touchable: the touch is declined from its first event, so Compose hands it to the screen instead.
+        override fun dispatchTouchEvent(ev: MotionEvent): Boolean = touchable && super.dispatchTouchEvent(ev)
+      }
+      .apply { addView(web) }
   }
 
   fun resume() {

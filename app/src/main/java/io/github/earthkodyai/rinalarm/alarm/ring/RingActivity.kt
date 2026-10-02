@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,16 +50,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
@@ -182,6 +187,8 @@ internal fun RingRoute(viewModel: RingViewModel, onFinish: () -> Unit, onCommand
         onCups = viewModel::onCupsView,
         speech = viewModel.speaking,
         onVisible = viewModel::onCharacterVisible,
+        // No head taps here: a tap on her is a tap on the screen (skip her, or close once the ring is over).
+        touchable = false,
       )
     },
     hand = { modifier -> RinHand(modifier) },
@@ -261,7 +268,8 @@ internal fun RingScreen(
     if (topPx > 0 && sheetPx > 0) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
     // The pads game: one patterned surface from under the time down through the sheet, the pads on it (the user:
     // the pads' panel and the sheet joined). It covers her while the pads are up and fades when they step aside.
-    val padsUp = pads?.phase == PadsPhase.DEMO || pads?.phase == PadsPhase.INPUT
+    // A quiet miss (scolding off) keeps the pads up: Rin does not come out for it (the user).
+    val padsUp = pads?.phase == PadsPhase.DEMO || pads?.phase == PadsPhase.INPUT || (pads?.phase == PadsPhase.SCOLD && state.quietMiss)
     AnimatedVisibility(padsUp, enter = fadeIn(), exit = fadeOut()) {
       Box(
         Modifier.fillMaxSize()
@@ -274,11 +282,7 @@ internal fun RingScreen(
       Spacer(Modifier.height(top))
       Box(Modifier.weight(1f).fillMaxWidth()) {
         // The colour pads cover her while the game is on (only her hand shows), and step aside when she scolds (D17).
-        when (pads?.phase) {
-          PadsPhase.DEMO,
-          PadsPhase.INPUT -> PadsBoard(pads, onTapPad, Modifier.fillMaxSize(), hand)
-          else -> Unit
-        }
+        if (padsUp) PadsBoard(checkNotNull(pads), onTapPad, Modifier.fillMaxSize(), hand)
         if (cups != null && cups.phase != CupsPhase.READY) {
           // Her page's cups once it shows them; until then (or if it never does) the native board.
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d }
@@ -305,6 +309,8 @@ internal fun RingScreen(
       Spacer(Modifier.height(bottom))
     }
 
+    // Over everything but the bars: the red glow at the edges and the cross, for a moment.
+    MissFlash(state.quietMiss, Modifier.fillMaxSize())
     TopBar(
       request,
       started,
@@ -481,6 +487,48 @@ private fun Controls(
 }
 
 /**
+ * A quiet miss (scolding off, the user's ask): a red glow along the screen's edges and a red cross, gone in a moment
+ * as the game goes on. Bright stop red with a white outline, so it reads on the pads, the cups, by day and at night.
+ */
+@Composable
+private fun MissFlash(shown: Boolean, modifier: Modifier = Modifier) {
+  val p = RinTheme.palette
+  val missed = stringResource(R.string.ring_quiet_miss)
+  AnimatedVisibility(shown, modifier, enter = fadeIn(tween(90)), exit = fadeOut(tween(220))) {
+    Box(Modifier.fillMaxSize().semantics { contentDescription = missed; liveRegion = LiveRegionMode.Polite }) {
+      Canvas(Modifier.fillMaxSize()) {
+        val band = 44.dp.toPx()
+        val red = p.stop.copy(alpha = 0.6f)
+        val clear = p.stop.copy(alpha = 0f)
+        drawRect(Brush.verticalGradient(listOf(red, clear), endY = band), size = Size(size.width, band))
+        drawRect(
+          Brush.verticalGradient(listOf(clear, red), startY = size.height - band, endY = size.height),
+          topLeft = Offset(0f, size.height - band),
+          size = Size(size.width, band),
+        )
+        drawRect(Brush.horizontalGradient(listOf(red, clear), endX = band), size = Size(band, size.height))
+        drawRect(
+          Brush.horizontalGradient(listOf(clear, red), startX = size.width - band, endX = size.width),
+          topLeft = Offset(size.width - band, 0f),
+          size = Size(band, size.height),
+        )
+      }
+      Canvas(Modifier.align(BiasAlignment(0f, -0.25f)).size(120.dp).testTag(MISS_FLASH_TAG)) {
+        val inset = 18.dp.toPx()
+        val a = Offset(inset, inset)
+        val b = Offset(size.width - inset, size.height - inset)
+        val c = Offset(size.width - inset, inset)
+        val d = Offset(inset, size.height - inset)
+        for ((width, colour) in listOf(30.dp.toPx() to Color.White, 20.dp.toPx() to p.stop)) {
+          drawLine(colour, a, b, strokeWidth = width, cap = StrokeCap.Round)
+          drawLine(colour, c, d, strokeWidth = width, cap = StrokeCap.Round)
+        }
+      }
+    }
+  }
+}
+
+/**
  * "Rin scolds" (G.1) while she scolds a miss: off, she is quiet and calm at once, for this alarm and new ones (the
  * editor turns it back on). The whole sticker toggles, a bigger target than the switch alone.
  */
@@ -573,6 +621,7 @@ internal const val RIN_LINE_TAG = "rin_line"
 internal const val PRACTICE_AGAIN_TAG = "practice_again"
 internal const val PRACTICE_DONE_TAG = "practice_done"
 internal const val SCOLD_SWITCH_TAG = "scold_switch"
+internal const val MISS_FLASH_TAG = "miss_flash"
 
 private val PREVIEW_RING =
   ActiveRing(

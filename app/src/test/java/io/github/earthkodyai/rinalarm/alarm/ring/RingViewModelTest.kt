@@ -746,6 +746,47 @@ class RingViewModelTest {
     }
 
   @Test
+  fun scoldOff_aPadsMiss_isQuiet_aRedCrossForAMoment_thenTheGameGoesOn() =
+    runTest(main.dispatcher) {
+      val (viewModel, pads, cues) = scoldedPads(scold = false)
+      val state = viewModel.uiState.value
+      assertTrue(state.quietMiss)
+      assertNull(viewModel.line)
+      assertFalse(cues.any { it.pouty })
+      assertFalse(state.mood.pouty)
+      assertEquals(listOf("begin"), pads.calls)
+
+      advanceTimeBy(RingViewModel.QUIET_MISS_PADS_MS + 1)
+      runCurrent()
+      assertEquals(listOf("begin", "skip"), pads.calls)
+      pads.game.value = PadsState(PadsPhase.DEMO)
+      runCurrent()
+      assertFalse(viewModel.uiState.value.quietMiss)
+    }
+
+  @Test
+  fun scoldOff_aWrongCup_isQuiet_andTheCupsComeDownAfterTheirMoment() =
+    runTest(main.dispatcher) {
+      val cups = FakeCupsMission()
+      val (viewModel, _, _) = talkingScreen({ cups }, ActiveRing(request.copy(scold = false), MissionPlan.Run(MissionType.CUPS)))
+      viewModel.onCupsView(CupsView.Unavailable)
+      viewModel.startGame()
+      runCurrent()
+      untilSaid(viewModel)
+      cups.game.value = CupsState(CupsPhase.REVEAL, right = false, picks = 1, mistakes = 1)
+      runCurrent()
+      assertTrue(viewModel.uiState.value.quietMiss)
+      assertNull(viewModel.line)
+
+      advanceTimeBy(RingViewModel.QUIET_MISS_PADS_MS + 1)
+      runCurrent()
+      assertEquals("the cups need longer: they rise first", listOf("begin"), cups.calls)
+      advanceTimeBy(RingViewModel.QUIET_MISS_CUPS_MS - RingViewModel.QUIET_MISS_PADS_MS)
+      runCurrent()
+      assertEquals(listOf("begin", "skip"), cups.calls)
+    }
+
+  @Test
   fun aGameButton_cutsHerLineShort() =
     runTest(main.dispatcher) {
       val cups = FakeCupsMission()

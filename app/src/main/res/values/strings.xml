@@ -68,6 +68,7 @@
     <string name="ring_tap_to_close">Tap anywhere to close</string>
     <!-- G.1: the switch that shows while Rin scolds a miss. -->
     <string name="ring_scold_switch">Rin scolds</string>
+    <string name="ring_quiet_miss">Missed</string>
     <!-- Ring screen: colour pads (task 3.3). -->
     <string name="pads_title">Copy Rin\'s colours</string>
     <string name="pads_intro">Watch her hand, then tap the same colours in order. Three rounds.</string>
