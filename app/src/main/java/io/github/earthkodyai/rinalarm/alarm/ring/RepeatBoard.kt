@@ -66,10 +66,17 @@ import io.github.earthkodyai.rinalarm.mission.RepeatState
  * on top of Android's own indicator.
  */
 @Composable
-internal fun RepeatCard(state: RepeatState?, onStart: () -> Unit, onHearAgain: () -> Unit, onCantTalk: (() -> Unit)?) {
+internal fun RepeatCard(
+  state: RepeatState?,
+  onStart: () -> Unit,
+  onHearAgain: () -> Unit,
+  onCantTalk: (() -> Unit)?,
+  started: Boolean = false,
+) {
   // After the pass the in-game row stays (inert, under "Nice work!"): the intro is taller, and switching back to it
   // grew the sheet and shrank her just as she said goodbye (test ring, 2026-10-01).
-  if (state == null || state.phase == RepeatPhase.READY) {
+  // As the pads' (G.1): the game's row from the first tap on "Let's play", through her intro.
+  if (!started && (state == null || state.phase == RepeatPhase.READY)) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
       GameIntro(R.string.repeat_title, R.string.repeat_intro, onStart, REPEAT_START_TAG)
       onCantTalk?.let { CantTalk(it) }
@@ -77,7 +84,7 @@ internal fun RepeatCard(state: RepeatState?, onStart: () -> Unit, onHearAgain: (
     return
   }
   Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    val canReplay = state.phase == RepeatPhase.LISTENING || state.phase == RepeatPhase.TAPPING
+    val canReplay = state?.phase == RepeatPhase.LISTENING || state?.phase == RepeatPhase.TAPPING
     HearAgain(canReplay, onHearAgain)
     Spacer(Modifier.weight(1f))
     onCantTalk?.let { CantTalk(it) }

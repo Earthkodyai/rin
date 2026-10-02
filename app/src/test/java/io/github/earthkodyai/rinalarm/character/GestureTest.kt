@@ -83,4 +83,14 @@ class GestureDirectorTest {
       for (mood in Mood.entries) director.idleInGame(mood)?.let { assertTrue(it.armsStill) }
     }
   }
+
+  @Test
+  fun theGate_neverPlaysAGestureTwiceInARow_butAllowsItAgainLater() {
+    val gate = GestureGate()
+    assertTrue(gate.allow(Gesture.HUFF, 0))
+    assertFalse("a stall's huff, then an idle huff 3 s later", gate.allow(Gesture.HUFF, 3_000))
+    assertTrue(gate.allow(Gesture.NOD, 4_000))
+    assertTrue(gate.allow(Gesture.HUFF, 5_000))
+    assertTrue("a miss a while later sulks again", gate.allow(Gesture.HUFF, 5_000 + GestureGate.REPEAT_GAP_MS))
+  }
 }

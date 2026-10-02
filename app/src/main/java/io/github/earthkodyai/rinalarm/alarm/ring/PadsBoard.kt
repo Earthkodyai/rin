@@ -174,19 +174,21 @@ private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Un
  * next tap draining away (the round is in the top bar's score since UX.4).
  */
 @Composable
-internal fun PadsCard(state: PadsState?, onStart: () -> Unit) {
-  if (state == null || state.phase == PadsPhase.READY) {
+internal fun PadsCard(state: PadsState?, onStart: () -> Unit, started: Boolean = false) {
+  // Once "Let's play" is tapped the game's row shows at once, during her intro too, as the cups' does (G.1: the button
+  // stayed up through the intro, and the user tapped it again).
+  if (!started && (state == null || state.phase == PadsPhase.READY)) {
     GameIntro(R.string.pads_title, R.string.pads_intro, onStart, PADS_START_TAG)
     return
   }
   Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text(
-      stringResource(if (state.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch),
+      stringResource(if (state?.phase == PadsPhase.INPUT) R.string.pads_your_turn else R.string.pads_watch),
       style = MaterialTheme.typography.headlineSmall,
       color = RinTheme.palette.ink,
       modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
-    Countdown(state)
+    Countdown(state ?: PadsState())
   }
 }
 

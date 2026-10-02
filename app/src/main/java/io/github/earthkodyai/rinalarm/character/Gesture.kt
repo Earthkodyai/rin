@@ -52,6 +52,28 @@ enum class Gesture(val wire: String) {
 }
 
 /**
+ * Never the same gesture twice in a row (the user, G.1: a stall's huff, then an idle huff 3 s later, read as nagging):
+ * a gesture that repeats the one before within [REPEAT_GAP_MS] is dropped, whoever asked for it (idle, a line, a game).
+ */
+class GestureGate {
+  private var last: Gesture? = null
+  private var lastAt = Long.MIN_VALUE / 2
+
+  /** Whether [gesture] may play at [nowMs]; if so, it becomes the last one. */
+  fun allow(gesture: Gesture, nowMs: Long): Boolean {
+    if (gesture == last && nowMs - lastAt < REPEAT_GAP_MS) return false
+    last = gesture
+    lastAt = nowMs
+    return true
+  }
+
+  companion object {
+    /** Longer than her slowest gesture plus a beat, shorter than the gap between two misses a minute apart. */
+    const val REPEAT_GAP_MS = 20_000L
+  }
+}
+
+/**
  * When Rin gestures on the main screen until Phase 3 drives her (your choice, 2026-09-28): a greeting when the app
  * opens, then now and then a gesture that fits her mood. Only gestures that read from head and shoulders play here,
  * the strip's frame: clap is kept for missions (Phase 3), and pout's folded arms fall below the frame, so a sulk is a

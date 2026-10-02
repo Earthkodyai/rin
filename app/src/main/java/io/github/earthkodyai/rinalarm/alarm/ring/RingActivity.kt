@@ -336,11 +336,12 @@ internal fun RingScreen(
         Box(if ((over && game != MissionType.CUPS) || scoldRow) inert else Modifier) {
           when {
             state.plainDismiss -> Unit
-            game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
+            game == MissionType.PADS -> PadsCard(state.pads, onStartGame, started)
             // The cups keep their line visible through the pass: she claps behind the table.
             game == MissionType.CUPS -> CupsCard(state.cups, state.cupsStaging, state.passed, onStartGame, state.practice)
             // A practice round has no other game to switch to.
-            game == MissionType.SPEECH -> RepeatCard(state.repeat, onStartGame, onHearAgain, onCantTalk.takeUnless { state.practice })
+            game == MissionType.SPEECH ->
+              RepeatCard(state.repeat, onStartGame, onHearAgain, onCantTalk.takeUnless { state.practice }, started)
           }
         }
         if (state.passed && game != MissionType.CUPS) Passed(state.practice)
@@ -360,6 +361,7 @@ internal fun RingScreen(
 
 /** Whether "Let's play" has been pressed: the game is under way, or over. */
 private fun gameStarted(state: RingUiState, game: MissionType?): Boolean =
+  state.inGame ||
   when (game) {
     MissionType.CUPS -> state.cupsStaging || (state.cups?.phase ?: CupsPhase.READY) != CupsPhase.READY
     MissionType.PADS -> (state.pads?.phase ?: PadsPhase.READY) != PadsPhase.READY

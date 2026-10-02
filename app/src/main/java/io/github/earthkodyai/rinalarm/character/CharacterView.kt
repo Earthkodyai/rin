@@ -423,9 +423,12 @@ private class CharacterHost {
   }
 
   /** Plays [gesture] if she is ready and on screen; otherwise it is dropped (gestures are of the moment). */
+  private val gate = GestureGate()
+
   fun gesture(gesture: Gesture) {
     val proxy = reply ?: return
-    if (ready && resumed) proxy.postMessage(CharacterCommand.PlayGesture(gesture).json)
+    if (!ready || !resumed) return
+    if (gate.allow(gesture, SystemClock.elapsedRealtime())) proxy.postMessage(CharacterCommand.PlayGesture(gesture).json)
   }
 
   fun speak(line: Speaking?) {
