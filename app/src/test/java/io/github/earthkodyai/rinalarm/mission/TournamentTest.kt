@@ -92,20 +92,22 @@ class TournamentTest {
   }
 
   @Test
-  fun aRun_endsAtTheFirstMiss_andAddsOnlyThePassedLevelsThinkTime() {
+  fun aRun_endsAtTheFirstMiss_andIsTimedFromGoToTheLastLevelPassed() {
     val run = TournamentRun(TournamentGame.PADS)
+    run.pass(500) // before GO: nothing
     assertEquals(1, run.level)
-    run.pass(2_000)
-    run.pass(3_500)
+    run.start(1_000)
+    run.pass(8_000)
+    run.pass(19_500)
     assertEquals(3, run.level)
-    run.miss()
+    run.miss() // at, say, 25 s: the failed level is not timed
     assertTrue(run.over)
-    run.pass(9_999) // a late tap after the end
-    assertEquals(TournamentScore(TournamentGame.PADS, levels = 2, thinkMs = 5_500), run.score())
+    run.pass(30_000) // a late tap after the end
+    assertEquals(TournamentScore(TournamentGame.PADS, levels = 2, timeMs = 18_500), run.score())
   }
 
   @Test
-  fun moreLevelsWin_thenLessThinkingTime() {
+  fun moreLevelsWin_thenTheFasterTime() {
     val a = TournamentScore(TournamentGame.CUPS, 5, 40_000)
     val b = TournamentScore(TournamentGame.CUPS, 4, 10_000)
     val c = TournamentScore(TournamentGame.CUPS, 5, 30_000)
@@ -114,33 +116,5 @@ class TournamentTest {
     assertFalse(b.beats(a))
     assertTrue(b.beats(null))
     assertFalse(a.beats(a))
-  }
-
-  @Test
-  fun padsThinkTime_isTheTimeAnswering_notRinsDemo() {
-    val rules = TournamentLadder.pads(1)
-    val g = PadsGame(rules, Random(4))
-    g.start(0)
-    while (g.state.phase != PadsPhase.INPUT) g.tick(checkNotNull(g.state.nextAt))
-    val demoEnd = 7 * (rules.moveMs + rules.pressMs)
-    var now = demoEnd
-    for (pad in g.state.sequence) {
-      now += 300
-      g.tap(pad, now)
-    }
-    assertEquals(PadsPhase.PASSED, g.state.phase)
-    assertEquals(7 * 300L, g.thinkMs())
-  }
-
-  @Test
-  fun cupsThinkTime_isFromTheCupsStoppingToTheRightPick() {
-    val g = CupsGame(TournamentLadder.cups(1), Random(8))
-    g.start(0)
-    while (g.state.phase != CupsPhase.PICK) g.tick(checkNotNull(g.state.nextAt))
-    val stopped = (g.state.act as CupsAct.Shuffle).endsAt
-    val ball = CupsTimeline.afterSwaps((g.state.act as CupsAct.Shuffle).swaps, (g.state.act as CupsAct.Shuffle).ball)
-    g.pick(ball, stopped + 1_250)
-    assertEquals(CupsPhase.PASSED, g.state.phase)
-    assertEquals(1_250L, g.thinkMs())
   }
 }

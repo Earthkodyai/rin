@@ -9,7 +9,11 @@ import kotlin.math.roundToLong
  */
 enum class TournamentGame(val stored: String) {
   PADS("pads"),
-  CUPS("cups"),
+  CUPS("cups");
+
+  companion object {
+    fun fromStored(value: String?): TournamentGame? = entries.firstOrNull { it.stored == value }
+  }
 }
 
 /**
@@ -56,27 +60,31 @@ object TournamentLadder {
 }
 
 /**
- * A run's result: more levels passed is better; on a tie, less time thinking (Rin's showing not counted). The board
- * ranks by this (G.6).
+ * A run's result: more levels passed is better; on a tie, the faster to clear them, from GO to the last level passed
+ * (the user's pick: the level that ended the run is not timed, so failing it quickly gains nothing). The board ranks
+ * by this (G.6).
  */
-data class TournamentScore(val game: TournamentGame, val levels: Int, val thinkMs: Long) : Comparable<TournamentScore> {
+data class TournamentScore(val game: TournamentGame, val levels: Int, val timeMs: Long) : Comparable<TournamentScore> {
   /** Better scores come first when sorted. */
   override fun compareTo(other: TournamentScore): Int =
-    compareValuesBy(this, other, { -it.levels }, { it.thinkMs })
+    compareValuesBy(this, other, { -it.levels }, { it.timeMs })
 
   fun beats(other: TournamentScore?): Boolean = other == null || this < other
 }
 
 /**
- * One run, as a pure record the screen updates: [level] is the one being played, every [pass] adds its think time and
- * moves on, and the first [miss] ends it. Calls after the end change nothing, so a late tap cannot add a level.
+ * One run, as a pure record the screen updates (elapsed-clock times): [start] at GO, each [pass] moves on and stamps
+ * the time, and the first [miss] ends it. Calls after the end change nothing, so a late tap cannot add a level.
  */
 class TournamentRun(val game: TournamentGame) {
   var level = 1
     private set
 
-  var thinkMs = 0L
+  /** From GO to the last level passed; 0 before the first. */
+  var timeMs = 0L
     private set
+
+  private var startedAt: Long? = null
 
   var over = false
     private set
@@ -84,9 +92,14 @@ class TournamentRun(val game: TournamentGame) {
   val passed: Int
     get() = level - 1
 
-  fun pass(levelThinkMs: Long) {
+  fun start(now: Long) {
+    if (startedAt == null) startedAt = now
+  }
+
+  fun pass(now: Long) {
+    val start = startedAt ?: return
     if (over) return
-    thinkMs += levelThinkMs.coerceAtLeast(0)
+    timeMs = (now - start).coerceAtLeast(0)
     level++
   }
 
@@ -94,5 +107,5 @@ class TournamentRun(val game: TournamentGame) {
     over = true
   }
 
-  fun score(): TournamentScore = TournamentScore(game, passed, thinkMs)
+  fun score(): TournamentScore = TournamentScore(game, passed, timeMs)
 }

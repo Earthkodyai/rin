@@ -14,6 +14,8 @@ import io.github.earthkodyai.rinalarm.alarm.log.RingHistoryRepository
 import io.github.earthkodyai.rinalarm.alarm.log.RoomRingHistory
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.data.DataStoreTournamentStore
+import io.github.earthkodyai.rinalarm.data.TournamentStore
 import io.github.earthkodyai.rinalarm.data.SettingsRepository
 import io.github.earthkodyai.rinalarm.data.RoomAlarmRepository
 import io.github.earthkodyai.rinalarm.data.StorageFiles
@@ -43,6 +45,8 @@ abstract class RepositoryModule {
   @Binds abstract fun alarmRepository(impl: RoomAlarmRepository): AlarmRepository
 
   @Binds abstract fun appSettings(impl: SettingsRepository): AppSettings
+
+  @Binds abstract fun tournamentStore(impl: DataStoreTournamentStore): TournamentStore
 
   @Binds abstract fun ringHistory(impl: RoomRingHistory): RingHistoryRepository
 }

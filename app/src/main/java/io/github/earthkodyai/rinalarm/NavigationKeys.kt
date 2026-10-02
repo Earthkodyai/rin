@@ -16,6 +16,9 @@ import kotlinx.serialization.Serializable
 /** "Try the games": a practice round of each game, no alarm (UX.8). */
 @Serializable data object Practice : NavKey
 
+/** The tournament's start page (G.5): game, name, university, rules. */
+@Serializable data object TournamentStart : NavKey
+
 /** How Rin uses your data: PRIVACY.md (6.3). */
 @Serializable data object Privacy : NavKey
 

@@ -18,6 +18,12 @@ fun interface MissionFactory {
 
   /** A practice round of [type] (UX.8): one short round at [difficulty], no alarm sounding. */
   fun practice(type: MissionType, difficulty: Difficulty): Mission = create(type, difficulty)
+
+  /**
+   * One level of the tournament (G.5): a single round at [TournamentLadder]'s rules, no alarm sounding, no waiting on
+   * Rin (she is silent in the tournament). Only the app's factory plays it.
+   */
+  fun tournament(game: TournamentGame, level: Int): Mission = throw UnsupportedOperationException("no tournament here")
 }
 
 class AndroidMissionFactory
@@ -72,6 +78,12 @@ constructor(
           VoskListener(context, vosk),
           clock,
         )
+    }
+
+  override fun tournament(game: TournamentGame, level: Int): Mission =
+    when (game) {
+      TournamentGame.PADS -> ColourPadsMission(TournamentLadder.pads(level), System.nanoTime(), AndroidPadNotes(PRACTICE_NOTES), clock)
+      TournamentGame.CUPS -> CupShuffleMission(TournamentLadder.cups(level), System.nanoTime(), clock)
     }
 
   private companion object {

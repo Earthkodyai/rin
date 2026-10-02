@@ -123,6 +123,7 @@ fun MainScreen(
   onDiagnostics: () -> Unit,
   onSettings: () -> Unit,
   onGuidedAdd: () -> Unit,
+  onTournament: () -> Unit = {},
   viewModel: MainScreenViewModel = hiltViewModel(),
   rin: HomeRinViewModel = hiltViewModel(),
 ) {
@@ -168,6 +169,7 @@ fun MainScreen(
     onTourSkip = endTour,
     // The tour's hands-on step: the real Add alarm opens the editor's walkthrough of the first alarm.
     onTourAdd = onGuidedAdd,
+    onTournament = onTournament,
     character = { modifier ->
       val mood = rememberDefaultMood()
       CharacterView(

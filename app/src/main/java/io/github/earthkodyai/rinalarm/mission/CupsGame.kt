@@ -169,10 +169,6 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
   private var shuffles = 0
   private var pickFrom = 0L
   private val trace = mutableListOf<String>()
-  private var rightWaits = 0L
-
-  /** The time the user took over each right pick, from the cups coming to rest; the tournament's tie-break (G.5). */
-  fun thinkMs(): Long = rightWaits
 
   /**
    * Every pick, for the log: `R2+850` is a right pick after the 2nd shuffle, 850 ms after the cups stopped;
@@ -197,7 +193,6 @@ class CupsGame(private val rules: CupsRules = CupsRules(), private val random: R
     val wait = now - pickFrom
     if (slot == ball) {
       trace += "R$shuffles+$wait"
-      rightWaits += wait
       val streak = s.streak + 1
       if (streak >= rules.streak) {
         // Her arms stay free for the clap: the cup rises by itself and stays up over the ball.
