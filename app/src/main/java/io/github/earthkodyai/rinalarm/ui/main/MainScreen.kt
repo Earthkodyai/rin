@@ -355,19 +355,23 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
     }
   }
   val shown = shout && !speaking
-  // One after the other, so they never cross: the clock makes room before the bubble pops, and the bubble is gone
-  // before the clock comes back down.
+  // All on one beat: the clock makes room while the bubble is still inside the cup, the trophy is knocked as the
+  // bubble bursts out and again as it lands back in, and the clock starts down just after the bubble starts to sink.
   var clockUp by remember { mutableStateOf(false) }
   var bubbleUp by remember { mutableStateOf(false) }
+  var kicks by remember { mutableIntStateOf(0) }
   LaunchedEffect(shown) {
     if (shown) {
       clockUp = true
-      delay(CLOCK_SLIDE_MS.toLong())
       bubbleUp = true
-    } else {
+      delay(SHOUT_PEEK_MS)
+      kicks++
+    } else if (bubbleUp) {
       bubbleUp = false
-      delay(SHOUT_OUT_MS)
+      delay(CLOCK_DOWN_AFTER_MS)
       clockUp = false
+      delay(SHOUT_LAND_MS - CLOCK_DOWN_AFTER_MS)
+      kicks++
     }
   }
   val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
@@ -386,7 +390,7 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
     )
     ShoutBubble(bubbleUp, p.night, ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
     TournamentTrophy(
-      bubbleUp,
+      kicks,
       TrophySize.align(Alignment.BottomCenter)
         .clickable(role = Role.Button, onClickLabel = label) { onTournament() }
         .semantics { contentDescription = label }
@@ -397,9 +401,9 @@ private fun TournamentColumn(line: String?, onTournament: () -> Unit, modifier: 
 /** How long to wait for Rin's hello to start (her page loads first), and the pause after her line before the pop. */
 private const val HELLO_WAIT_MS = 5_000L
 private const val SHOUT_AFTER_LINE_MS = 800L
-private const val CLOCK_SLIDE_MS = 350
-/** The bubble's sink back into the cup, before the clock comes down. */
-private const val SHOUT_OUT_MS = SHOUT_SINK_MS
+private const val CLOCK_SLIDE_MS = 260
+/** The clock starts down this far into the bubble's sink, once the bubble has begun to drop away from it. */
+private const val CLOCK_DOWN_AFTER_MS = 60L
 /**
  * Measured on the 14T: the bubble sits halfway between the date and the trophy, by the nearest points of their ink
  * (9.5 dp each way at 64.2 dp; the user's ask). Up, the clock shrinks to 80%; down, its ink is centred on the 132 dp

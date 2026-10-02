@@ -56,13 +56,22 @@ import kotlinx.coroutines.launch
  * Both are drawn from simple shapes in a fixed design space (the mockup's), so they scale to any size.
  */
 
-/** How long the bubble stays up, then how long it is gone: up 3 s once every 10 s (the user's pick, 2026-10-03). */
-internal const val SHOUT_SHOWN_MS = 3_000L
-internal const val SHOUT_HIDDEN_MS = 7_000L
+/** How long the bubble stays up, then how long it is gone: up 6 s once every 15 s (the user's pick, 2026-10-03). */
+internal const val SHOUT_SHOWN_MS = 6_000L
+internal const val SHOUT_HIDDEN_MS = 9_000L
 
-/** The bubble rising out of the cup, and sinking back into it. */
-private const val SHOUT_RISE_MS = 520
-internal const val SHOUT_SINK_MS = 260L
+/**
+ * One timeline for the bubble and the trophy (the user: they felt slow and out of step). The bubble peeks out of the cup
+ * for [SHOUT_PEEK_MS], bursts out (the trophy is knocked at that moment) and overshoots its place at
+ * [SHOUT_OVERSHOOT_MS], settling by [SHOUT_RISE_MS] as its wiggle starts; going back it sinks for [SHOUT_SINK_MS] and
+ * knocks the trophy as it lands, at [SHOUT_LAND_MS].
+ */
+internal const val SHOUT_PEEK_MS = 110L
+private const val SHOUT_OVERSHOOT_MS = 290
+private const val SHOUT_RISE_MS = 380
+internal const val SHOUT_SINK_MS = 240L
+/** When the sinking bubble is seen to land in the cup (the cup hides it from here), measured on the 14T. */
+internal const val SHOUT_LAND_MS = 170L
 
 private val Gold = Color(0xFFFCB918)
 private val GoldShade = Color(0xFFEAA012)
@@ -86,14 +95,17 @@ private val Sparkles =
   )
 
 /**
- * [kick] turning true knocks the trophy (the bubble popping up beside it): it rocks on its base, hard at first, and
- * settles as a weighted thing would (an underdamped spring with a starting swing), not on a fixed wobble.
+ * Each rise of [kicks] knocks the trophy: odd ones as the bubble bursts out, even ones as it lands back in. It rocks on
+ * its base, hard at first, and settles as a weighted thing would (an underdamped spring); a knock while it still rocks
+ * adds to the swing it has rather than starting over.
  */
 @Composable
-internal fun TournamentTrophy(kick: Boolean, modifier: Modifier = Modifier) {
+internal fun TournamentTrophy(kicks: Int, modifier: Modifier = Modifier) {
   val rock = remember { Animatable(0f) }
-  LaunchedEffect(kick) {
-    if (kick) rock.animateTo(0f, spring(dampingRatio = ROCK_DAMPING, stiffness = ROCK_STIFFNESS), initialVelocity = ROCK_KICK)
+  LaunchedEffect(kicks) {
+    if (kicks == 0) return@LaunchedEffect
+    val knock = if (kicks % 2 == 1) ROCK_KICK else -ROCK_KICK_IN
+    rock.animateTo(0f, spring(dampingRatio = ROCK_DAMPING, stiffness = ROCK_STIFFNESS), initialVelocity = rock.velocity + knock)
   }
   val twinkle = rememberInfiniteTransition(label = "trophy")
   val t by twinkle.animateFloat(0f, 1f, infiniteRepeatable(tween(TWINKLE_MS, easing = LinearEasing)), label = "twinkle")
@@ -143,6 +155,8 @@ internal fun TournamentTrophy(kick: Boolean, modifier: Modifier = Modifier) {
 
 /** About 19° at the first swing, a few swings each smaller, still within ~1.5 s (to ~10% of the first). */
 private const val ROCK_KICK = 260f
+/** Landing back in is a softer knock, the other way. */
+private const val ROCK_KICK_IN = 200f
 private const val ROCK_DAMPING = 0.12f
 private const val ROCK_STIFFNESS = 180f
 private const val TWINKLE_MS = 2_400
@@ -259,13 +273,13 @@ internal fun ShoutBubble(shown: Boolean, night: Boolean, from: TransformOrigin, 
             1f,
             keyframes {
               durationMillis = SHOUT_RISE_MS
-              0.16f at 170 using FastOutSlowInEasing
-              1.08f at 400 using FastOutSlowInEasing
+              0.16f at SHOUT_PEEK_MS.toInt() using FastOutSlowInEasing
+              1.08f at SHOUT_OVERSHOOT_MS using FastOutSlowInEasing
             },
           )
         }
         launch {
-          delay(SHOUT_RISE_MS * 2L / 3)
+          delay(SHOUT_OVERSHOOT_MS.toLong())
           wiggle.animateTo(
             0f,
             keyframes {
