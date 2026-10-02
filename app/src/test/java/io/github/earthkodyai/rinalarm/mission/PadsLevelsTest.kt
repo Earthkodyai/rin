@@ -192,4 +192,44 @@ class PadsLevelsTest {
     for (i in all.indices) for (j in i + 1 until all.size) assertTrue(semitones(all[i], all[j]) > 1.5)
     assertTrue(all.all { semitones(it, 880.0) > 1.5 })
   }
+
+  @Test
+  fun aTapAfterHerLastPress_countsAsTheFirstAnswer_evenBeforeTheLateTick() {
+    val rules = PadsRules.forLevel(Difficulty.NIGHTMARE)
+    val g = PadsGame(rules, Random(9))
+    g.start(now)
+    val sequence = g.state.sequence
+    // No tick has run at all (a stalled main thread): the tap comes 30 ms after her demo is over.
+    val demoEnd = now + sequence.size * (rules.moveMs + rules.pressMs)
+    assertEquals(PadsPhase.DEMO, g.state.phase)
+    g.tap(sequence[0], demoEnd + 30)
+    assertEquals(PadsPhase.INPUT, g.state.phase)
+    assertEquals(1, g.state.entered)
+    assertEquals(0, g.state.earlyTaps)
+  }
+
+  @Test
+  fun aTapDuringHerDemo_isEarly_andTheDemoCarriesOn() {
+    val rules = PadsRules.forLevel(Difficulty.HARD)
+    val g = PadsGame(rules, Random(9))
+    g.start(now)
+    // Mid-way through her second press, with the tick for it not yet run.
+    g.tap(g.state.sequence[0], now + rules.moveMs * 2 + rules.pressMs + 50)
+    assertEquals(PadsPhase.DEMO, g.state.phase)
+    assertEquals(1, g.state.earlyTaps)
+    assertEquals(g.state.sequence[1], g.state.lit)
+  }
+
+  @Test
+  fun theMedianTapTime_isLoggedForRightTaps() {
+    val g = PadsGame(PadsRules(), Random(2))
+    assertEquals(null, g.medianTapMs())
+    g.start(now)
+    g.runUntil(PadsPhase.INPUT)
+    val start = now
+    val gaps = listOf(400L, 900L, 500L)
+    var t = start
+    g.state.sequence.zip(gaps).forEach { (pad, gap) -> t += gap; g.tap(pad, t) }
+    assertEquals(500L, g.medianTapMs())
+  }
 }

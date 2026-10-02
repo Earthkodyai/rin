@@ -151,6 +151,11 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
   /** When the user's current wait began: the answer window opening, or their last right tap. */
   private var waitFrom = 0L
   private val misses = mutableListOf<String>()
+  /** Time from each right tap's wait to the tap (G.2): next to a miss's +ms, it tells a skipped pad from a lost tap. */
+  private val tapGaps = mutableListOf<Long>()
+
+  /** The median of [tapGaps], or null before the first right tap. */
+  fun medianTapMs(): Long? = tapGaps.sorted().let { if (it.isEmpty()) null else it[it.size / 2] }
 
   /**
    * Every miss so far, for the log: `W2.3:RED/BLUE+850` is a wrong tap in round 2 on the 3rd pad, RED tapped where
@@ -167,6 +172,9 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
   fun tap(pad: Pad, now: Long): PadsState {
     // Never a crash on the ring screen: a pad from another board is no tap at all.
     if (pad !in rules.grid.pads) return state
+    // The demo may be over before its tick has run (a busy main thread): a tap right after her last press is the
+    // user's first answer, not an early tap lost to a late timer.
+    if (state.phase == PadsPhase.DEMO) set(demoAt(state, now))
     val s = state
     if (s.phase == PadsPhase.DEMO) return set(s.copy(earlyTaps = s.earlyTaps + 1))
     if (s.phase != PadsPhase.INPUT) return s
@@ -176,6 +184,7 @@ class PadsGame(private val rules: PadsRules = PadsRules(), private val random: R
       misses += "W${s.round + 1}.${s.entered + 1}:$pad/${s.sequence[s.entered]}+${now - waitFrom}"
       return set(scold(s, Miss.WRONG, now))
     }
+    tapGaps += now - waitFrom
     waitFrom = now
     val entered = s.entered + 1
     if (entered < s.sequence.size) {

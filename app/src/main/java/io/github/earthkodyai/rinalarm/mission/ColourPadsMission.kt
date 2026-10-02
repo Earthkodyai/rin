@@ -73,7 +73,8 @@ class ColourPadsMission(
     if (scope == null) return
     val before = play.state
     val after = play.tap(pad, clock.now())
-    val right = after.phase != PadsPhase.SCOLD && after.flash != before.flash
+    // An early tap may still move her demo on (a late tick caught up), which lights a pad without being an answer.
+    val right = after.phase != PadsPhase.SCOLD && after.flash != before.flash && after.earlyTaps == before.earlyTaps
     if (right) rightTaps++
     apply(after, activity = right)
   }
@@ -119,6 +120,7 @@ class ColourPadsMission(
     val rounds = if (s.phase == PadsPhase.PASSED) s.rounds else s.round
     return "game=colour_pads rounds=$rounds/${s.rounds} mistakes=${s.mistakes} timeouts=${s.timeouts} " +
       "rightTaps=$rightTaps earlyTaps=${s.earlyTaps} seed=$seed" +
+      (play.medianTapMs()?.let { " tapMs=$it" } ?: "") +
       // Above Easy, the rules the seed replays under (G.2); Easy's line reads as it did for the held-out rings.
       (if (rules.grid == PadGrid.TWO && rules.lengths == PadsRules().lengths) "" else " board=${rules.grid.size} lengths=${rules.lengths.joinToString("-")}") +
       play.missTrace().let { if (it.isEmpty()) "" else " misses=$it" }

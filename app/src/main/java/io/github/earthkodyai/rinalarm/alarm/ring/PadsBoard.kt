@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -98,15 +99,23 @@ internal fun PadsBoard(
     val pad = (side - gap * (grid.size - 1)) / grid.size
     val left = (maxWidth - side) / 2
     val top = (maxHeight - side) / 2
+    // Each pad's touch area reaches halfway into the gaps around it, so no tap on the board falls between two pads
+    // (G.2: on the 3×3 board's 10 dp gaps such a tap was lost and the next one read as wrong). Presses reach the game
+    // during her demo as well: one just after her last press, before the screen has caught up, is the first answer.
+    val takesTaps = state.phase == PadsPhase.DEMO || state.phase == PadsPhase.INPUT
     grid.pads.forEach { p ->
       PadTile(
         p,
         lit = state.lit == p,
-        enabled = state.phase == PadsPhase.INPUT,
+        takesTaps = takesTaps,
+        answering = state.phase == PadsPhase.INPUT,
         onTap = onTap,
         corner = if (grid == PadGrid.THREE) 18.dp else 24.dp,
+        inset = gap / 2,
         modifier =
-          Modifier.align(Alignment.TopStart).offset(left + (pad + gap) * grid.column(p), top + (pad + gap) * grid.row(p)).size(pad),
+          Modifier.align(Alignment.TopStart)
+            .offset(left + (pad + gap) * grid.column(p) - gap / 2, top + (pad + gap) * grid.row(p) - gap / 2)
+            .size(pad + gap),
       )
     }
     // The fingertip rests a little below the pad's centre, so the pad's colour shows around her finger. Her hand keeps
@@ -157,7 +166,16 @@ internal fun PadsBoard(
 }
 
 @Composable
-private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Unit, corner: Dp, modifier: Modifier) {
+private fun PadTile(
+  pad: Pad,
+  lit: Boolean,
+  takesTaps: Boolean,
+  answering: Boolean,
+  onTap: (Pad) -> Unit,
+  corner: Dp,
+  inset: Dp,
+  modifier: Modifier,
+) {
   val colour = PAD_COLOURS.getValue(pad)
   // Unlit pads are a solid darker shade (not see-through), so the screen's blue never tints them.
   val dim by animateFloatAsState(if (lit) 0f else 0.55f, tween(if (lit) 40 else 180), label = "padLit")
@@ -167,23 +185,28 @@ private fun PadTile(pad: Pad, lit: Boolean, enabled: Boolean, onTap: (Pad) -> Un
   val night = RinTheme.palette.night
   Box(
     modifier
-      .background(lerp(colour, Color.Black, dim), shape)
-      .then(
-        when {
-          // The white pad lights white: its ring is the ink colour, so the lit one still stands out.
-          lit -> Modifier.border(4.dp, if (pad == Pad.WHITE) RinTheme.palette.ink else Color.White, shape)
-          night -> Modifier.border(2.dp, colour.copy(alpha = 0.7f), shape)
-          else -> Modifier
-        }
-      )
-      .pointerInput(enabled) { if (enabled) detectTapGestures(onPress = { onTap(pad) }) }
+      .pointerInput(takesTaps) { if (takesTaps) detectTapGestures(onPress = { onTap(pad) }) }
       .semantics {
         role = Role.Button
         contentDescription = name
-        if (enabled) onClick { onTap(pad); true }
+        if (answering) onClick { onTap(pad); true }
       }
       .testTag(padTag(pad))
-  )
+  ) {
+    Box(
+      Modifier.padding(inset)
+        .fillMaxSize()
+        .background(lerp(colour, Color.Black, dim), shape)
+        .then(
+          when {
+            // The white pad lights white: its ring is the ink colour, so the lit one still stands out.
+            lit -> Modifier.border(4.dp, if (pad == Pad.WHITE) RinTheme.palette.ink else Color.White, shape)
+            night -> Modifier.border(2.dp, colour.copy(alpha = 0.7f), shape)
+            else -> Modifier
+          }
+        )
+    )
+  }
 }
 
 /**
