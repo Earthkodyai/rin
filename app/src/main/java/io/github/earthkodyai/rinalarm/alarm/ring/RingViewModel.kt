@@ -484,12 +484,15 @@ constructor(
   }
 
   /**
-   * "Let's play": Rin's intro for the game, then the game (the cup table comes into view meanwhile). Taps after the
-   * first are ignored.
+   * "Let's play": Rin's intro for the game, then the game (the cup table comes into view meanwhile). A tap after the
+   * first skips the intro.
    */
   fun startGame() {
     val running = mission ?: return
-    if (started || state.value.passed) return
+    if (state.value.passed) return
+    // Tapped again during her intro: the pads and Repeat after Rin keep "Let's play" up until the game begins, and a
+    // second tap there did nothing (device test, G.1). Every tap after the first starts the game now.
+    if (started) return skip()
     started = true
     (running as? CupsMission)?.let(::startCups)
     introJob =

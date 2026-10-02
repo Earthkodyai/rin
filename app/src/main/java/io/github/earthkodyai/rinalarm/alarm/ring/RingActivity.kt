@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -67,6 +68,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -298,13 +300,12 @@ internal fun RingScreen(
             Modifier.align(BiasAlignment(0f, 0.45f)).padding(horizontal = 20.dp),
           )
         }
-        Column(Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 12.dp)) {
-          RinBubble(state.line?.text, dots = BubbleDots.BELOW_LEFT, textModifier = Modifier.testTag(RIN_LINE_TAG))
-          // Under her scolding line, clear of the bubble's dots (G.1).
-          AnimatedVisibility(state.showScoldSwitch, enter = fadeIn(), exit = fadeOut()) {
-            ScoldSwitch(state.scold, onScold, Modifier.padding(top = 30.dp))
-          }
-        }
+        RinBubble(
+          state.line?.text,
+          Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 12.dp),
+          dots = BubbleDots.BELOW_LEFT,
+          textModifier = Modifier.testTag(RIN_LINE_TAG),
+        )
       }
       Spacer(Modifier.height(bottom))
     }
@@ -326,8 +327,12 @@ internal fun RingScreen(
       // space, so the sheet keeps its height while she claps or says her last line.
       val over = state.passed || state.leaving
       val inert = Modifier.alpha(0f).clearAndSetSemantics {}
-      Box(contentAlignment = Alignment.Center) {
-        Box(if (over && game != MissionType.CUPS) inert else Modifier) {
+      // While she scolds, the scold switch takes the game's place in the sheet (the user: in the open it floated). The
+      // row keeps one height through the game, so the switch coming and going never moves the sheet.
+      val scoldRow = state.showScoldSwitch
+      val playRow = if (started && !state.plainDismiss) Modifier.heightIn(min = GAME_ROW_MIN) else Modifier
+      Box(playRow, contentAlignment = Alignment.Center) {
+        Box(if ((over && game != MissionType.CUPS) || scoldRow) inert else Modifier) {
           when {
             state.plainDismiss -> Unit
             game == MissionType.PADS -> PadsCard(state.pads, onStartGame)
@@ -338,6 +343,7 @@ internal fun RingScreen(
           }
         }
         if (state.passed && game != MissionType.CUPS) Passed(state.practice)
+        if (scoldRow) ScoldSwitch(state.scold, onScold, Modifier.fillMaxWidth())
       }
       if (state.practice) {
         PracticeControls(state.passed, onPlayAgain, onEndPractice)
@@ -529,26 +535,33 @@ private fun MissFlash(shown: Boolean, modifier: Modifier = Modifier) {
 }
 
 /**
- * "Rin scolds" (G.1) while she scolds a miss: off, she is quiet and calm at once, for this alarm and new ones (the
- * editor turns it back on). The whole sticker toggles, a bigger target than the switch alone.
+ * "Rin scolds" (G.1) in the sheet while she scolds a miss, with what it does: off, she is quiet and calm at once, and
+ * later misses are quiet, for this alarm and new ones (the editor turns it back on). The whole card toggles, a bigger
+ * target than the switch alone.
  */
 @Composable
 private fun ScoldSwitch(on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
   val p = RinTheme.palette
-  val shape = RoundedCornerShape(22.dp)
+  val shape = RoundedCornerShape(18.dp)
   Row(
     modifier
-      .sticker(radius = 22.dp, depth = 3.dp)
+      .sticker(radius = 18.dp, depth = 3.dp)
       .clip(shape)
       .toggleable(value = on, role = Role.Switch, onValueChange = onChange)
-      .padding(start = 16.dp, end = 10.dp, top = 4.dp, bottom = 4.dp)
+      .padding(start = 14.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)
       .testTag(SCOLD_SWITCH_TAG),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(stringResource(R.string.ring_scold_switch), style = MaterialTheme.typography.labelLarge, color = p.ink)
+    Column(Modifier.weight(1f)) {
+      Text(stringResource(R.string.ring_scold_switch), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold), color = p.ink)
+      Text(stringResource(R.string.ring_scold_switch_summary), style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2)
+    }
     Switch(checked = on, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 10.dp))
   }
 }
+
+/** The game's row in the sheet once it is under way: room for the scold switch with its line, so nothing jumps. */
+private val GAME_ROW_MIN = 60.dp
 
 /** Snooze: an outlined pill, quieter than the game's "Let's play". */
 @Composable

@@ -496,8 +496,6 @@ class RingViewModelTest {
       val (viewModel, _, _) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
       viewModel.startGame()
       runCurrent()
-      viewModel.startGame() // a second tap changes nothing
-      runCurrent()
       assertTrue(viewModel.line!!.pool in setOf("game.intro", "game.intro.pads"))
       assertEquals(emptyList<String>(), pads.calls)
       untilSaid(viewModel)
@@ -705,6 +703,20 @@ class RingViewModelTest {
       assertTrue("the game waits for her intro", pads.calls.isEmpty())
 
       viewModel.skip()
+      runCurrent()
+      assertNull(viewModel.line)
+      assertEquals(listOf("begin"), pads.calls)
+    }
+
+  @Test
+  fun letsPlayTappedAgainDuringHerIntro_startsTheGameAtOnce() =
+    runTest(main.dispatcher) {
+      val pads = FakePadsMission()
+      val (viewModel, _, _) = talkingScreen({ pads }, ActiveRing(request, MissionPlan.Run(MissionType.PADS)))
+      viewModel.startGame()
+      runCurrent()
+      assertTrue(pads.calls.isEmpty())
+      viewModel.startGame()
       runCurrent()
       assertNull(viewModel.line)
       assertEquals(listOf("begin"), pads.calls)
