@@ -52,6 +52,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -85,7 +87,8 @@ import io.github.earthkodyai.rinalarm.character.Mood
 import io.github.earthkodyai.rinalarm.mission.CupsAct
 import io.github.earthkodyai.rinalarm.mission.CupsPhase
 import io.github.earthkodyai.rinalarm.mission.Pad
-import io.github.earthkodyai.rinalarm.mission.PadsPhase
+import io.github.earthkodyai.rinalarm.mission.PadGrid
+import io.github.earthkodyai.rinalarm.mission.PadsState
 import io.github.earthkodyai.rinalarm.mission.TournamentGame
 import io.github.earthkodyai.rinalarm.mission.TournamentScore
 import io.github.earthkodyai.rinalarm.theme.RinRounded
@@ -188,24 +191,40 @@ internal fun TournamentScreen(
   // The sheet is the cups' only (the user: elsewhere it just got in the way); the pads run down to the screen's edge.
   val navBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
   val bottom = if (state.game == TournamentGame.CUPS) with(density) { bottomPx.toDp() } else navBar
-  val pads = state.pads.takeIf { state.game == TournamentGame.PADS }
-  val padsUp =
-    pads != null &&
-      (state.phase == TournamentPhase.REVEAL || (state.phase == TournamentPhase.PLAYING && (pads.phase == PadsPhase.DEMO || pads.phase == PadsPhase.INPUT)))
+  // The pads are the whole screen from the count to the result (the user: no Rin in the pads tournament, only her
+  // hand); before the first level an idle board.
+  val padsUp = state.game == TournamentGame.PADS
+  val pads = if (padsUp) state.pads ?: PadsState(grid = PadGrid.THREE) else null
+  // Her table and she come in together, faded in from the empty sky once her page has framed the table (the user).
+  val tableIn by
+    animateFloatAsState(
+      if (state.game == TournamentGame.CUPS && (state.cupsView is CupsView.Shown || state.cups2d)) 1f else 0f,
+      tween(TournamentViewModel.TABLE_SETTLE_MS.toInt()),
+      label = "table in",
+    )
   val cups = state.cups?.takeIf { state.game == TournamentGame.CUPS && it.phase != CupsPhase.READY }
 
   Box(Modifier.fillMaxSize().background(p.ground)) {
     // The ring screen's sky (the user: the same finish as the alarm's games).
     Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
     if (p.night) Stars(Modifier.fillMaxSize())
-    if (topPx > 0 && (state.game == TournamentGame.PADS || bottomPx > 0)) character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
-    AnimatedVisibility(padsUp, enter = fadeIn(), exit = fadeOut()) {
+    if (state.game == TournamentGame.CUPS && topPx > 0 && bottomPx > 0) {
+      character(Modifier.fillMaxSize(), CharacterInsets(top, bottom))
+      // The empty sky over her until the table is in view, then gone.
+      if (tableIn < 1f) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - tableIn }.background(p.ground)) {
+          Glow(Modifier.align(Alignment.TopEnd).padding(top = top * 0.6f))
+          if (p.night) Stars(Modifier.fillMaxSize())
+        }
+      }
+    }
+    if (padsUp) {
       Box(Modifier.fillMaxSize().padding(top = top + 4.dp).rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true))
     }
     Column(Modifier.fillMaxSize()) {
       Spacer(Modifier.height(top))
       Box(Modifier.weight(1f).fillMaxWidth()) {
-        if (padsUp) PadsBoard(checkNotNull(pads), onTapPad, Modifier.fillMaxSize()) { RinHand(it) }
+        if (pads != null) PadsBoard(pads, onTapPad, Modifier.fillMaxSize()) { RinHand(it) }
         if (cups != null) {
           val x = (state.cupsView as? CupsView.Shown)?.x?.takeIf { !state.cups2d && it.size == cups.cups }
           if (x != null || state.cups2d) CupsLayer(cups, x, onPickCup, Modifier.fillMaxSize(), (state.cupsView as? CupsView.Shown)?.base)
@@ -232,14 +251,6 @@ internal fun TournamentScreen(
       }
     }
 
-    if (state.phase == TournamentPhase.TABLE) {
-      Text(
-        stringResource(R.string.tournament_setting_table),
-        style = MaterialTheme.typography.titleMedium,
-        color = p.muted,
-        modifier = Modifier.align(Alignment.Center).padding(top = 160.dp),
-      )
-    }
     Countdown(state, Modifier.align(Alignment.Center))
     LevelBanner(state, Modifier.align(Alignment.Center))
     AnimatedVisibility(
@@ -319,11 +330,12 @@ private fun Countdown(state: TournamentUiState, modifier: Modifier) {
       transitionSpec = { (scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 2.2f) + fadeIn()) togetherWith fadeOut() },
       label = "countdown",
     ) { count ->
-      Text(
-        if (count == 0) stringResource(R.string.tournament_go) else count.toString(),
-        style = BigShout.copy(color = p.primary),
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-      )
+      val text = if (count == 0) stringResource(R.string.tournament_go) else count.toString()
+      // Outlined in the card colour: it stands over the pads' patterned surface too (pink by day).
+      Box(Modifier.semantics { liveRegion = LiveRegionMode.Assertive }, contentAlignment = Alignment.Center) {
+        Text(text, style = BigShout.copy(color = p.card, drawStyle = Stroke(width = 18f, join = StrokeJoin.Round)))
+        Text(text, style = BigShout.copy(color = p.primary))
+      }
     }
   }
 }

@@ -237,8 +237,8 @@ constructor(
     const val EXTRA_GAME = "tournament.game"
 
     const val TABLE_WAIT_MS = 10_000L
-    /** A moment for the eye on the table before the count. */
-    const val TABLE_SETTLE_MS = 400L
+    /** Rin and her table fading in from the empty sky, before the count. */
+    const val TABLE_SETTLE_MS = 500L
     const val COUNT_MS = 700L
     const val GO_MS = 450L
     const val GO_CLEAR_MS = 180L
