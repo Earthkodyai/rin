@@ -222,7 +222,7 @@ private fun Board(page: BoardPage, state: LeaderboardUi, onReport: (BoardRow) ->
       Entry(i + 1, row, state, onReport)
     }
     Text(
-      stringResource(R.string.leaderboard_note),
+      stringResource(R.string.leaderboard_note) + "\n" + stringResource(R.string.tournament_universities_note),
       style = MaterialTheme.typography.bodySmall,
       color = p.muted,
       modifier = Modifier.padding(top = 10.dp),
@@ -339,33 +339,13 @@ private fun RankMark(rank: Int) {
   }
 }
 
-/** A university's short name, or its id in capitals when the list (G.7) does not have it. */
-internal fun universityShort(id: String): String = TournamentUniversities.firstOrNull { it.first == id }?.second ?: id.uppercase()
-
-/**
- * The university on a coloured pill, its colour fixed by the id. G.7 brings the logos (outside the repo) and keeps this
- * as the fallback when a logo file is missing. Nothing for "Not listed".
- */
-@Composable
-internal fun UniversityBadge(id: String?, modifier: Modifier = Modifier) {
-  if (id == null) return
-  val hue = id.hashCode().mod(360).toFloat()
-  Text(
-    universityShort(id),
-    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-    color = Color.White,
-    maxLines = 1,
-    modifier = modifier.background(Color.hsv(hue, 0.55f, 0.62f), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 1.dp),
-  )
-}
-
 @Preview(heightDp = 900, widthDp = 390)
 @Composable
 private fun LeaderboardPreview() {
   val rows =
     listOf(
       BoardRow("aaaa1", "Mint", "ku", 14, 212_300),
-      BoardRow("bbbb2", "", "chula", 12, 190_100),
+      BoardRow("bbbb2", "", "cu", 12, 190_100),
       BoardRow("cccc3", "Earth", null, 11, 171_000),
       BoardRow("dddd4", "Ploy", "mu", 9, 150_500),
     )

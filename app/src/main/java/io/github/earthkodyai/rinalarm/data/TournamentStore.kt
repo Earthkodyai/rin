@@ -19,9 +19,9 @@ import kotlinx.coroutines.flow.map
  * Who plays the tournament and how they did (G.5), and whether their bests go to the online leaderboard (G.6).
  *
  * @property name optional, as typed (trimmed, at most [NAME_MAX] characters); "" when not given.
- * @property university a university's id, or null for "Not listed" (the list comes in G.7).
+ * @property university an id from [io.github.earthkodyai.rinalarm.tournament.Universities], or null for "Not listed".
  * @property agreed the version of the rules the user accepted; the start page asks again when [RULES_VERSION] is newer
- *   (2: posting online is mentioned; G.7 adds the logos).
+ *   (2: posting online is mentioned; 3: university names and logos, not affiliated, G.7).
  * @property online the user's consent to post their name, university and bests to the leaderboard (off by default).
  */
 data class TournamentEntry(
@@ -35,7 +35,7 @@ data class TournamentEntry(
 
   companion object {
     const val NAME_MAX = 20
-    const val RULES_VERSION = 2
+    const val RULES_VERSION = 3
   }
 }
 

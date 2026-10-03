@@ -34,6 +34,8 @@ The tournament plays on your phone, and your bests are kept there. Only if you s
 
 Everyone who opens the leaderboard sees the names, universities and scores on it. Opening the leaderboard also signs in with an anonymous ID, even if you never post. Reporting a name sends the reported row and your anonymous ID to the developer, who may delete rows and block IDs that break the rules. Switching posting off deletes your rows from the leaderboard.
 
+The list of universities (the top 50 Thai universities in Webometrics, July 2026) and their logos are built into the app, so picking one sends nothing by itself. The names and logos belong to the universities: RinAlarm is not affiliated with or endorsed by any of them. A university that wants its name or logo removed can ask at the contact below.
+
 ## Sharing
 
 The app never shares anything by itself. One thing happens only when you tap it:

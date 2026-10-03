@@ -98,9 +98,11 @@ describe('posting a score', () => {
     await assertFails(setDoc(score('a'), row({ name: 42 })));
   });
 
-  test('university: an id or null', async () => {
+  test('university: one in the list, or null', async () => {
     await assertSucceeds(setDoc(score('a'), row({ uni: null })));
-    await assertSucceeds(setDoc(score('b'), row({ uni: 'chula' })));
+    await assertSucceeds(setDoc(score('b'), row({ uni: 'utcc' })));
+    await assertFails(setDoc(score('c'), row({ uni: 'chula' })));
+    await assertFails(setDoc(score('c'), row({ uni: 7 })));
     await assertFails(setDoc(score('c'), row({ uni: 'KU' })));
     await assertFails(setDoc(score('c'), row({ uni: 'k' })));
     await assertFails(setDoc(score('c'), row({ uni: '<script>' })));

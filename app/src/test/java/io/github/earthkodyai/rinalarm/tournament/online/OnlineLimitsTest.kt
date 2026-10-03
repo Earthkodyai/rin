@@ -4,7 +4,9 @@ import io.github.earthkodyai.rinalarm.mission.TournamentGame
 import io.github.earthkodyai.rinalarm.mission.TournamentLadder
 import io.github.earthkodyai.rinalarm.mission.TournamentScore
 import io.github.earthkodyai.rinalarm.tournament.TournamentViewModel
+import io.github.earthkodyai.rinalarm.tournament.Universities
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,13 +23,28 @@ class OnlineLimitsTest {
         "d.timeMs >= d.levels * ${OnlineLimits.MIN_MS_PER_LEVEL}",
         "d.timeMs <= ${OnlineLimits.MAX_TIME_MS}",
         "duration.value(${OnlineLimits.UPDATE_GAP_S}, 's')",
-        "u.matches('${OnlineLimits.UNIVERSITY_ID.pattern}')",
         "n.size() <= 20",
         "['pads', 'cups']",
       )) {
       assertTrue("firestore.rules lacks: $expected", expected in rules)
     }
     assertTrue(TournamentGame.entries.map { it.stored } == listOf("pads", "cups"))
+  }
+
+  @Test
+  fun theRulesAcceptExactlyTheAppsUniversities() {
+    val list = Regex("""function validUniversity\(u\) \{\s*return u == null \|\| u in \[([^\]]*)]""").find(rules)
+    assertTrue("validUniversity is not a list", list != null)
+    val ids = Regex("'([^']*)'").findAll(list!!.groupValues[1]).map { it.groupValues[1] }.toList()
+    assertEquals(Universities.all.map { it.id }, ids)
+  }
+
+  @Test
+  fun university_keepsOnlyListedIds() {
+    assertEquals("ku", OnlineLimits.university("ku"))
+    assertEquals(null, OnlineLimits.university(null))
+    assertEquals(null, OnlineLimits.university("chula"))
+    assertEquals(null, OnlineLimits.university("KU"))
   }
 
   @Test

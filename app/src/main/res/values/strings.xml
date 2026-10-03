@@ -12,9 +12,9 @@
     <string name="tournament_name">Name (optional)</string>
     <string name="tournament_university">University</string>
     <string name="tournament_not_listed">Not listed</string>
-    <string name="tournament_university_soon">The list of universities comes with the leaderboard.</string>
+    <string name="tournament_universities_note">The list is the top 50 Thai universities in Webometrics (July 2026). Names and logos only show which university a player picked: RinAlarm is not affiliated with or endorsed by any university. A university can ask for its name or logo to be removed at github.com/Earthkodyai/rin/issues.</string>
     <string name="tournament_rules_title">Rules</string>
-    <string name="tournament_rules">• One miss ends the run.\n• Every level is one pad or one swap longer, and every third one is faster.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• Your name, university and best scores stay on this phone, unless you switch on posting to the leaderboard below.</string>
+    <string name="tournament_rules">• One miss ends the run.\n• Every level is one pad or one swap longer, and every third one is faster.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• University names and logos belong to their universities. RinAlarm is not affiliated with or endorsed by any of them, and shows them only so players can say where they are from.\n• Your name, university and best scores stay on this phone, unless you switch on posting to the leaderboard below.</string>
     <string name="tournament_save">Save</string>
     <string name="tournament_not_saved">not saved yet</string>
     <string name="tournament_saved">saved ✓</string>

@@ -26,9 +26,15 @@ service cloud.firestore {
         && (n == '' || n.matches('(?s)\\S(.*\\S)?'));
     }
 
-    // A university id, or null for "Not listed" (G.7 replaces the pattern with the list).
+    // One of the 50 universities in the app's list (tournament/Universities.kt, G.7), or null for "Not listed".
     function validUniversity(u) {
-      return u == null || (u is string && u.matches('[a-z0-9-]{2,16}'));
+      return u == null || u in [
+        'cu', 'mu', 'cmu', 'ku', 'kku', 'psu', 'tu', 'kmutnb', 'kmutt', 'ait',
+        'kmitl', 'sut', 'wu', 'nu', 'swu', 'su', 'rmuti', 'msu', 'buu', 'ssru',
+        'bu', 'mju', 'au', 'mfu', 'rsu', 'ru', 'rmutt', 'pkru', 'sru', 'ubu',
+        'bru', 'up', 'stou', 'stiu', 'nida', 'nrru', 'cmru', 'snru', 'mcu', 'tsu',
+        'yru', 'rmutk', 'lpru', 'hcu', 'kru', 'sdu', 'dpu', 'cpru', 'rmutto', 'utcc'
+      ];
     }
 
     // Levels 1..500. The time from GO to the last level passed: at least 1 s a level (Rin's demo alone takes longer,

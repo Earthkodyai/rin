@@ -8,7 +8,7 @@ Rules (phase-8): never suggest Rin is a real person; no copyrighted material; ev
 
 **App name** (30): Rin: Anime Wake-up Alarm
 
-**Short description** (80): `An anime buddy wakes you up with a quick game. Offline, free, no ads.` (69)
+**Short description** (80): `An anime buddy wakes you up with a quick game. Works offline. Free, no ads.` (75)
 
 **Full description** (4000):
 
@@ -17,9 +17,13 @@ Rin is your morning buddy. When your alarm rings, she is there on screen to wake
 
 THREE WAKE-UP GAMES
 • Colour pads: watch Rin's hand, then tap the colours in the same order.
-• Cup shuffle: follow the ball as she shuffles three cups, then find it.
+• Cup shuffle: follow the ball as she shuffles the cups, then find it.
 • Repeat after Rin: say a short English sentence back to her (or tap the words).
-Pick a game per alarm, or let Rin pick a different one each day.
+Pick a game per alarm, or let Rin pick a different one each day. Colour pads and Cup shuffle have four levels, from Easy to Nightmare.
+
+TOURNAMENT
+• How far can you go? Colour pads or Cup shuffle, starting at Nightmare and getting harder, and one miss ends the run.
+• Optional online leaderboard: post your best with a name and your university (the top 50 Thai universities). RinAlarm is not affiliated with or endorsed by any university.
 
 A CHARACTER, NOT A BEEP
 • Rin is a 3D anime character who reacts while you play: cheerful, sleepy, or a little pouty when you snooze.
@@ -34,7 +38,7 @@ MADE FOR REAL MORNINGS
 • Diagnostics checks that your phone lets alarms ring on time, with fixes for phones that block them.
 
 PRIVATE BY DESIGN
-• Works fully offline: the app has no internet permission.
+• Alarms and games work fully offline. The only thing that uses the internet is the tournament leaderboard, and only if you switch posting on.
 • No account, no ads, no analytics, no in-app purchases.
 • The microphone is used only during Repeat after Rin, on your phone, and nothing is recorded.
 
@@ -56,9 +60,13 @@ The app is in English. Meant for adults (18+).
 
 เกมปลุก 3 แบบ
 • กดตามสี: ดูมือของริน แล้วกดสีตามลำดับเดียวกัน
-• สลับแก้ว: มองลูกบอลตอนรินสลับแก้วสามใบ แล้วหาให้เจอ
+• สลับแก้ว: มองลูกบอลตอนรินสลับแก้ว แล้วหาให้เจอ
 • พูดตามริน: พูดประโยคภาษาอังกฤษสั้นๆ ตามเธอ (หรือแตะคำแทน)
-เลือกเกมให้แต่ละการปลุก หรือให้รินเลือกเกมใหม่ทุกวัน
+เลือกเกมให้แต่ละการปลุก หรือให้รินเลือกเกมใหม่ทุกวัน กดตามสีและสลับแก้วมี 4 ระดับ ตั้งแต่ Easy ถึง Nightmare
+
+ทัวร์นาเมนต์
+• ไปได้ไกลแค่ไหน? เล่นกดตามสีหรือสลับแก้ว เริ่มที่ Nightmare แล้วยากขึ้นเรื่อยๆ พลาดครั้งเดียวจบ
+• กระดานคะแนนออนไลน์ (ไม่บังคับ): โพสต์สถิติพร้อมชื่อและมหาวิทยาลัยของคุณ (50 มหาวิทยาลัยไทยอันดับต้น) RinAlarm ไม่มีส่วนเกี่ยวข้องและไม่ได้รับการรับรองจากมหาวิทยาลัยใด
 
 ตัวละคร ไม่ใช่แค่เสียงบี๊บ
 • รินเป็นตัวละครอนิเมะ 3D ที่มีอารมณ์ตามที่คุณเล่น: ร่าเริง ง่วง หรืองอนนิดๆ เวลาคุณกดเลื่อนปลุก
@@ -73,7 +81,7 @@ The app is in English. Meant for adults (18+).
 • หน้า Diagnostics ตรวจว่าเครื่องของคุณยอมให้ปลุกดังตรงเวลา พร้อมวิธีแก้สำหรับเครื่องที่บล็อกไว้
 
 เป็นส่วนตัวตั้งแต่การออกแบบ
-• ทำงานออฟไลน์ทั้งหมด แอปไม่มีสิทธิ์ใช้อินเทอร์เน็ต
+• นาฬิกาปลุกและเกมทำงานออฟไลน์ทั้งหมด สิ่งเดียวที่ใช้อินเทอร์เน็ตคือกระดานคะแนนทัวร์นาเมนต์ และเฉพาะเมื่อคุณเปิดการโพสต์
 • ไม่มีบัญชี ไม่มีโฆษณา ไม่มีการเก็บสถิติ ไม่มีการซื้อในแอป
 • ไมโครโฟนใช้เฉพาะตอนเล่นเกมพูดตามริน ประมวลผลบนเครื่อง และไม่มีการบันทึกเสียง
 

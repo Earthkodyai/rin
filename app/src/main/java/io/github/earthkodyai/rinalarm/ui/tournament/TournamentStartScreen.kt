@@ -16,8 +16,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -84,12 +82,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-/**
- * The universities to pick from, by id and short name. Empty until G.7 brings the list (50 Thai universities, campuses
- * as one); until then everyone is "Not listed".
- */
-internal val TournamentUniversities: List<Pair<String, String>> = emptyList()
 
 /**
  * @property configured whether this build has a leaderboard (G.6); without one the Online card says so and nothing else.
@@ -417,55 +409,13 @@ private fun FieldLabel(text: String, modifier: Modifier = Modifier) {
   Text(text, style = MaterialTheme.typography.labelLarge, color = RinTheme.palette.muted, modifier = modifier.padding(start = 2.dp))
 }
 
-/** The university, or "Not listed": a tap opens the list (only "Not listed" until G.7). Boxed like the name. */
-@Composable
-private fun UniversityPicker(selected: String?, onSelect: (String?) -> Unit) {
-  val p = RinTheme.palette
-  var open by remember { mutableStateOf(false) }
-  val notListed = stringResource(R.string.tournament_not_listed)
-  val label = TournamentUniversities.firstOrNull { it.first == selected }?.second ?: notListed
-  val shape = RoundedCornerShape(16.dp)
-  Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    FieldLabel(stringResource(R.string.tournament_university))
-    Box {
-      Text(
-        label,
-        style = MaterialTheme.typography.bodyLarge,
-        color = p.ink,
-        modifier =
-          Modifier.fillMaxWidth()
-            .clip(shape)
-            .background(p.card, shape)
-            .border(1.dp, p.line, shape)
-            .clickable(role = Role.DropdownList) { open = true }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-      )
-      DropdownMenu(open, onDismissRequest = { open = false }, shape = RoundedCornerShape(16.dp)) {
-        DropdownMenuItem(text = { Text(notListed) }, onClick = {
-          onSelect(null)
-          open = false
-        })
-        TournamentUniversities.forEach { (id, short) ->
-          DropdownMenuItem(text = { Text(short) }, onClick = {
-            onSelect(id)
-            open = false
-          })
-        }
-      }
-    }
-    if (TournamentUniversities.isEmpty()) {
-      Text(stringResource(R.string.tournament_university_soon), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(start = 2.dp))
-    }
-  }
-}
-
 @Preview(heightDp = 900, widthDp = 390)
 @Composable
 private fun TournamentStartPreview() {
   RinAlarmTheme {
     TournamentStartScreen(
       TournamentStartState(
-        TournamentEntry(online = true),
+        TournamentEntry(university = "ku", online = true),
         best = mapOf(TournamentGame.PADS to TournamentScore(TournamentGame.PADS, 4, 83_400)),
         configured = true,
         sync = SyncStatus.POSTED,

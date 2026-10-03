@@ -254,6 +254,40 @@ val rinMusic =
   }
 
 /**
+ * Copies the tournament's university logos (G.7) into generated assets at unis/: `<id>.png`, 128 px, one per id in
+ * tournament/Universities.kt. They are the universities' marks, so they stay out of the public repo: `rin.unis` in
+ * local.properties points at the folder. Builds without it show each university's short name on a colour instead.
+ */
+abstract class RinUnisCopy : DefaultTask() {
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val logos: ConfigurableFileCollection
+
+  @get:Internal abstract val logoDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+  @get:Inject abstract val fs: FileSystemOperations
+
+  @TaskAction
+  fun copy() {
+    fs.sync {
+      from(logoDir) { include("*.png") }
+      into(outputDir.dir("unis"))
+    }
+  }
+}
+
+val rinUnis =
+  localProperties.getProperty("rin.unis")?.let { path ->
+    val dir = File(path)
+    require(dir.isDirectory) { "rin.unis in local.properties points at $path, which is not a folder" }
+    tasks.register<RinUnisCopy>("copyRinUnis") {
+      logoDir.set(dir)
+      logos.from(fileTree(dir) { include("*.png") })
+      outputDir.set(layout.buildDirectory.dir("generated/rinUnis"))
+    }
+  }
+
+/**
  * Copies Rin's voice pack (task 4.3, tools/voice/pack.mjs build) into generated assets at voice/rin: `<line id>.mp3`
  * and `repeat/<id>.mp3`, each with its `.mouth.json`. Like the model, the pack never enters the public repo:
  * `rin.voice` in local.properties points at the built folder on this PC. Builds without it (CI, clones) have no clips,
@@ -520,6 +554,7 @@ androidComponents {
     rinModel?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinModelBuild::outputDir) }
     rinVoice?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinVoiceCopy::outputDir) }
     rinMusic?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinMusicCopy::outputDir) }
+    rinUnis?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, RinUnisCopy::outputDir) }
     rinStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
     if (variant.buildType == "debug") {
       devStills?.let { variant.sources.assets?.addGeneratedSourceDirectory(it, CharacterStills::outputDir) }
@@ -534,13 +569,14 @@ androidComponents {
 
 /**
  * An app bundle only ever goes to Google Play (D32), so `bundleRelease` refuses one that would ship without Rin's own
- * model, her voice pack or the alarm themes, or with the VRoid sample (its licence forbids redistribution, D25).
+ * model, her voice pack, the alarm themes or the university logos, or with the VRoid sample (its licence forbids redistribution, D25).
  */
 val playBundleProblems = buildList {
   if (rinModel == null) add("rin.model is not set: Rin's own model is missing")
   if (devModelInRelease != null) add("rin.devModelInRelease=true would ship the VRoid sample")
   if (rinVoice == null) add("rin.voice is not set: Rin would have no voice")
   if (rinMusic == null) add("rin.music is not set: the alarm themes would be missing")
+  if (rinUnis == null) add("rin.unis is not set: the tournament would have no university logos")
 }
 val checkPlayBundle =
   tasks.register("checkPlayBundle") {

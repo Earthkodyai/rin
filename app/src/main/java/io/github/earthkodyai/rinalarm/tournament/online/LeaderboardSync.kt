@@ -80,7 +80,7 @@ constructor(private val store: TournamentStore, private val board: Leaderboard, 
       val best = store.best(game).first() ?: continue
       if (!OnlineLimits.postable(best)) continue
       val name = entry.name.takeIf(NameFilter::allowed).orEmpty()
-      val university = entry.university?.takeIf(OnlineLimits.UNIVERSITY_ID::matches)
+      val university = OnlineLimits.university(entry.university)
       val signature = signature(best, name, university)
       if (store.posted(game) == signature) continue
       if (attempt { board.post(best, name, university) }) store.markPosted(game, signature) else waiting = true
