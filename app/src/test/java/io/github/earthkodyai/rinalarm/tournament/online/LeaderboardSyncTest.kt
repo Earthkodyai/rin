@@ -50,6 +50,11 @@ class LeaderboardSyncTest {
       posted.clear()
     }
 
+    override suspend fun startPosting() {
+      entryFlow.value = entryFlow.value.copy(online = true)
+      posted.clear()
+    }
+
     override suspend fun owesWithdraw(): Boolean = owes
 
     override suspend fun withdrawn() {
@@ -102,6 +107,21 @@ class LeaderboardSyncTest {
     sync.syncNow()
     assertEquals(listOf(Triple(pads, "Earth", "ku"), Triple(cups, "Earth", "ku")), board.posts)
     assertEquals(SyncStatus.POSTED, sync.status.value)
+  }
+
+  @Test
+  fun switchingBackOn_postsAgain_evenIfAPostLandedAfterSwitchingOff() = runTest {
+    store.entryFlow.value = TournamentEntry("Earth", null, online = true)
+    store.bests.value = mapOf(TournamentGame.PADS to pads)
+    val sync = sync()
+    // Switched off while a post was in flight: the post marks itself posted after stopPosting cleared the marks.
+    store.stopPosting()
+    store.markPosted(TournamentGame.PADS, LeaderboardSync.signature(pads, "Earth", null))
+    sync.syncNow()
+    assertEquals(1, board.withdrawals)
+    store.startPosting()
+    sync.syncNow()
+    assertEquals(listOf(Triple(pads, "Earth", null)), board.posts)
   }
 
   @Test

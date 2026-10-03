@@ -1,6 +1,7 @@
 package io.github.earthkodyai.rinalarm.data
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -44,6 +45,9 @@ interface TournamentStore {
 
   suspend fun setEntry(entry: TournamentEntry)
 
+  /** Changes the entry in one step (read and write together), so two quick changes never undo each other. */
+  suspend fun updateEntry(change: (TournamentEntry) -> TournamentEntry) = setEntry(change(entry.first()))
+
   fun best(game: TournamentGame): Flow<TournamentScore?>
 
   /** Keeps [score] if it beats the best so far; true when it did (a new best). */
@@ -57,6 +61,13 @@ interface TournamentStore {
   /** Posting switched off: [TournamentEntry.online] goes false, and the rows online are owed a delete until [withdrawn]. */
   suspend fun stopPosting()
 
+  /**
+   * Posting switched on: [TournamentEntry.online] goes true and what was posted is forgotten, so every best goes up
+   * once more. A post still in flight when posting went off marks itself posted afterwards, while the withdraw takes
+   * the row down; without this, switching back on would leave it off the board.
+   */
+  suspend fun startPosting() = updateEntry { it.copy(online = true) }
+
   suspend fun owesWithdraw(): Boolean
 
   /** The rows online are gone. */
@@ -65,17 +76,24 @@ interface TournamentStore {
 
 @Singleton
 class DataStoreTournamentStore @Inject constructor(private val store: DataStore<Preferences>) : TournamentStore {
-  override val entry: Flow<TournamentEntry> =
-    store.data.map { TournamentEntry(it[NAME] ?: "", it[UNIVERSITY], it[AGREED] ?: 0, it[ONLINE] ?: false) }
+  override val entry: Flow<TournamentEntry> = store.data.map { it.entry() }
 
   override suspend fun setEntry(entry: TournamentEntry) {
-    store.edit {
-      it[NAME] = entry.name.trim().take(TournamentEntry.NAME_MAX)
-      val university = entry.university
-      if (university == null) it.remove(UNIVERSITY) else it[UNIVERSITY] = university
-      it[AGREED] = entry.agreed
-      it[ONLINE] = entry.online
-    }
+    store.edit { it.put(entry) }
+  }
+
+  override suspend fun updateEntry(change: (TournamentEntry) -> TournamentEntry) {
+    store.edit { it.put(change(it.entry())) }
+  }
+
+  private fun Preferences.entry() = TournamentEntry(this[NAME] ?: "", this[UNIVERSITY], this[AGREED] ?: 0, this[ONLINE] ?: false)
+
+  private fun MutablePreferences.put(entry: TournamentEntry) {
+    this[NAME] = entry.name.trim().take(TournamentEntry.NAME_MAX)
+    val university = entry.university
+    if (university == null) remove(UNIVERSITY) else this[UNIVERSITY] = university
+    this[AGREED] = entry.agreed
+    this[ONLINE] = entry.online
   }
 
   override fun best(game: TournamentGame): Flow<TournamentScore?> =
@@ -103,6 +121,13 @@ class DataStoreTournamentStore @Inject constructor(private val store: DataStore<
     store.edit {
       it[ONLINE] = false
       it[WITHDRAW] = true
+      TournamentGame.entries.forEach { game -> it.remove(postedKey(game)) }
+    }
+  }
+
+  override suspend fun startPosting() {
+    store.edit {
+      it.put(it.entry().copy(online = true))
       TournamentGame.entries.forEach { game -> it.remove(postedKey(game)) }
     }
   }

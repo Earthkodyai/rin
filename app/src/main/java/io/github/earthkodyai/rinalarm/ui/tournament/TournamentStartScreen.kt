@@ -79,7 +79,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -115,7 +114,7 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
    */
   fun setOnline(on: Boolean) {
     viewModelScope.launch {
-      if (on) store.setEntry(store.entry.first().copy(online = true)) else store.stopPosting()
+      if (on) store.startPosting() else store.stopPosting()
       sync.sync()
     }
   }
@@ -126,7 +125,7 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
    */
   fun saveName(name: String) {
     viewModelScope.launch {
-      store.setEntry(store.entry.first().copy(name = name))
+      store.updateEntry { it.copy(name = name) }
       sync.sync()
     }
   }
@@ -134,7 +133,7 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
   /** The university, as soon as it is picked (a pick is a deliberate tap; the user, 2026-10-03), posted likewise. */
   fun saveUniversity(university: String?) {
     viewModelScope.launch {
-      store.setEntry(store.entry.first().copy(university = university))
+      store.updateEntry { it.copy(university = university) }
       sync.sync()
     }
   }
@@ -142,9 +141,7 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
   /** Keeps the name, university and agreement, then [then] (the run starts). A changed name goes to the board too. */
   fun save(name: String, university: String?, then: () -> Unit) {
     viewModelScope.launch {
-      val online = store.entry.first().online
-      store.setEntry(TournamentEntry(name, university, TournamentEntry.RULES_VERSION, online))
-      store.entry.first()
+      store.updateEntry { TournamentEntry(name, university, TournamentEntry.RULES_VERSION, it.online) }
       sync.sync()
       then()
     }
