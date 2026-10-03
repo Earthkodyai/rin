@@ -6,6 +6,14 @@
 > - **6.6 Play App Signing ด้วย key เดิม + อัปโหลดเข้า closed testing:** PEPK (คุณรันคำสั่งเองเพราะต้องใส่รหัส keystore) → อัป AAB → ส่งรีวิว
 > - **6.7 ผู้ทดสอบ:** ข้อความชวน + คู่มือผู้ทดสอบ (ไทย) + ช่องทาง feedback · หา 12 คนขึ้นไป (เริ่มจาก 0)
 > - **6.9 optimise ครั้งสุดท้ายก่อนอัป (คุณขอ 2026-10-02):** ความลื่น/เปิดเร็ว, ขนาดแอป, หน่วยความจำ/แบต, ตรวจโค้ดหาบั๊ก · วัดก่อนแก้และวัดซ้ำหลังแก้ (แผนใน STATUS)
+> - **6.9 ✅ 2026-10-03 (cefaf0c, 0bd47fd):** วัดก่อน/หลังบน 14T release · AAB 77.6 → **65.3 MB** (Vosk ไม่มี Gr.fst, เขียน words.txt แทน, replay held-out 40 ครั้งได้คำเดิมทุกครั้ง) · พื้นหลัง/ลายเลื่อน 30 fps (UI 121 → 60–79 fps) · เปิดแอป 185 ms · พื้นหลังไม่กินแบต · code review เจอ race 2 จุดใน leaderboard แก้แล้ว · ต้นทุนหน้าหลักส่วนใหญ่คือการวาดริน (WebView) ไม่ใช่บั๊ก · รายละเอียด `docs/spikes/6.9-optimise.md`
+> - **6.10 อัปเดต tutorial ตาม Phase G (คุณขอ 2026-10-03, ให้ผมเลือกตามเหมาะสม):**
+>   1. **หน้าตั้งปลุก:** เพิ่มขั้น LEVEL หลัง GAME (ก่อน TRY) ส่องการ์ด Level + สวิตช์ "Rin scolds": "Easy to Nightmare. If my scolding is too much, switch it off here." (`GuideStep`, `GuideTarget.LEVEL` ใน `ui/editor/EditorGuide.kt`)
+>   2. **หน้าเริ่มทัวร์นาเมนต์ ครั้งแรกที่เปิด:** spotlight แบบเดียวกับหน้าตั้งปลุก ทีละจุด: ชื่อ (ไม่บังคับ) → มหาลัย → Post my best online (ไม่บังคับ ปิดแล้วลบ) → กติกา/ยอมรับ → Start · flag ใหม่ใน AppSettings (`tournamentGuidePending`, true บนเครื่องใหม่และเมื่อกด Settings > Home tour) · ข้ามได้
+>   3. **หน้า Try the games (Settings):** **บั๊ก:** คำใบ้ "tap the same 3 colours" ผิดเมื่อระดับไม่ใช่ Easy (ฝึกจาก Settings ใช้ระดับของนาฬิกาใหม่ = Normal → รอบแรก 4 ปุ่ม) · แก้คำใบ้ไม่ระบุจำนวน + เพิ่มปุ่มเลือกระดับ Easy–Nightmare (ค่าเริ่ม = ระดับของนาฬิกาใหม่)
+>   4. **ทัวร์หน้าหลัก ขั้น Tournament:** เพิ่มว่ามีกระดานคะแนนออนไลน์แบบไม่บังคับ
+>   5. ทดสอบ: unit test ลำดับขั้น (`GuideStep.next`) + flag · คุณลองบน 14T (ติดตั้ง debug แล้วกด Settings > Home tour)
+> - **6.11 ภาพหน้าจอหน้าร้านชุดใหม่ (คุณเลือก 8 ภาพ 2026-10-03, ถ่ายหลัง 6.10):** home กลางวัน, pads, cups, repeat, editor, หน้าเริ่มทัวร์นาเมนต์, leaderboard (แถวจริงเท่านั้น ถ้าแทบว่างใช้ cups-pick แทน), home กลางคืน · คุณกดตามบน 14T (HyperOS กันการแตะจาก adb) ผมแคปด้วย screencap · ring ด้วย `DebugAlarmReceiver --es cmd add --ei sec 0 --es mission <game> --es level <lvl>` (ต้องอนุญาต full-screen ใหม่หลังติดตั้ง) · demo alarms `--es cmd demo` · ตัด status bar 104 px → 1220×2440 · แล้ววางใน Console พร้อมข้อความหน้าร้านใหม่
 > - **6.8 feedback:** 7 วันแรกของ closed test = จบเฟส 6 · ครบ 14 วันต่อเนื่อง → ขอ production (เฟส 8)
 
 > อ่านประกอบเมื่อจำเป็น: [09-security-privacy.md](09-security-privacy.md) · [10-policy-legal.md](10-policy-legal.md)

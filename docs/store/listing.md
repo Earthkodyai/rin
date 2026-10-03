@@ -22,8 +22,14 @@ THREE WAKE-UP GAMES
 Pick a game per alarm, or let Rin pick a different one each day. Colour pads and Cup shuffle have four levels, from Easy to Nightmare.
 
 TOURNAMENT
-• How far can you go? Colour pads or Cup shuffle, starting at Nightmare and getting harder, and one miss ends the run.
-• Optional online leaderboard: post your best with a name and your university (the top 50 Thai universities). RinAlarm is not affiliated with or endorsed by any university.
+How far can you go? A separate mode you open from the home screen, never part of an alarm.
+• Pick Colour pads or Cup shuffle. Level 1 is already Nightmare.
+• Every level adds one pad or one swap, and every third level gets faster.
+• One miss ends the run. Your score is the levels you cleared; on a tie, the faster time wins.
+• Rin stays quiet and just watches: no hints, no scolding.
+• Your best stays on your phone. If you like, switch on the online leaderboard to post it with a name (optional) and your university, picked from the top 50 Thai universities, shown as a badge with its logo. Players are ranked one by one in each game.
+• Switch posting off at any time and your scores are deleted from the board. Rude names can be reported.
+• RinAlarm is not affiliated with or endorsed by any university. A university can ask for its name or logo to be removed.
 
 A CHARACTER, NOT A BEEP
 • Rin is a 3D anime character who reacts while you play: cheerful, sleepy, or a little pouty when you snooze.
@@ -65,8 +71,14 @@ The app is in English. Meant for adults (18+).
 เลือกเกมให้แต่ละการปลุก หรือให้รินเลือกเกมใหม่ทุกวัน กดตามสีและสลับแก้วมี 4 ระดับ ตั้งแต่ Easy ถึง Nightmare
 
 ทัวร์นาเมนต์
-• ไปได้ไกลแค่ไหน? เล่นกดตามสีหรือสลับแก้ว เริ่มที่ Nightmare แล้วยากขึ้นเรื่อยๆ พลาดครั้งเดียวจบ
-• กระดานคะแนนออนไลน์ (ไม่บังคับ): โพสต์สถิติพร้อมชื่อและมหาวิทยาลัยของคุณ (50 มหาวิทยาลัยไทยอันดับต้น) RinAlarm ไม่มีส่วนเกี่ยวข้องและไม่ได้รับการรับรองจากมหาวิทยาลัยใด
+ไปได้ไกลแค่ไหน? โหมดแยกที่เข้าจากหน้าหลัก ไม่เกี่ยวกับการปลุก
+• เลือกกดตามสีหรือสลับแก้ว ด่านแรกก็เป็น Nightmare แล้ว
+• ทุกด่านเพิ่มปุ่มหรือการสลับอีกหนึ่งครั้ง และทุก 3 ด่านจะเร็วขึ้น
+• พลาดครั้งเดียวจบ คะแนนคือจำนวนด่านที่ผ่าน ถ้าเท่ากัน เวลาที่เร็วกว่าชนะ
+• รินเงียบและดูอยู่เฉยๆ ไม่ช่วย ไม่บ่น
+• สถิติดีที่สุดเก็บไว้ในเครื่อง ถ้าต้องการ เปิดกระดานคะแนนออนไลน์เพื่อโพสต์พร้อมชื่อ (ไม่บังคับ) และมหาวิทยาลัยของคุณ เลือกจาก 50 มหาวิทยาลัยไทยอันดับต้น แสดงเป็นป้ายพร้อมโลโก้ จัดอันดับรายคนแยกตามเกม
+• ปิดการโพสต์เมื่อไรก็ได้ คะแนนของคุณจะถูกลบจากกระดาน และรายงานชื่อที่ไม่เหมาะสมได้
+• RinAlarm ไม่มีส่วนเกี่ยวข้องและไม่ได้รับการรับรองจากมหาวิทยาลัยใด มหาวิทยาลัยขอให้นำชื่อหรือโลโก้ออกได้
 
 ตัวละคร ไม่ใช่แค่เสียงบี๊บ
 • รินเป็นตัวละครอนิเมะ 3D ที่มีอารมณ์ตามที่คุณเล่น: ร่าเริง ง่วง หรืองอนนิดๆ เวลาคุณกดเลื่อนปลุก
