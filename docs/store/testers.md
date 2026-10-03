@@ -4,7 +4,7 @@
 
 ## รายชื่อผู้ทดสอบ: Google Group (แนะนำ)
 
-สร้างแล้ว 2026-10-03: **Rin Alarm Testers** `rin-alarm-testers@googlegroups.com` (https://groups.google.com/g/rin-alarm-testers) · ใครก็กดเข้าได้เอง (Anyone on the web can join) · ใครก็เปิดดูหน้ากลุ่มได้ (แก้ 2026-10-04: ตอนแรกตั้งให้เห็นแค่ผู้จัดการ คนที่ยังไม่ได้เข้ากลุ่มเลยเจอ "ไม่มีสิทธิ์เข้าถึงเนื้อหานี้") · โพสต์ได้และรายชื่อสมาชิกเห็นได้แค่ผู้จัดการกลุ่ม (ผู้ทดสอบไม่เห็นอีเมลกัน) · ใส่ไว้ใน Play Console → Closed testing – Alpha → Testers แล้ว · ลิงก์ opt-in ของ Play จะได้มาหลังปล่อย release แรก
+สร้างแล้ว 2026-10-03: **Rin Alarm Testers** `rin-alarm-testers@googlegroups.com` (https://groups.google.com/g/rin-alarm-testers) · ใครก็กดเข้าได้เอง (Anyone on the web can join) · ใครก็เปิดดูหน้ากลุ่มได้ (แก้ 2026-10-04: ตอนแรกตั้งให้เห็นแค่ผู้จัดการ คนที่ยังไม่ได้เข้ากลุ่มเลยเจอ "ไม่มีสิทธิ์เข้าถึงเนื้อหานี้") · โพสต์ได้และรายชื่อสมาชิกเห็นได้แค่ผู้จัดการกลุ่ม (ผู้ทดสอบไม่เห็นอีเมลกัน) · ใส่ไว้ใน Play Console → Closed testing – Alpha → Testers แล้ว · ลิงก์ opt-in (Google อนุมัติ 1.0.0 แล้ว 2026-10-04): เว็บ https://play.google.com/apps/testing/io.github.earthkodyai.rinalarm · บน Android https://play.google.com/store/apps/details?id=io.github.earthkodyai.rinalarm
 
 ## ข้อความชวน (ส่งทาง LINE / IG / กลุ่มเรียน)
 
@@ -30,7 +30,7 @@ Google Play ให้แอปใหม่ทดสอบกับคนจร�
 ขอบคุณที่มาช่วยทดสอบนะครับ 💗
 
 ติดตั้ง
-1. เปิดลิงก์นี้ด้วยบัญชี Google เดียวกับที่ใช้เข้ากลุ่ม: <ลิงก์ opt-in ของ Play>
+1. เปิดลิงก์นี้ด้วยบัญชี Google เดียวกับที่ใช้เข้ากลุ่ม: https://play.google.com/apps/testing/io.github.earthkodyai.rinalarm
 2. กด "Become a tester" แล้วกดลิงก์ไป Google Play เพื่อติดตั้ง
    (ถ้ายังหาไม่เจอ รอ 10–30 นาทีแล้วลองอีกครั้ง)
 3. ห้ามกด "Leave the program" และห้ามถอนแอปภายใน 14 วันนะครับ ไม่อย่างนั้นการนับจะเริ่มใหม่
