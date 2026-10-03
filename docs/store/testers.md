@@ -4,7 +4,7 @@
 
 ## รายชื่อผู้ทดสอบ: Google Group (แนะนำ)
 
-สร้างแล้ว 2026-10-03: **Rin Alarm Testers** `rin-alarm-testers@googlegroups.com` (https://groups.google.com/g/rin-alarm-testers) · ใครก็กดเข้าได้เอง (Anyone on the web can join) · ข้อความ โพสต์ และรายชื่อสมาชิกเห็นได้แค่ผู้จัดการกลุ่ม (ผู้ทดสอบไม่เห็นอีเมลกัน) · ใส่ไว้ใน Play Console → Closed testing – Alpha → Testers แล้ว · ลิงก์ opt-in ของ Play จะได้มาหลังปล่อย release แรก
+สร้างแล้ว 2026-10-03: **Rin Alarm Testers** `rin-alarm-testers@googlegroups.com` (https://groups.google.com/g/rin-alarm-testers) · ใครก็กดเข้าได้เอง (Anyone on the web can join) · ใครก็เปิดดูหน้ากลุ่มได้ (แก้ 2026-10-04: ตอนแรกตั้งให้เห็นแค่ผู้จัดการ คนที่ยังไม่ได้เข้ากลุ่มเลยเจอ "ไม่มีสิทธิ์เข้าถึงเนื้อหานี้") · โพสต์ได้และรายชื่อสมาชิกเห็นได้แค่ผู้จัดการกลุ่ม (ผู้ทดสอบไม่เห็นอีเมลกัน) · ใส่ไว้ใน Play Console → Closed testing – Alpha → Testers แล้ว · ลิงก์ opt-in ของ Play จะได้มาหลังปล่อย release แรก
 
 ## ข้อความชวน (ส่งทาง LINE / IG / กลุ่มเรียน)
 
