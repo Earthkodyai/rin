@@ -4,7 +4,7 @@
 
 ## รายชื่อผู้ทดสอบ: Google Group (แนะนำ)
 
-สร้าง Google Group (เช่น `rin-alarm-testers`) ตั้งให้ "ใครมีลิงก์ก็ขอเข้าร่วมได้" แล้วใส่อีเมลของกลุ่มใน Play Console → Closed testing → Testers ผู้ทดสอบกดเข้ากลุ่มเองได้ โดยคุณไม่ต้องเก็บอีเมลทีละคน · ลิงก์ opt-in ของ Play จะได้มาหลังสร้าง track
+สร้างแล้ว 2026-10-03: **Rin Alarm Testers** `rin-alarm-testers@googlegroups.com` (https://groups.google.com/g/rin-alarm-testers) · ใครก็กดเข้าได้เอง (Anyone on the web can join) · ข้อความ โพสต์ และรายชื่อสมาชิกเห็นได้แค่ผู้จัดการกลุ่ม (ผู้ทดสอบไม่เห็นอีเมลกัน) · ใส่ไว้ใน Play Console → Closed testing – Alpha → Testers แล้ว · ลิงก์ opt-in ของ Play จะได้มาหลังปล่อย release แรก
 
 ## ข้อความชวน (ส่งทาง LINE / IG / กลุ่มเรียน)
 
@@ -20,7 +20,7 @@ Google Play ให้แอปใหม่ทดสอบกับคนจร�
 • แค่ติดตั้งค้างไว้ 14 วัน ถ้าตั้งปลุกจริงสักสองสามเช้าจะช่วยได้มาก
 • ตอบฟอร์มสั้นๆ 2 ครั้ง (วันที่ 7 และวันที่ 14) ครั้งละไม่ถึง 5 นาที
 
-สนใจกดลิงก์นี้ได้เลยครับ: <ลิงก์ Google Group>
+สนใจกดลิงก์นี้ได้เลยครับ: https://groups.google.com/g/rin-alarm-testers
 แล้วผมจะส่งวิธีติดตั้งให้ ขอบคุณมากครับ 🙇
 ```
 
