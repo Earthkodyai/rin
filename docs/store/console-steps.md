@@ -5,7 +5,7 @@ The user does these in Play Console (play.google.com/console, app "RinAlarm", pa
 ## 1. Store listing (Grow users → Store presence → Main store listing)
 
 1. App name `Rin: Anime Wake-up Alarm`, short and full description from listing.md (English).
-2. App icon `graphics/icon-512.png` · Feature graphic `graphics/feature-1024x500.png` · Phone screenshots `graphics/screens/*.png` in file order (1 home day, 2 home night, 3–6 games, 7 editor; 1220×2440, 2:1).
+2. App icon `graphics/icon-512.png` · Feature graphic `graphics/feature-1024x500.png` · Phone screenshots `graphics/screens/*.png` in file order (1 home day, 2 home night, 3 pads, 4 cups, 5 cups found, 6 repeat, 7 editor game + level, 8 tournament; 1220×2440, 2:1; retaken 2026-10-03 on the final UI, 6.11: replace all of the old ones in the Console).
 3. **Translations → Add → Thai:** the Thai texts from listing.md (the graphics stay the same).
 4. Store settings: category **Tools** (where alarm clocks sit), contact email (your choice), website https://earthkodyai.github.io/rin/.
 
