@@ -17,7 +17,7 @@ Drafted from the code and PRIVACY.md on 2026-10-02; the leaderboard rows (G.6) a
 | Data safety | **Collects data: Yes. Shares data: No.** All of it only from the optional tournament leaderboard (below). Encrypted in transit: **Yes**. Users can request deletion: **Yes** | Firebase is a service provider, which Play does not count as sharing; showing rows to other players is user-initiated after the "Post my best online" switch (off by default), which is exempt. Mic audio is processed on the phone in memory and discarded, which Play does not count as collection. The ring log stays on the phone. Backup off |
 | Exact alarms (`USE_EXACT_ALARM`) | Core function: **alarm clock** | the app is an alarm clock |
 | Full-screen intent (`USE_FULL_SCREEN_INTENT`) | Core function: **alarm** (shows the ring screen over the lock screen) | allowed for calling and alarm apps |
-| Foreground service | Type **systemExempted**: the ring keeps sounding and the game runs while the alarm rings, until it is dismissed, snoozed or passed. Needs a **video link** (YouTube unlisted) showing an alarm ringing from the lock screen and being stopped by a game | RingService, `foregroundServiceType="systemExempted"` (exempt as an exact-alarm app) |
+| Foreground service | **Nothing to declare** (checked 2026-10-04 with the AAB uploaded: the Foreground service permissions page lists no types, because Play's declaration doesn't cover **systemExempted**). A demo video exists anyway: https://www.youtube.com/watch?v=5YGRrMtBhgs (unlisted) | RingService, `foregroundServiceType="systemExempted"` (exempt as an exact-alarm app) |
 | Microphone (`RECORD_AUDIO`) | Asked only when the user picks Repeat after Rin, on-device recognition, nothing recorded | if Play asks for a description |
 | Generative AI | The app generates nothing at run time; Rin's lines and voice were made with AI before release and ship as fixed files. No in-app AI reporting flow is needed because users never receive generated output | PRIVACY.md "Rin's voice and lines"; D21 one-way voice |
 
@@ -38,6 +38,6 @@ Every type below is **collected, not shared, optional** ("users can choose"), **
 
 ## Things the user must do themselves
 
-- **The FGS video:** record the screen (HyperOS screen recorder) of a test ring from the lock screen through a game to the end. The alarm sound is not captured (Android limit), which is fine: the video shows the use. Upload unlisted to YouTube.
+- ~~The FGS video~~: not needed for systemExempted (see the table); one was made on 2026-10-03 anyway.
 - **Contact email** for the listing (listing.md).
 - **Submit** each section.

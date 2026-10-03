@@ -11,7 +11,7 @@ The user does these in Play Console (play.google.com/console, app "RinAlarm", pa
 
 ## 2. App content (Policy and programs → App content)
 
-Every section in app-content.md, in order. The foreground-service declaration needs the video first (record a test ring from the lock screen through a game, upload unlisted to YouTube).
+Every section in app-content.md, in order. Exact alarms and Full-screen intent only appear after an AAB is uploaded (the release preview links to them); systemExempted needs no foreground-service declaration.
 
 ## 3. Closed testing track (Test and release → Testing → Closed testing)
 
