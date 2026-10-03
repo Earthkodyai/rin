@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -97,6 +98,7 @@ import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
+import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.rinPattern
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import javax.inject.Inject
@@ -225,7 +227,7 @@ internal fun TournamentScreen(
       }
     }
     if (padsUp) {
-      Box(Modifier.fillMaxSize().padding(top = top + 4.dp).rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true))
+      Box(Modifier.fillMaxSize().padding(top = top + 4.dp).rinPattern(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), drift = true, motif = PatternMotif.TROPHY))
     }
     Column(Modifier.fillMaxSize()) {
       Spacer(Modifier.height(top))
@@ -252,6 +254,7 @@ internal fun TournamentScreen(
           alpha = shown
         },
         joined = false,
+        motif = PatternMotif.TROPHY,
       ) {
         Hint(state)
       }
@@ -383,7 +386,7 @@ private fun Results(score: TournamentScore, best: TournamentScore?, newBest: Boo
     )
     Text(stringResource(R.string.tournament_time, formatTime(score.timeMs)), style = MaterialTheme.typography.titleMedium, color = p.ink)
     best?.let {
-      Text(stringResource(R.string.tournament_best_long, it.levels, formatTime(it.timeMs)), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+      Text(pluralStringResource(R.plurals.tournament_best_long, it.levels, it.levels, formatTime(it.timeMs)), style = MaterialTheme.typography.bodyMedium, color = p.muted)
     }
     Spacer(Modifier.height(6.dp))
     PillButton(stringResource(R.string.tournament_play_again), onPlayAgain, Modifier.fillMaxWidth())

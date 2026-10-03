@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -51,9 +52,15 @@ fun RinPage(
   modifier: Modifier = Modifier,
   actions: @Composable RowScope.() -> Unit = {},
   scroll: Boolean = true,
+  /** The ring screen's drifting wallpaper instead of the plain ground (the tournament's trophies, 2026-10-03). */
+  pattern: PatternMotif? = null,
   content: @Composable ColumnScope.() -> Unit,
 ) {
-  Box(modifier.fillMaxSize().background(RinTheme.palette.ground)) {
+  Box(
+    modifier
+      .fillMaxSize()
+      .then(if (pattern != null) Modifier.rinPattern(RectangleShape, drift = true, motif = pattern) else Modifier.background(RinTheme.palette.ground))
+  ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       RinTopBar(title, onBack, actions = actions)
       if (scroll) {

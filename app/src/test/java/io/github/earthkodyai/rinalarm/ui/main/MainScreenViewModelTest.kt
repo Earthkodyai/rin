@@ -3,8 +3,6 @@ package io.github.earthkodyai.rinalarm.ui.main
 import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
-import io.github.earthkodyai.rinalarm.data.DayMode
-import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.testing.FakeAlarms
 import io.github.earthkodyai.rinalarm.testing.FakeDeviceStatus
 import io.github.earthkodyai.rinalarm.testing.FakeSettings
@@ -47,7 +45,7 @@ class MainScreenViewModelTest {
 
   @Test
   fun tourSteps_skipTheAlarmStep_whenTheListIsEmpty_andEndOnTheHandsOnAdd() {
-    assertEquals(listOf(TourStep.HELLO, TourStep.DAY_MODE, TourStep.TOP, TourStep.ADD), TourStep.steps(hasAlarms = false))
+    assertEquals(listOf(TourStep.HELLO, TourStep.TOURNAMENT, TourStep.TOP, TourStep.ADD), TourStep.steps(hasAlarms = false))
     assertEquals(TourStep.entries, TourStep.steps(hasAlarms = true))
     assertEquals(listOf(TourStep.ADD), TourStep.entries.filter { it.handsOn })
   }
@@ -83,34 +81,6 @@ class MainScreenViewModelTest {
     val viewModel = MainScreenViewModel(failing, alarms, time, FakeDeviceStatus(), FakeSettings())
 
     assertTrue(viewModel.uiState.first { it !is MainScreenUiState.Loading } is MainScreenUiState.Error)
-  }
-
-  @Test
-  fun dayMode_oneTapSetsIt_aTapOnTheSameCancels_andTheOtherSwitches() = runTest {
-    val alarms = FakeAlarms()
-    val settings = FakeSettings()
-    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), settings)
-    backgroundScope.launch { viewModel.dayMode.collect {} }
-
-    viewModel.tapDayMode(DayModeKind.REST)
-    assertEquals(DayModeKind.REST, viewModel.dayMode.first { it != null })
-    assertEquals(DayMode(DayModeKind.REST, time.now().toEpochMilli()), settings.dayMode.value)
-
-    viewModel.tapDayMode(DayModeKind.SICK)
-    assertEquals(DayModeKind.SICK, viewModel.dayMode.first { it == DayModeKind.SICK })
-
-    viewModel.tapDayMode(DayModeKind.SICK)
-    assertNull(viewModel.dayMode.first { it == null })
-    assertNull(settings.dayMode.value)
-  }
-
-  @Test
-  fun dayMode_aLapsedOne_showsAsNone() = runTest {
-    val alarms = FakeAlarms()
-    val lapsed = DayMode(DayModeKind.SICK, time.now().toEpochMilli() - DayMode.LIFETIME.toMillis())
-    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), FakeSettings(dayMode = lapsed))
-    backgroundScope.launch { viewModel.dayMode.collect {} }
-    assertNull(viewModel.dayMode.first())
   }
 
   @Test

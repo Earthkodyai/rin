@@ -1,11 +1,16 @@
 package io.github.earthkodyai.rinalarm.ui.tournament
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,6 +19,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,14 +29,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,12 +55,14 @@ import io.github.earthkodyai.rinalarm.mission.TournamentGame
 import io.github.earthkodyai.rinalarm.mission.TournamentScore
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.theme.TrophyGold
 import io.github.earthkodyai.rinalarm.tournament.TournamentActivity
 import io.github.earthkodyai.rinalarm.tournament.formatTime
+import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
-import io.github.earthkodyai.rinalarm.ui.common.SectionTitle
+import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -114,39 +128,45 @@ internal fun TournamentStartScreen(
   var name by rememberSaveable { mutableStateOf(state.entry.name) }
   var university by rememberSaveable { mutableStateOf(state.entry.university) }
   var agreed by rememberSaveable { mutableStateOf(state.entry.agreedToCurrent) }
-  RinPage(stringResource(R.string.tournament_title), onBack) {
-    Text(stringResource(R.string.tournament_intro), style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.padding(horizontal = 4.dp))
+  // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
+  // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
+  RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
+    Banner(state.best[game])
 
-    SectionTitle(stringResource(R.string.tournament_pick_game))
-    PillChoiceRow(
-      TournamentGame.entries,
-      game,
-      { stringResource(if (it == TournamentGame.PADS) R.string.pads_title else R.string.cups_title) },
-      { game = it },
-    )
-    val best = state.best[game]
-    Text(
-      if (best == null) stringResource(R.string.tournament_no_best)
-      else stringResource(R.string.tournament_best_long, best.levels, formatTime(best.timeMs)),
-      style = MaterialTheme.typography.bodyMedium,
-      color = p.muted,
-      modifier = Modifier.padding(horizontal = 4.dp),
-    )
-
-    SectionTitle(stringResource(R.string.tournament_you))
-    OutlinedTextField(
-      name,
-      { name = it.take(TournamentEntry.NAME_MAX) },
-      Modifier.fillMaxWidth(),
-      label = { Text(stringResource(R.string.tournament_name)) },
-      singleLine = true,
-      keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-      supportingText = { Text("${name.length}/${TournamentEntry.NAME_MAX}") },
-    )
-    UniversityPicker(university) { university = it }
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      CardTitle(stringResource(R.string.tournament_pick_game))
+      PillChoiceRow(
+        TournamentGame.entries,
+        game,
+        { stringResource(if (it == TournamentGame.PADS) R.string.pads_title else R.string.cups_title) },
+        { game = it },
+      )
+    }
 
     Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-      Text(stringResource(R.string.tournament_rules_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold), color = p.ink)
+      CardTitle(stringResource(R.string.tournament_you))
+      FieldLabel(stringResource(R.string.tournament_name))
+      OutlinedTextField(
+        name,
+        { name = it.take(TournamentEntry.NAME_MAX) },
+        Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+        supportingText = { Text("${name.length}/${TournamentEntry.NAME_MAX}", color = p.muted) },
+        shape = RoundedCornerShape(16.dp),
+        colors =
+          OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = p.card,
+            unfocusedContainerColor = p.card,
+            focusedBorderColor = p.primary,
+            unfocusedBorderColor = p.line,
+          ),
+      )
+      UniversityPicker(university) { university = it }
+    }
+
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      CardTitle(stringResource(R.string.tournament_rules_title))
       Text(stringResource(R.string.tournament_rules), style = MaterialTheme.typography.bodyMedium, color = p.muted)
       Row(
         Modifier.fillMaxWidth().toggleable(agreed, role = Role.Checkbox) { agreed = it },
@@ -160,38 +180,91 @@ internal fun TournamentStartScreen(
   }
 }
 
-/** The university, or "Not listed": a tap opens the list (only "Not listed" until G.7). */
+/**
+ * The gold banner on top, the home button's gold: the trophy, the challenge in two lines, and the best for the game
+ * picked below (or none yet) on a white chip. The same by day and night.
+ */
+@Composable
+private fun Banner(best: TournamentScore?) {
+  Row(
+    Modifier.fillMaxWidth().padding(bottom = 4.dp).goldSticker(radius = 24.dp, depth = 5.dp).padding(horizontal = 14.dp, vertical = 16.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Image(painterResource(R.drawable.ic_trophy_badge), contentDescription = null, modifier = Modifier.size(76.dp))
+    Column(Modifier.padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      Text(
+        stringResource(R.string.tournament_headline),
+        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, fontSize = 19.sp),
+        color = TrophyGold.ink,
+        modifier = Modifier.semantics { heading() },
+      )
+      Text(stringResource(R.string.tournament_intro), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TrophyGold.ink)
+      Text(
+        if (best == null) stringResource(R.string.tournament_no_best)
+        else "★ " + stringResource(R.string.tournament_best_short, best.levels, formatTime(best.timeMs)),
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+        color = TrophyGold.ink,
+        modifier = Modifier.padding(top = 4.dp).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 4.dp),
+      )
+    }
+  }
+}
+
+/** A card's title, inside it (the page's own section titles sat loose on the wallpaper). */
+@Composable
+private fun CardTitle(text: String) {
+  Text(
+    text,
+    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+    color = RinTheme.palette.ink,
+    modifier = Modifier.semantics { heading() },
+  )
+}
+
+/** A field's label above its box, as on the mockup (a floating label cut a gap in the box's border). */
+@Composable
+private fun FieldLabel(text: String, modifier: Modifier = Modifier) {
+  Text(text, style = MaterialTheme.typography.labelLarge, color = RinTheme.palette.muted, modifier = modifier.padding(start = 2.dp))
+}
+
+/** The university, or "Not listed": a tap opens the list (only "Not listed" until G.7). Boxed like the name. */
 @Composable
 private fun UniversityPicker(selected: String?, onSelect: (String?) -> Unit) {
   val p = RinTheme.palette
   var open by remember { mutableStateOf(false) }
   val notListed = stringResource(R.string.tournament_not_listed)
   val label = TournamentUniversities.firstOrNull { it.first == selected }?.second ?: notListed
-  Column(Modifier.fillMaxWidth()) {
-    Text(stringResource(R.string.tournament_university), style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-    Text(
-      label,
-      style = MaterialTheme.typography.titleMedium,
-      color = p.ink,
-      modifier =
-        Modifier.fillMaxWidth()
-          .rinCard()
-          .clickable(role = Role.DropdownList) { open = true },
-    )
-    DropdownMenu(open, onDismissRequest = { open = false }, shape = RoundedCornerShape(16.dp)) {
-      DropdownMenuItem(text = { Text(notListed) }, onClick = {
-        onSelect(null)
-        open = false
-      })
-      TournamentUniversities.forEach { (id, short) ->
-        DropdownMenuItem(text = { Text(short) }, onClick = {
-          onSelect(id)
+  val shape = RoundedCornerShape(16.dp)
+  Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    FieldLabel(stringResource(R.string.tournament_university))
+    Box {
+      Text(
+        label,
+        style = MaterialTheme.typography.bodyLarge,
+        color = p.ink,
+        modifier =
+          Modifier.fillMaxWidth()
+            .clip(shape)
+            .background(p.card, shape)
+            .border(1.dp, p.line, shape)
+            .clickable(role = Role.DropdownList) { open = true }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+      )
+      DropdownMenu(open, onDismissRequest = { open = false }, shape = RoundedCornerShape(16.dp)) {
+        DropdownMenuItem(text = { Text(notListed) }, onClick = {
+          onSelect(null)
           open = false
         })
+        TournamentUniversities.forEach { (id, short) ->
+          DropdownMenuItem(text = { Text(short) }, onClick = {
+            onSelect(id)
+            open = false
+          })
+        }
       }
     }
     if (TournamentUniversities.isEmpty()) {
-      Text(stringResource(R.string.tournament_university_soon), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+      Text(stringResource(R.string.tournament_university_soon), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(start = 2.dp))
     }
   }
 }

@@ -93,6 +93,7 @@ import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
@@ -158,6 +159,7 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, guided: Boolean = fals
   val viewModel =
     hiltViewModel<AlarmEditorViewModel, AlarmEditorViewModel.Factory>(creationCallback = { it.create(alarmId) })
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val dayMode by viewModel.dayMode.collectAsStateWithLifecycle()
   // The first alarm's walkthrough (the home tour's last step): the step on screen, kept through a rotation.
   var guideStep by rememberSaveable { mutableStateOf(if (guided) GuideStep.TIME else null) }
   val nextGuideStep: () -> Unit = {
@@ -250,7 +252,16 @@ fun AlarmEditorScreen(alarmId: Long, onClose: () -> Unit, guided: Boolean = fals
     }
   }
 
-  AlarmEditorScreen(state, actions, onClose, guide = guideStep, onGuideNext = nextGuideStep, onGuideSkip = skipGuide)
+  AlarmEditorScreen(
+    state,
+    actions,
+    onClose,
+    guide = guideStep,
+    onGuideNext = nextGuideStep,
+    onGuideSkip = skipGuide,
+    dayMode = dayMode,
+    onDayMode = viewModel::tapDayMode,
+  )
 }
 
 @Composable
@@ -261,6 +272,8 @@ internal fun AlarmEditorScreen(
   guide: GuideStep? = null,
   onGuideNext: () -> Unit = {},
   onGuideSkip: () -> Unit = {},
+  dayMode: DayModeKind? = null,
+  onDayMode: (DayModeKind) -> Unit = {},
 ) {
   val editing = state as? AlarmEditorUiState.Editing
   val targets = remember { SpotTargets<GuideTarget>() }
@@ -292,7 +305,7 @@ internal fun AlarmEditorScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       RinTopBar(stringResource(if (editing?.isNew == false) R.string.editor_title_edit else R.string.editor_title_new), leave)
       if (editing != null) {
-        EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f), targets, scroll)
+        EditorContent(editing, actions, onDelete = { confirmDelete = true }, Modifier.weight(1f), targets, scroll, dayMode, onDayMode)
       } // else loading, or closing after a save/delete
     }
     if (editing != null) {
@@ -365,6 +378,8 @@ private fun EditorContent(
   modifier: Modifier = Modifier,
   targets: SpotTargets<GuideTarget>? = null,
   scroll: ScrollState = rememberScrollState(),
+  dayMode: DayModeKind? = null,
+  onDayMode: (DayModeKind) -> Unit = {},
 ) {
   val p = RinTheme.palette
   val draft = state.draft
@@ -397,6 +412,11 @@ private fun EditorContent(
         )
       }
     }
+
+    // Not this alarm's setting: whichever alarm rings next, set at once without Save (the user, 2026-10-03: moved
+    // here from home, where the tournament took their place).
+    SectionTitle(stringResource(R.string.editor_next_alarm))
+    DayModeRow(dayMode, onDayMode, Modifier.spotTarget(targets, GuideTarget.DAY_MODE, radius = Spot.PILL, depth = 3.dp))
 
     SectionTitle(stringResource(R.string.editor_repeat))
     Box(Modifier.spotTarget(targets, GuideTarget.DAYS, radius = Spot.PILL)) { RepeatDayPicker(draft.repeatDays, actions::toggleDay) }

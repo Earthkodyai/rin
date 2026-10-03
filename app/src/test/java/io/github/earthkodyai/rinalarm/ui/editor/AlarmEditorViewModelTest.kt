@@ -7,6 +7,8 @@ import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
 import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.data.DayMode
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -25,6 +27,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -57,6 +60,34 @@ class AlarmEditorViewModelTest {
 
   private fun editor(id: Long) = AlarmEditorViewModel(id, alarms, alarms, time, { missions }, moments, { themes }, previews, settings)
 
+  // --- rest and sick day (Phase 5; on the editor since 2026-10-03) ---
+
+  @Test
+  fun dayMode_oneTapSetsIt_aTapOnTheSameCancels_andTheOtherSwitches() = runTest {
+    val editor = editor(AlarmEditorViewModel.NEW_ALARM_ID)
+    backgroundScope.launch { editor.dayMode.collect {} }
+
+    editor.tapDayMode(DayModeKind.REST)
+    assertEquals(DayModeKind.REST, editor.dayMode.first { it != null })
+    assertEquals(DayMode(DayModeKind.REST, time.now().toEpochMilli()), settings.dayMode.value)
+
+    editor.tapDayMode(DayModeKind.SICK)
+    assertEquals(DayModeKind.SICK, editor.dayMode.first { it == DayModeKind.SICK })
+
+    editor.tapDayMode(DayModeKind.SICK)
+    assertNull(editor.dayMode.first { it == null })
+    assertNull(settings.dayMode.value)
+  }
+
+  @Test
+  fun dayMode_aLapsedOne_showsAsNone() = runTest {
+    val lapsed = DayMode(DayModeKind.SICK, time.now().toEpochMilli() - DayMode.LIFETIME.toMillis())
+    val editor =
+      AlarmEditorViewModel(work.id, alarms, alarms, time, { missions }, moments, { themes }, previews, FakeSettings(dayMode = lapsed))
+    backgroundScope.launch { editor.dayMode.collect {} }
+    assertNull(editor.dayMode.first())
+  }
+
   // --- mission (task 3.1) ---
 
   @Test
@@ -65,11 +96,11 @@ class AlarmEditorViewModelTest {
       generateSequence(GuideStep.TIME) { it.next(mission, hasSounds) }.toList()
     assertEquals(GuideStep.entries, walk(MissionChoice.RinPicks, hasSounds = true))
     assertEquals(
-      listOf(GuideStep.TIME, GuideStep.DAYS, GuideStep.GAME, GuideStep.SOUND, GuideStep.SAVE),
+      listOf(GuideStep.TIME, GuideStep.DAY_MODE, GuideStep.DAYS, GuideStep.GAME, GuideStep.SOUND, GuideStep.SAVE),
       walk(MissionChoice.None, hasSounds = true),
     )
     assertEquals(
-      listOf(GuideStep.TIME, GuideStep.DAYS, GuideStep.GAME, GuideStep.TRY, GuideStep.SAVE),
+      listOf(GuideStep.TIME, GuideStep.DAY_MODE, GuideStep.DAYS, GuideStep.GAME, GuideStep.TRY, GuideStep.SAVE),
       walk(MissionChoice.Only(MissionType.CUPS), hasSounds = false),
     )
     assertTrue(GuideStep.SAVE.last)

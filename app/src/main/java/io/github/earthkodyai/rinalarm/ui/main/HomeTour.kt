@@ -25,7 +25,7 @@ enum class TourTarget {
   /** Rin's panel: always left bright, as she tells the tour in her bubble. */
   PANEL,
   TOP_BUTTONS,
-  DAY_MODE,
+  TOURNAMENT,
   FIRST_ALARM,
   ADD,
 }
@@ -40,7 +40,7 @@ typealias TourTargets = SpotTargets<TourTarget>
  */
 enum class TourStep(val target: TourTarget?, @StringRes val tip: Int, val handsOn: Boolean = false) {
   HELLO(null, R.string.tour_hello),
-  DAY_MODE(TourTarget.DAY_MODE, R.string.tour_day_mode),
+  TOURNAMENT(TourTarget.TOURNAMENT, R.string.tour_tournament),
   /** Only with an alarm in the list (a new install has none). */
   ALARM(TourTarget.FIRST_ALARM, R.string.tour_alarm),
   TOP(TourTarget.TOP_BUTTONS, R.string.tour_top),

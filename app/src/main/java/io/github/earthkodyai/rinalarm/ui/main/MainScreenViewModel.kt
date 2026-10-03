@@ -7,7 +7,6 @@ import io.github.earthkodyai.rinalarm.alarm.Alarm
 import io.github.earthkodyai.rinalarm.alarm.engine.AlarmWriter
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.data.AppSettings
-import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.setup.DeviceStatusSource
 import io.github.earthkodyai.rinalarm.setup.SetupChecks
 import io.github.earthkodyai.rinalarm.time.TimeSource
@@ -33,20 +32,6 @@ constructor(
   private val deviceStatus: DeviceStatusSource,
   private val settings: AppSettings,
 ) : ViewModel() {
-  /** The rest or sick day waiting for the next ring (Phase 5), or null; a lapsed one shows as none. */
-  val dayMode: StateFlow<DayModeKind?> =
-    combine(settings.dayMode, timeSource.minuteTicks) { mode, _ ->
-        mode?.takeIf { it.activeAt(timeSource.now().toEpochMilli()) }?.kind
-      }
-      .catch { emit(null) }
-      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-  /** One tap sets [kind] for the next ring; a tap on the one already set cancels it. */
-  fun tapDayMode(kind: DayModeKind) {
-    val next = if (dayMode.value == kind) null else kind
-    viewModelScope.launch { settings.setDayMode(next, timeSource.now().toEpochMilli()) }
-  }
-
   private val _setupIssue = MutableStateFlow(false)
 
   /** True while a check could hide, delay or silence alarms; the list shows a banner leading to Diagnostics. */

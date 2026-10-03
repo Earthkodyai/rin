@@ -16,6 +16,7 @@ import io.github.earthkodyai.rinalarm.alarm.ring.PreviewSounds
 import io.github.earthkodyai.rinalarm.alarm.ring.RingSound
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.dialogue.HomeMoments
 import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -34,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -75,6 +77,22 @@ constructor(
         session.toUiState(readiness, previewing)
       }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlarmEditorUiState.Loading)
+
+  /**
+   * The rest or sick day waiting for the next ring (Phase 5), or null; a lapsed one shows as none. Not part of the
+   * draft: it covers whichever alarm rings next, and a tap sets it at once, without Save (moved here from home,
+   * 2026-10-03).
+   */
+  val dayMode: StateFlow<DayModeKind?> =
+    combine(settings.dayMode, time.minuteTicks) { mode, _ -> mode?.takeIf { it.activeAt(time.now().toEpochMilli()) }?.kind }
+      .catch { emit(null) }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+  /** One tap sets [kind] for the next ring; a tap on the one already set cancels it. */
+  fun tapDayMode(kind: DayModeKind) {
+    val next = if (dayMode.value == kind) null else kind
+    viewModelScope.launch { settings.setDayMode(next, time.now().toEpochMilli()) }
+  }
 
   init {
     if (alarmId == NEW_ALARM_ID) {

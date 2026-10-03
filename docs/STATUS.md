@@ -3,13 +3,17 @@
 Phase 1: tasks done; **14-night run** pending (Diagnostics card, Strict daily; set one alarm repeating every day — none enabled). Ends at 14/14 + green CI (needs the remote; 0.4 accounts on the user).
 Phase 2 **done 2026-09-28** on the VRoid sample. **Your model still pending** (`rin.model=<path>` in local.properties; ❓ edits in `docs/character/character-sheet.md`); when it lands: `./gradlew checkGestures -PwriteBody` → build → `./gradlew checkGestures` → `tools/character/phase-exit.sh`, re-check hands (`npm run dev`), gaze (`aimCamera`; the cup table now uses `CupScene.attend`) and the pads hand (thumb).
 ## ▶ Resume here (Phase G, D33 / ADR 0008: docs/plan/phase-games.md, then 6.9 and Play Console)
-- **G.5 done (2026-10-03, last commit 5012195; 21 commits since 6be066d, unpushed: ask first).** **G.5 done: the user cut step 4** (no Tournament button on the ring screen; the only way in is the home trophy). **Next: G.6** (Firebase Spark leaderboard; the user creates the project; see phase-games.md).
-  - **Home (step 1, device-checked):**
-    - Trophy on a wooden TOURNAMENT base is the button; trophy and base press together.
-    - A white manga "TOP1 IS ???!" bubble springs out of the cup 6 s in every 15 s, after Rin's hello. It boils like paper (4 drawings swapped at 12/s) and sinks back in.
-    - The trophy rocks on the same spring as the bubble, knocked on the way out and back in. The clock fades out while the bubble is up.
-    - Code: `ui/main/TournamentTrophy.kt`, `MainScreen.TournamentColumn`. The bubble is baked to bitmaps, because live drawing ran at 20 fps (measured with `gfxinfo framestats`).
-    - `topUniversity` is null until G.6.
+- **G.5 done (2026-10-03, last commit 5012195; 21 commits since 6be066d, unpushed: ask first).** **G.5 done: the user cut step 4** (no Tournament button on the ring screen; the only way in is the home Tournament button). **Next: G.6** (Firebase Spark leaderboard; the user creates the project; see phase-games.md).
+  - **Home + tournament redesign (2026-10-03 later, the user; built after G.5, on the 14T debug build):**
+    - The home trophy, its wooden TOURNAMENT base and the "TOP1 IS ???!" bubble are **gone** (`TournamentTrophy.kt` deleted; git history has it). The panel's left side is the clock and date again, centred, fading while Rin speaks.
+    - A gold **Tournament** button sits where Rest/Sick were (`MainScreen.TournamentButton`, `Modifier.goldSticker` in `ui/common/Sticker.kt`, colours `TrophyGold` in `theme/Color.kt`). The label is white with a dark-brown outline. Its icon is `ic_trophy_badge.xml` (pick D: solid white trophy, brown outline, gold shine; full colour, untinted).
+    - **Rest day / Sick day moved to the editor** (`ui/editor/DayModeRow.kt`, under the time card, titled "Next alarm"). A tap sets the mode at once, without Save, because it covers whichever alarm rings next. The state lives in `AlarmEditorViewModel.dayMode` / `tapDayMode` (moved from `MainScreenViewModel`).
+    - Tours: home step `DAY_MODE` became `TOURNAMENT` (`tour_tournament`). The first-alarm walkthrough gained `GuideStep.DAY_MODE` after TIME (`guide_day_mode`).
+    - Tournament wallpaper: `rinPattern(..., motif = PatternMotif.TROPHY)` (gold trophies, a medal, stars), used on the start page (`RinPage(pattern = ...)`), under the pads and on the cups sheet (`Sheet(motif = ...)`). Alarm rings keep `ALARM`.
+    - **Start page, layout B (the user's pick of 3 mockups):** a gold banner (trophy, "How far can you go?", two lines, a ★ best chip for the picked game), then Game / You / Rules cards. Nothing sits loose on the wallpaper. Field labels sit above their boxes (a floating label cut the border). The "every level longer, every third faster" line moved into the Rules text as bullet 2. `RULES_VERSION` is unchanged (wording only).
+    - Lint fix: `tournament_best_long` is now a plurals resource (CI's `lintDebug` failed on "%d levels").
+    - **The user has seen on the phone:** the home button and its icon. **Not seen yet:** the editor's Rest/Sick row, the start page B, the trophy wallpaper in a run.
+    - `topUniversity` and the TOP1 bubble are gone; G.6 needs a new place to show the leading university, if any (ask).
   - **Rules (step 2):** in `mission/Tournament.kt`.
     - `TournamentLadder`: level 1 is Nightmare's first round, each level adds one pad or swap, and every 3rd level is 7% faster.
     - Speed floors: pads 120/110 ms, cups 150/30 ms. These are calculated, not yet measured on screen.

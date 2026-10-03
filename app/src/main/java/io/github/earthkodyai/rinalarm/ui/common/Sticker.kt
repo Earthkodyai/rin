@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.theme.TrophyGold
 
 /**
  * The playful "sticker" look of the UX phase: a rounded fill with a solid drop [depth] below it (no blur), and at
@@ -113,4 +115,17 @@ fun rinSwitchColors(): SwitchColors {
     uncheckedTrackColor = if (p.night) p.ground else p.line,
     uncheckedBorderColor = p.line,
   )
+}
+
+/**
+ * The tournament's gold sticker (its home button and its start page's banner, 2026-10-03): a trophy's gold lit from
+ * above, a deep gold drop, and a white shine along the top edge. The same by day and night.
+ */
+@Composable
+@ReadOnlyComposable
+fun Modifier.goldSticker(radius: Dp, depth: Dp = 4.dp): Modifier {
+  val shape = RoundedCornerShape(radius)
+  return sticker(fill = TrophyGold.base, radius = radius, depth = depth, shadow = TrophyGold.deep, outline = null)
+    .background(Brush.verticalGradient(listOf(TrophyGold.light, TrophyGold.base, TrophyGold.shade)), shape)
+    .border(1.5.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.8f), TrophyGold.deep.copy(alpha = 0.6f))), shape)
 }

@@ -105,6 +105,7 @@ import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
+import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.rinPattern
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import io.github.earthkodyai.rinalarm.ui.common.sticker
@@ -454,14 +455,19 @@ private val STARS = listOf(0.08f to 0.06f, 0.9f to 0.04f, 0.16f to 0.32f, 0.82f 
  * vanished on the night sheet (Repeat after Rin's sentence, UX.4 test ring).
  */
 @Composable
-internal fun Sheet(modifier: Modifier, joined: Boolean, content: @Composable ColumnScope.() -> Unit) {
+internal fun Sheet(
+  modifier: Modifier,
+  joined: Boolean,
+  motif: PatternMotif = PatternMotif.ALARM,
+  content: @Composable ColumnScope.() -> Unit,
+) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
   CompositionLocalProvider(LocalContentColor provides p.ink) {
     Column(
       modifier
         // Joined: the pads' surface behind already runs through here, so the sheet draws nothing of its own.
-        .then(if (joined) Modifier else Modifier.rinPattern(shape, drift = true))
+        .then(if (joined) Modifier else Modifier.rinPattern(shape, drift = true, motif = motif))
         .let { if (p.night && !joined) it.border(1.dp, p.line, shape) else it }
         .navigationBarsPadding()
         .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp),

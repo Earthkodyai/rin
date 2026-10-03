@@ -4,7 +4,8 @@
     <string name="alarm_add">Add alarm</string>
     <string name="home_tournament">Tournament</string>
     <string name="tournament_title">Tournament</string>
-    <string name="tournament_intro">How far can you go? Level 1 is Nightmare. Every level is one pad or one swap longer, and every third one faster. One miss ends the run.</string>
+    <string name="tournament_headline">How far can you go?</string>
+    <string name="tournament_intro">Level 1 is Nightmare.\nOne miss ends the run.</string>
     <string name="tournament_pick_game">Game</string>
     <string name="tournament_no_best">No best yet.</string>
     <string name="tournament_you">You</string>
@@ -13,7 +14,7 @@
     <string name="tournament_not_listed">Not listed</string>
     <string name="tournament_university_soon">The list of universities comes with the leaderboard.</string>
     <string name="tournament_rules_title">Rules</string>
-    <string name="tournament_rules">• One miss ends the run.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• Your name, university and best scores stay on this phone.</string>
+    <string name="tournament_rules">• One miss ends the run.\n• Every level is one pad or one swap longer, and every third one is faster.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• Your name, university and best scores stay on this phone.</string>
     <string name="tournament_agree">I accept the rules</string>
     <string name="tournament_start">Start</string>
     <string name="tournament_level">LEVEL %1$d</string>
@@ -24,7 +25,10 @@
     <string name="tournament_cleared">Levels cleared: %1$d</string>
     <string name="tournament_time">Time: %1$s</string>
     <string name="tournament_best_short">Best L%1$d · %2$s</string>
-    <string name="tournament_best_long">Your best: %1$d levels · %2$s</string>
+    <plurals name="tournament_best_long">
+        <item quantity="one">Your best: %1$d level · %2$s</item>
+        <item quantity="other">Your best: %1$d levels · %2$s</item>
+    </plurals>
     <string name="tournament_play_again">Play again</string>
     <string name="tournament_done">Done</string>
     <string name="tournament_quit_title">Quit this run?</string>
@@ -48,6 +52,7 @@
     <string name="editor_label">Label</string>
     <string name="editor_label_count">%1$d/%2$d</string>
     <string name="editor_ringing">Ringing</string>
+    <string name="editor_next_alarm">Next alarm</string>
     <string name="editor_ramp">Gentle start</string>
     <string name="ramp_off">Off</string>
     <string name="editor_vibrate">Vibrate</string>
@@ -302,11 +307,12 @@
     <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
     <string name="tour_hello">I\'m Rin! Let me show you around.</string>
     <string name="tour_add">Let\'s set your first alarm. Tap Add alarm!</string>
-    <string name="tour_day_mode">Day off, or sick? One tap, and your next alarm has no game.</string>
+    <string name="tour_tournament">Up for a challenge? The tournament starts at Nightmare, and one miss ends it.</string>
     <string name="tour_alarm">Tap an alarm to change it. The switch turns it off.</string>
     <string name="tour_top">Left: can your phone ring? Right: Settings, and this tour.</string>
     <string name="tour_skip">Skip tour</string>
     <string name="guide_time">Scroll the wheels to the time you want to wake up.</string>
+    <string name="guide_day_mode">Day off, or sick? One tap here, and your next alarm has no game.</string>
     <string name="guide_days">Tap the days it repeats. No days means just once.</string>
     <string name="guide_game">Pick the game that stops it, or let me pick a new one each day.</string>
     <string name="guide_try">Try it now! It\'s only practice, no alarm.</string>

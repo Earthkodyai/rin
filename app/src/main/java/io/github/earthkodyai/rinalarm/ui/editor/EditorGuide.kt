@@ -55,6 +55,7 @@ import kotlinx.coroutines.withContext
 enum class GuideTarget {
   PAGE,
   TIME,
+  DAY_MODE,
   DAYS,
   GAME,
   TRY,
@@ -69,6 +70,7 @@ enum class GuideTarget {
  */
 enum class GuideStep(val target: GuideTarget, @StringRes val tip: Int) {
   TIME(GuideTarget.TIME, R.string.guide_time),
+  DAY_MODE(GuideTarget.DAY_MODE, R.string.guide_day_mode),
   DAYS(GuideTarget.DAYS, R.string.guide_days),
   GAME(GuideTarget.GAME, R.string.guide_game),
   /** Only while a game is chosen (None has no Try button). Tapping it plays a practice round, then moves on. */

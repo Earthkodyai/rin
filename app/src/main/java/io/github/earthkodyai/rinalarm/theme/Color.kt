@@ -110,6 +110,18 @@ val RinPalette.sickFill: Color
 val RinPalette.onSick: Color
   get() = if (night) ground else card
 
+/**
+ * A gold trophy's colours (the tournament: its home button and the trophies on its wallpaper), the same by day and by
+ * night, with a dark brown for text and lines on it (the user, 2026-10-03: "like a gold trophy", not the pale tag).
+ */
+object TrophyGold {
+  val light = Color(0xFFFFD04A)
+  val base = Color(0xFFFCB918)
+  val shade = Color(0xFFEAA012)
+  val deep = Color(0xFFB8720A)
+  val ink = Color(0xFF4A2A06)
+}
+
 /** The ring screen's wallpaper (ui/common/RinPattern.kt), by day and by night. */
 @Immutable
 data class PatternColors(

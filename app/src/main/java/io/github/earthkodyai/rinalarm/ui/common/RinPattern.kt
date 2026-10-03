@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.earthkodyai.rinalarm.theme.PatternColors
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.theme.TrophyGold
 import io.github.earthkodyai.rinalarm.theme.pattern
 
 /**
@@ -47,10 +50,10 @@ import io.github.earthkodyai.rinalarm.theme.pattern
  * repeated by a shader, so a drifting frame costs one draw call.
  */
 @Composable
-fun Modifier.rinPattern(shape: Shape, drift: Boolean = false): Modifier {
+fun Modifier.rinPattern(shape: Shape, drift: Boolean = false, motif: PatternMotif = PatternMotif.ALARM): Modifier {
   val colors = RinTheme.palette.pattern
   val density = LocalDensity.current
-  val tile = remember(colors, density) { patternTile(colors, density) }
+  val tile = remember(colors, density, motif) { patternTile(colors, density, motif) }
   val shader = remember(tile) { ImageShader(tile, TileMode.Repeated, TileMode.Repeated) }
   val brush = remember(shader) { ShaderBrush(shader) }
   val tilePx = TILE_DP * density.density
@@ -85,7 +88,13 @@ private const val ANGLE = -22f
 /** One tile per this long: a slow drift, as on the reference, not something to watch. */
 private const val DRIFT_MS = 12_000
 
-private fun patternTile(c: PatternColors, density: Density): ImageBitmap {
+/** What the wallpaper's rows carry: the alarm's clocks, or the tournament's trophies (the user, 2026-10-03). */
+enum class PatternMotif {
+  ALARM,
+  TROPHY,
+}
+
+private fun patternTile(c: PatternColors, density: Density, motif: PatternMotif): ImageBitmap {
   val px = (TILE_DP * density.density).toInt().coerceAtLeast(1)
   val image = ImageBitmap(px, px)
   CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(px.toFloat(), px.toFloat())) {
@@ -106,13 +115,41 @@ private fun patternTile(c: PatternColors, density: Density): ImageBitmap {
       cap = StrokeCap.Butt,
       pathEffect = PathEffect.dashPathEffect(floatArrayOf(7 * d, 6 * d)),
     )
-    motif(HEART, 8f, 14f, 26f, d) { drawPath(it, c.heart, alpha = 0.7f) }
-    clock(86f, 6f, 38f, d, c)
-    motif(STAR, 52f, 96f, 22f, d) { drawPath(it, c.star, alpha = 0.9f) }
-    motif(CUP, 112f, 92f, 26f, d) { drawPath(it, c.cup, alpha = 0.6f) }
-    motif(HEART, 16f, 112f, 16f, d) { drawPath(it, c.heart, alpha = 0.55f) }
+    when (motif) {
+      PatternMotif.ALARM -> {
+        motif(HEART, 8f, 14f, 26f, d) { drawPath(it, c.heart, alpha = 0.7f) }
+        clock(86f, 6f, 38f, d, c)
+        motif(STAR, 52f, 96f, 22f, d) { drawPath(it, c.star, alpha = 0.9f) }
+        motif(CUP, 112f, 92f, 26f, d) { drawPath(it, c.cup, alpha = 0.6f) }
+        motif(HEART, 16f, 112f, 16f, d) { drawPath(it, c.heart, alpha = 0.55f) }
+      }
+      // The same rows, with the clocks' places taken by gold trophies and the cups' by a medal.
+      PatternMotif.TROPHY -> {
+        motif(STAR, 10f, 16f, 22f, d) { drawPath(it, c.star, alpha = 0.9f) }
+        motif(TROPHY_BODY, 86f, 6f, 38f, d) { trophy() }
+        motif(STAR, 52f, 96f, 18f, d) { drawPath(it, c.star, alpha = 0.9f) }
+        motif(MEDAL_RIBBON, 110f, 90f, 30f, d) { medal(c) }
+        motif(TROPHY_BODY, 14f, 104f, 22f, d) { trophy() }
+      }
+    }
   }
   return image
+}
+
+/** A gold trophy in the 24-unit box, outlined in deep gold, with a white shine on its bowl. */
+private fun DrawScope.trophy() {
+  drawPath(TROPHY_HANDLES, TrophyGold.deep, style = Stroke(1.6f, cap = StrokeCap.Round))
+  drawPath(TROPHY_BODY, TrophyGold.base)
+  drawPath(TROPHY_BODY, TrophyGold.deep, style = Stroke(1.2f, join = StrokeJoin.Round))
+  drawPath(TROPHY_SHINE, Color.White, alpha = 0.75f, style = Stroke(1.4f, cap = StrokeCap.Round))
+}
+
+/** A gold medal on a ribbon in the hearts' pink. */
+private fun DrawScope.medal(c: PatternColors) {
+  drawPath(MEDAL_RIBBON, c.heart, alpha = 0.85f)
+  drawCircle(TrophyGold.base, radius = 6f, center = Offset(12f, 15.5f))
+  drawCircle(TrophyGold.deep, radius = 6f, center = Offset(12f, 15.5f), style = Stroke(1.2f))
+  drawCircle(TrophyGold.light, radius = 3.4f, center = Offset(12f, 15.5f), style = Stroke(1f))
 }
 
 /** Draws a 24-unit icon path at (x, y) dp, `size` dp across. */
@@ -137,3 +174,7 @@ private val HEART =
 private val STAR = icon("M12 2.5l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.8 6.2 20l1.4-6.4L2.7 9.2l6.5-.7z")
 private val CUP = icon("M6 4h12l2 16H4z M4.5 18h15a1.5 1.5 0 0 1 0 3h-15a1.5 1.5 0 0 1 0-3z")
 private val CLOCK_HANDS = icon("M12 9v4l2.5 2 M4.5 6.5l3-2.5 M19.5 6.5l-3-2.5")
+private val TROPHY_BODY = icon("M7 3.5h10v5.5a5 5 0 0 1-10 0z M10.8 13.6h2.4v3.6h-2.4z M7.5 17.2h9l.8 3.3H6.7z")
+private val TROPHY_HANDLES = icon("M7.2 5.5H4.5V7a3.2 3.2 0 0 0 3.3 3.2 M16.8 5.5h2.7V7a3.2 3.2 0 0 1-3.3 3.2")
+private val TROPHY_SHINE = icon("M9.6 5.6v3")
+private val MEDAL_RIBBON = icon("M6.5 2h4l2.5 6.5-2.6 2z M17.5 2h-4L11 8.5l2.6 2z")

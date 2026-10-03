@@ -6,8 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +29,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -42,21 +39,20 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -80,19 +76,18 @@ import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
 import io.github.earthkodyai.rinalarm.character.CharacterView
 import io.github.earthkodyai.rinalarm.character.Framing
 import io.github.earthkodyai.rinalarm.character.rememberDefaultMood
-import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
-import io.github.earthkodyai.rinalarm.theme.onSick
-import io.github.earthkodyai.rinalarm.theme.sickFill
+import io.github.earthkodyai.rinalarm.theme.TrophyGold
 import io.github.earthkodyai.rinalarm.ui.common.AppLocale
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
+import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
@@ -113,8 +108,6 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun MainScreen(
@@ -129,7 +122,6 @@ fun MainScreen(
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val setupIssue by viewModel.setupIssue.collectAsStateWithLifecycle()
-  val dayMode by viewModel.dayMode.collectAsStateWithLifecycle()
   val line by rin.line.collectAsStateWithLifecycle()
   val tourPending by viewModel.tourPending.collectAsStateWithLifecycle()
   // The tour (UX.8): which step, kept through a rotation; back to the start whenever it is asked for again.
@@ -160,8 +152,6 @@ fun MainScreen(
     setupIssue = setupIssue,
     onDiagnostics = onDiagnostics,
     onSettings = onSettings,
-    dayMode = dayMode,
-    onDayMode = viewModel::tapDayMode,
     // Her spoken line while she says it, otherwise the tour's tip (text alone: her mouth stays still).
     rinLine = line?.text ?: step?.let { stringResource(it.tip) },
     tour = step?.let { TourState(it, steps.indexOf(it) + 1, steps.size) },
@@ -208,16 +198,12 @@ internal fun MainScreen(
   setupIssue: Boolean = false,
   onDiagnostics: () -> Unit = {},
   onSettings: () -> Unit = {},
-  dayMode: DayModeKind? = null,
-  onDayMode: (DayModeKind) -> Unit = {},
   rinLine: String? = null,
   tour: TourState? = null,
   onTourNext: () -> Unit = {},
   onTourSkip: () -> Unit = {},
   onTourAdd: () -> Unit = {},
   onTournament: () -> Unit = {},
-  /** The leading university's short name for the TOP1 bubble; null until the leaderboard has one (G.6). */
-  topUniversity: String? = null,
   // A slot, so previews and UI tests run without a WebView.
   character: @Composable (Modifier) -> Unit = {},
 ) {
@@ -228,8 +214,8 @@ internal fun MainScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
       TopBar(onDiagnostics, onSettings, targets)
       if (setupIssue) SetupBanner(onDiagnostics)
-      RinPanel(rinLine, character, topUniversity, onTournament, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
-      DayModeRow(dayMode, onDayMode, Modifier.spotTarget(targets, TourTarget.DAY_MODE, radius = Spot.PILL, depth = 3.dp))
+      RinPanel(rinLine, character, Modifier.spotTarget(targets, TourTarget.PANEL, radius = 28.dp))
+      TournamentButton(onTournament, Modifier.spotTarget(targets, TourTarget.TOURNAMENT, radius = Spot.PILL, depth = 3.dp))
       ListHeader(state)
       AlarmList(state, onEdit, onToggle, Modifier.weight(1f).fillMaxWidth(), targets)
     }
@@ -308,8 +294,6 @@ private fun SetupBanner(onClick: () -> Unit) {
 private fun RinPanel(
   line: String?,
   character: @Composable (Modifier) -> Unit,
-  top1: String?,
-  onTournament: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val p = RinTheme.palette
@@ -331,7 +315,10 @@ private fun RinPanel(
       Box(Modifier.align(Alignment.TopEnd).offset(x = 24.dp, y = (-28).dp).size(120.dp).background(p.glow, CircleShape))
     }
     character(Modifier.align(Alignment.BottomEnd).fillMaxWidth(RIN_WIDTH).fillMaxHeight().padding(top = 8.dp))
-    TournamentColumn(line, top1, onTournament, Modifier.align(Alignment.TopStart).fillMaxWidth(COLUMN_WIDTH).fillMaxHeight())
+    val clockAlpha by animateFloatAsState(if (line == null) 1f else 0f, tween(CLOCK_FADE_MS), label = "panel clock")
+    Box(Modifier.align(Alignment.TopStart).fillMaxWidth(COLUMN_WIDTH).fillMaxHeight(), contentAlignment = Alignment.Center) {
+      PanelClock(Modifier.graphicsLayer { alpha = clockAlpha })
+    }
     RinBubble(line, Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 18.dp))
   }
 }
@@ -340,96 +327,6 @@ private const val CLOCK_FADE_MS = 300
 
 /** The free side of the panel, left of Rin as she stands (measured on the store stills): its middle is their axis. */
 private const val COLUMN_WIDTH = 0.48f
-
-/**
- * The clock, the TOP1 bubble and the trophy on one centre line (G.5, the user's layout 1, redesigned 2026-10-03): the
- * trophy stands on a wooden base lettered TOURNAMENT in gold, and the two together are the way into the tournament.
- * The bubble comes [SHOUT_SHOWN_MS] in every [SHOUT_HIDDEN_MS], never while Rin speaks, and names the university
- * that leads ([top1], or ??? before there is a leaderboard); while it is up the clock is gone, and the bubble has the
- * space above the trophy to itself. The clock also fades while she speaks, as before; the trophy always stays.
- */
-@Composable
-private fun TournamentColumn(line: String?, top1: String?, onTournament: () -> Unit, modifier: Modifier) {
-  val speaking by rememberUpdatedState(line != null)
-  var shout by remember { mutableStateOf(false) }
-  LaunchedEffect(Unit) {
-    // Rin greets first (the user): wait for her hello to start and end. She skips it when the app was open within
-    // the last 5 minutes, so after HELLO_WAIT_MS with no line the bubble comes anyway.
-    withTimeoutOrNull(HELLO_WAIT_MS) { snapshotFlow { speaking }.first { it } }
-    snapshotFlow { speaking }.first { !it }
-    delay(SHOUT_AFTER_LINE_MS)
-    while (true) {
-      snapshotFlow { speaking }.first { !it }
-      shout = true
-      delay(SHOUT_SHOWN_MS)
-      shout = false
-      delay(SHOUT_HIDDEN_MS)
-    }
-  }
-  val shown = shout && !speaking
-  // All on one beat: the clock fades out while the bubble is still inside the cup, the trophy is knocked as the bubble
-  // bursts out and again as it lands back in, and the clock comes back once it has landed.
-  var clockOut by remember { mutableStateOf(false) }
-  var bubbleUp by remember { mutableStateOf(false) }
-  var kicks by remember { mutableIntStateOf(0) }
-  LaunchedEffect(shown) {
-    if (shown) {
-      clockOut = true
-      bubbleUp = true
-      delay(SHOUT_PEEK_MS)
-      kicks++
-    } else if (bubbleUp) {
-      bubbleUp = false
-      delay(SHOUT_LAND_MS)
-      kicks++
-      clockOut = false
-    }
-  }
-  val clockAlpha by
-    animateFloatAsState(if (line == null && !clockOut) 1f else 0f, tween(if (clockOut) CLOCK_OUT_MS else CLOCK_FADE_MS), label = "panel clock")
-  val label = stringResource(R.string.home_tournament)
-  val press = remember { MutableInteractionSource() }
-  val pressed by press.collectIsPressedAsState()
-  val pressScale by animateFloatAsState(if (pressed) 0.95f else 1f, tween(90), label = "trophy press")
-  Box(modifier) {
-    PanelClock(Modifier.align(Alignment.TopCenter).padding(top = CLOCK_TOP).graphicsLayer { alpha = clockAlpha })
-    ShoutBubble(bubbleUp, "TOP1 IS ${top1 ?: "???"}!", ShoutFrom, ShoutSize.align(Alignment.TopCenter).offset(y = SHOUT_TOP))
-    Column(
-      Modifier.align(Alignment.BottomCenter)
-        .graphicsLayer {
-          scaleX = pressScale
-          scaleY = pressScale
-          transformOrigin = TransformOrigin(0.5f, 1f)
-        }
-        .clickable(press, indication = null, role = Role.Button, onClickLabel = label) { onTournament() }
-        .semantics(mergeDescendants = true) { contentDescription = label },
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      TournamentTrophy(kicks, TrophySize)
-      TrophyPlinth(PlinthSize)
-    }
-  }
-}
-
-/** How long to wait for Rin's hello to start (her page loads first), and the pause after her line before the pop. */
-private const val HELLO_WAIT_MS = 5_000L
-private const val SHOUT_AFTER_LINE_MS = 800L
-/** The clock's quick fade as the bubble comes (it is gone before the bubble leaves the cup). */
-private const val CLOCK_OUT_MS = 140
-
-/**
- * The space above the trophy (216 dp panel, 30 dp base, 80 dp trophy whose handles start 7 dp down) is 113 dp. The
- * clock's ink (11 to 76 dp below its top, measured on the 14T) is centred in it; so is the bubble (82 dp, its spikes
- * ±34 dp from its middle), which leaves ~22 dp to the panel's top and to the handles.
- */
-private val CLOCK_TOP = 13.dp
-private val SHOUT_TOP = 15.5.dp
-
-/**
- * Where the bubble comes out of: the middle of the trophy's bowl (90 of its 252 units down), as a fraction of the
- * bubble's box.
- */
-private val ShoutFrom = TransformOrigin(0.5f, ((216f - 30f - 80f + 80f * 90f / 252f) - 15.5f) / 82f)
 
 /**
  * The time, big, and the date under it, kept to the minute. Screen readers skip it: the status bar already says the
@@ -462,56 +359,35 @@ private fun PanelClock(modifier: Modifier) {
 private val PANEL_DATE = DateTimeFormatter.ofPattern("EEE, MMM d", AppLocale)
 
 /**
- * Rest day and sick day (Phase 5): one tap each, for the next ring; a tap on the one that is on cancels it. Buttons
- * only, nothing to type (the user's slips, Phase 2).
+ * The way into the tournament (the user, 2026-10-03: in the place of the rest and sick buttons, which went to the
+ * editor; the trophy, its base and the TOP1 bubble are gone). Gold like a trophy, lit from above with a shine along
+ * its top, the same by day and night (the pale tag colour looked washed out).
  */
 @Composable
-private fun DayModeRow(dayMode: DayModeKind?, onTap: (DayModeKind) -> Unit, modifier: Modifier = Modifier) {
-  Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-      DayModeKind.entries.forEach { kind -> DayModeButton(kind, dayMode == kind, { onTap(kind) }, Modifier.weight(1f)) }
-    }
-    if (dayMode != null) {
-      Text(
-        stringResource(if (dayMode == DayModeKind.REST) R.string.day_rest_on else R.string.day_sick_on),
-        style = MaterialTheme.typography.bodySmall,
-        color = RinTheme.palette.muted,
-        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
-      )
-    }
-  }
-}
-
-@Composable
-private fun DayModeButton(kind: DayModeKind, selected: Boolean, onTap: () -> Unit, modifier: Modifier) {
-  val p = RinTheme.palette
-  val rest = kind == DayModeKind.REST
-  val fill = if (!selected) p.card else if (rest) p.primary else p.sickFill
-  val content = if (!selected) p.ink else if (rest) p.onPrimary else p.onSick
-  val accent = if (rest) p.primary else p.sickFill
+private fun TournamentButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
   val shape = RoundedCornerShape(24.dp)
-  Row(
-    modifier
-      .height(48.dp)
-      .sticker(fill = fill, radius = 24.dp, depth = 3.dp, outline = null)
-      .border(2.dp, if (rest) p.candy else p.mint, shape)
-      .clip(shape)
-      .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onTap() }),
-    horizontalArrangement = Arrangement.Center,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(
-      painterResource(if (rest) R.drawable.ic_moon else R.drawable.ic_thermometer),
-      contentDescription = null,
-      tint = if (selected) content else accent,
-      modifier = Modifier.size(18.dp),
-    )
-    Text(
-      stringResource(if (rest) R.string.day_rest else R.string.day_sick),
-      style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp),
-      color = content,
-      modifier = Modifier.padding(start = 8.dp),
-    )
+  Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+    Row(
+      modifier
+        .fillMaxWidth()
+        .height(48.dp)
+        .goldSticker(radius = 24.dp)
+        .clip(shape)
+        .clickable(role = Role.Button, onClick = onClick),
+      horizontalArrangement = Arrangement.Center,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      // White on a dark brown outline like the label, with a gold shine (the user's pick D); full colour, untinted.
+      Image(painterResource(R.drawable.ic_trophy_badge), contentDescription = null, modifier = Modifier.size(26.dp))
+      // White, outlined in the dark brown (the user): the outline drawn first, the white over it.
+      val label = stringResource(R.string.home_tournament)
+      val style = MaterialTheme.typography.labelLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+      val outline = with(LocalDensity.current) { 4.dp.toPx() }
+      Box(Modifier.padding(start = 8.dp)) {
+        Text(label, style = style.copy(drawStyle = Stroke(width = outline, join = StrokeJoin.Round)), color = TrophyGold.ink)
+        Text(label, style = style, color = Color.White)
+      }
+    }
   }
 }
 
@@ -711,7 +587,7 @@ private fun MainScreenPreview() {
 @Composable
 private fun MainScreenNightPreview() {
   RinAlarmTheme(night = true) {
-    MainScreen(MainScreenUiState.Success(previewRows, LocalDate.of(2026, 9, 28)), {}, {}, { _, _ -> }, dayMode = DayModeKind.REST)
+    MainScreen(MainScreenUiState.Success(previewRows, LocalDate.of(2026, 9, 28)), {}, {}, { _, _ -> })
   }
 }
 
@@ -724,8 +600,8 @@ private fun MainScreenTourPreview() {
       {},
       {},
       { _, _ -> },
-      rinLine = stringResource(R.string.tour_day_mode),
-      tour = TourState(TourStep.DAY_MODE, 2, 5),
+      rinLine = stringResource(R.string.tour_tournament),
+      tour = TourState(TourStep.TOURNAMENT, 2, 5),
     )
   }
 }
