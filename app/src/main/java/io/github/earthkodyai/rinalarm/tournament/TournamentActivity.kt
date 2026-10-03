@@ -13,8 +13,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -37,10 +37,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,9 +94,10 @@ import io.github.earthkodyai.rinalarm.theme.RinRounded
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.RinThemedContent
 import io.github.earthkodyai.rinalarm.theme.ThemeClock
+import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
-import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
+import io.github.earthkodyai.rinalarm.ui.common.RinConfirmDialog
 import io.github.earthkodyai.rinalarm.ui.common.rinPattern
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import javax.inject.Inject
@@ -143,12 +142,14 @@ private fun TournamentRoute(viewModel: TournamentViewModel, onFinish: () -> Unit
   var askQuit by rememberSaveable { mutableStateOf(false) }
   BackHandler { if (state.running) askQuit = true else viewModel.done() }
   if (askQuit && state.running) {
-    AlertDialog(
-      onDismissRequest = { askQuit = false },
-      title = { Text(stringResource(R.string.tournament_quit_title)) },
-      text = { Text(stringResource(R.string.tournament_quit_body)) },
-      confirmButton = { TextButton(onClick = viewModel::done) { Text(stringResource(R.string.tournament_quit)) } },
-      dismissButton = { TextButton(onClick = { askQuit = false }) { Text(stringResource(R.string.tournament_keep)) } },
+    RinConfirmDialog(
+      title = stringResource(R.string.tournament_quit_title),
+      icon = R.drawable.ic_exit,
+      safeLabel = stringResource(R.string.tournament_keep),
+      actionLabel = stringResource(R.string.tournament_quit),
+      onSafe = { askQuit = false },
+      onAction = viewModel::done,
+      text = stringResource(R.string.tournament_quit_body),
     )
   }
   TournamentScreen(

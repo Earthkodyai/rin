@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
@@ -121,7 +122,14 @@ fun Modifier.rinCard(): Modifier = this.fillMaxWidth().sticker(radius = 22.dp).p
  * card colour so it never competes with the main action.
  */
 @Composable
-fun QuietPillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, height: Dp = 54.dp, enabled: Boolean = true) {
+fun QuietPillButton(
+  text: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  height: Dp = 54.dp,
+  enabled: Boolean = true,
+  textColor: Color = RinTheme.palette.ink,
+) {
   val p = RinTheme.palette
   val shape = RoundedCornerShape(height / 2)
   Box(
@@ -135,7 +143,7 @@ fun QuietPillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
       .padding(horizontal = 18.dp),
     contentAlignment = Alignment.Center,
   ) {
-    Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp), color = p.ink, textAlign = TextAlign.Center)
+    Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp), color = textColor, textAlign = TextAlign.Center)
   }
 }
 

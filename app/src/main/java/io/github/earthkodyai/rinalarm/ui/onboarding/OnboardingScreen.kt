@@ -24,8 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,8 +62,10 @@ import io.github.earthkodyai.rinalarm.setup.Severity
 import io.github.earthkodyai.rinalarm.setup.rememberNotificationPermissionAction
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
+import io.github.earthkodyai.rinalarm.ui.common.ConfirmKind
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
+import io.github.earthkodyai.rinalarm.ui.common.RinConfirmDialog
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import io.github.earthkodyai.rinalarm.ui.diagnostics.TestAlarmPanel
 import io.github.earthkodyai.rinalarm.ui.setup.SeverityIcon
@@ -187,29 +187,19 @@ internal fun OnboardingScreen(
   }
 
   confirmSkip?.let { step ->
-    AlertDialog(
-      onDismissRequest = { confirmSkip = null },
-      title = { Text(stringResource(R.string.skip_title)) },
-      text = {
-        Text(
-          stringResource(
-            if (step == OnboardingStep.NOTIFICATIONS) R.string.skip_notifications_text else R.string.skip_exact_text
-          )
-        )
+    // The safe choice is the pink one; skipping is the quiet pill.
+    RinConfirmDialog(
+      title = stringResource(R.string.skip_title),
+      icon = R.drawable.ic_warning,
+      safeLabel = stringResource(R.string.skip_cancel),
+      actionLabel = stringResource(R.string.skip_confirm),
+      onSafe = { confirmSkip = null },
+      onAction = {
+        confirmSkip = null
+        onNext()
       },
-      // The safe choice is the prominent one; skipping is the plain text button.
-      confirmButton = { Button(onClick = { confirmSkip = null }) { Text(stringResource(R.string.skip_cancel)) } },
-      dismissButton = {
-        TextButton(
-          onClick = {
-            confirmSkip = null
-            onNext()
-          }
-        ) {
-          Text(stringResource(R.string.skip_confirm))
-        }
-      },
-      shape = RoundedCornerShape(28.dp),
+      text = stringResource(if (step == OnboardingStep.NOTIFICATIONS) R.string.skip_notifications_text else R.string.skip_exact_text),
+      kind = ConfirmKind.WARNING,
     )
   }
 }

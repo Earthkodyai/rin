@@ -5,9 +5,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,8 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -32,8 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,11 +42,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -85,6 +83,7 @@ import io.github.earthkodyai.rinalarm.alarm.RingOptions
 import io.github.earthkodyai.rinalarm.alarm.ring.MusicTheme
 import io.github.earthkodyai.rinalarm.alarm.ring.PracticeActivity
 import io.github.earthkodyai.rinalarm.alarm.schedule.RepeatDays
+import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.mission.AndroidMissionReadiness
 import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
@@ -93,23 +92,23 @@ import io.github.earthkodyai.rinalarm.mission.Readiness
 import io.github.earthkodyai.rinalarm.setup.CheckId
 import io.github.earthkodyai.rinalarm.setup.SettingsLinks
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
-import io.github.earthkodyai.rinalarm.data.DayModeKind
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
+import io.github.earthkodyai.rinalarm.ui.common.RinConfirmDialog
 import io.github.earthkodyai.rinalarm.ui.common.RinTopBar
 import io.github.earthkodyai.rinalarm.ui.common.SectionTitle
 import io.github.earthkodyai.rinalarm.ui.common.Spot
 import io.github.earthkodyai.rinalarm.ui.common.SpotTargets
-import io.github.earthkodyai.rinalarm.ui.common.spotTarget
 import io.github.earthkodyai.rinalarm.ui.common.displayName
 import io.github.earthkodyai.rinalarm.ui.common.durationText
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.repeatSummary
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
+import io.github.earthkodyai.rinalarm.ui.common.spotTarget
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import java.time.DayOfWeek
 import java.time.Duration
@@ -329,43 +328,31 @@ internal fun AlarmEditorScreen(
   }
 
   if (confirmDiscard) {
-    AlertDialog(
-      onDismissRequest = { confirmDiscard = false },
-      title = { Text(stringResource(R.string.discard_title)) },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            confirmDiscard = false
-            onClose()
-          }
-        ) {
-          Text(stringResource(R.string.discard_confirm))
-        }
+    RinConfirmDialog(
+      title = stringResource(R.string.discard_title),
+      icon = R.drawable.ic_undo,
+      safeLabel = stringResource(R.string.discard_keep),
+      actionLabel = stringResource(R.string.discard_confirm),
+      onSafe = { confirmDiscard = false },
+      onAction = {
+        confirmDiscard = false
+        onClose()
       },
-      dismissButton = {
-        TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.discard_keep)) }
-      },
+      text = stringResource(R.string.discard_text),
     )
   }
   if (editing != null && confirmDelete) {
-    AlertDialog(
-      onDismissRequest = { confirmDelete = false },
-      title = { Text(stringResource(R.string.delete_title)) },
-      text = { Text(stringResource(R.string.delete_text, rememberClockText()(editing.draft.time).toString())) },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            confirmDelete = false
-            actions.delete()
-          },
-          colors = ButtonDefaults.textButtonColors(contentColor = p.danger),
-        ) {
-          Text(stringResource(R.string.delete_confirm))
-        }
+    RinConfirmDialog(
+      title = stringResource(R.string.delete_title),
+      icon = R.drawable.ic_delete,
+      safeLabel = stringResource(R.string.editor_cancel),
+      actionLabel = stringResource(R.string.delete_confirm),
+      onSafe = { confirmDelete = false },
+      onAction = {
+        confirmDelete = false
+        actions.delete()
       },
-      dismissButton = {
-        TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.editor_cancel)) }
-      },
+      text = stringResource(R.string.delete_text, rememberClockText()(editing.draft.time).toString()),
     )
   }
 }

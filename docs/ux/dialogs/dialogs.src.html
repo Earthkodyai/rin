@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Confirm dialogs: options</title>
+<style>
+  body { margin:0; padding:24px; background:#2a2a2a; font-family:"Segoe UI", sans-serif; }
+  .row { display:flex; gap:24px; margin-bottom:24px; }
+  .label { color:#fff; font:700 22px "Segoe UI", sans-serif; margin:0 0 10px 4px; }
+  .phone { width:390px; height:760px; border-radius:28px; overflow:hidden; position:relative; background:var(--ground); }
+  .day { --ground:#FFF4EA; --card:#FFFFFF; --pink:#CC3169; --pinkShadow:#9E2350; --onPink:#FFFFFF; --ink:#3A2A33; --muted:#7A5A68; --line:#F1D2C2; --hard:#F1D2C2; --alert:#B3261E; --alertSoft:#FDE3E1; --gold:#FCB918; --tag:#FFF0D6; --dim:rgba(58,42,51,.45); }
+  .night { --ground:#121836; --card:#1C2350; --pink:#FF8FB8; --pinkShadow:#B85C82; --onPink:#121836; --ink:#F3EEFF; --muted:#B9B3D9; --line:#3B4687; --hard:#0B1028; --alert:#FF8A80; --alertSoft:#3A2350; --gold:#FFD04A; --tag:#262E63; --dim:rgba(5,8,25,.6); }
+  /* a page behind: the editor, roughly */
+  .page { position:absolute; inset:0; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .ph { background:var(--card); border-radius:22px; box-shadow:0 4px 0 var(--hard); }
+  .scrim { position:absolute; inset:0; background:var(--dim); }
+  .center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .center > div { width:calc(100% - 44px) !important; box-sizing:border-box; }
+  .title { color:var(--ink); font-weight:800; font-size:20px; }
+  .body { color:var(--muted); font-size:14.5px; line-height:1.45; margin-top:6px; }
+  .pill { height:52px; border-radius:26px; display:grid; place-items:center; font-weight:800; font-size:16px; }
+  .main { background:var(--pink); color:var(--onPink); box-shadow:0 4px 0 var(--pinkShadow); }
+  .quietRed { background:var(--card); border:2px solid var(--line); color:var(--alert); }
+  .quiet { background:var(--card); border:2px solid var(--line); color:var(--ink); }
+  .redFill { background:var(--alert); color:#fff; box-shadow:0 4px 0 #7A1A14; }
+
+  /* A: sticker card with a badge */
+  .A { position:relative; width:346px; background:var(--card); border-radius:28px; box-shadow:0 5px 0 var(--hard); padding:46px 20px 20px; text-align:center; }
+  .A .badge { position:absolute; left:50%; top:-34px; transform:translateX(-50%); width:68px; height:68px; border-radius:50%; display:grid; place-items:center; box-shadow:0 4px 0 var(--hard); border:4px solid var(--card); }
+  .A .btns { display:flex; flex-direction:column; gap:12px; margin-top:20px; }
+
+  /* B: Rin asks, the card is her bubble */
+  .B { width:346px; display:flex; flex-direction:column; align-items:center; }
+  .B .face { width:96px; height:96px; border-radius:50%; overflow:hidden; border:4px solid var(--card); box-shadow:0 4px 0 var(--hard); background:#FFE1E9; position:relative; z-index:2; }
+  .B .face img { width:100%; height:100%; }
+  .B .bubble { box-sizing:border-box; position:relative; margin-top:16px; width:100%; background:var(--card); border-radius:28px; box-shadow:0 5px 0 var(--hard); padding:20px; text-align:center; }
+  .B .bubble::before { content:""; position:absolute; top:-12px; left:50%; transform:translateX(-50%) rotate(45deg); width:24px; height:24px; background:var(--card); border-radius:4px; }
+  .B .btns { display:flex; gap:10px; margin-top:20px; }
+  .B .btns .pill { flex:1; }
+
+  /* C: bottom sheet */
+  .C { position:absolute; left:0; right:0; bottom:0; background:var(--card); border-radius:28px 28px 0 0; padding:12px 20px 28px; box-shadow:0 -4px 0 var(--hard); }
+  .C .handle { width:44px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 14px; }
+  .C .head { display:flex; gap:14px; align-items:center; }
+  .C .ico { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; flex:none; }
+  .C .btns { display:flex; flex-direction:column; gap:12px; margin-top:20px; }
+</style>
+</head>
+<body>
+<script>
+const FACE = 'data:image/png;base64,__FACE__';
+const trash = (c) => `<svg width="30" height="30" viewBox="0 0 24 24"><path fill="${c}" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>`;
+const door = (c) => `<svg width="30" height="30" viewBox="0 0 24 24"><path fill="${c}" d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>`;
+const ex = {
+  del: { t: 'Delete this alarm?', b: 'The 07:00 alarm will be removed.', safe: 'Cancel', act: 'Delete', icon: trash, red: true },
+  quit: { t: 'Quit this run?', b: 'It won’t count.', safe: 'Keep playing', act: 'Quit', icon: door, red: true },
+};
+const page = `<div class="page"><div class="ph" style="height:56px;width:56px;border-radius:50%"></div><div class="ph" style="height:150px"></div><div class="ph" style="height:110px"></div><div class="ph" style="height:180px"></div><div class="ph" style="height:90px"></div></div><div class="scrim"></div>`;
+const A = (e) => `<div class="center"><div class="A">
+  <div class="badge" style="background:var(--alertSoft)">${e.icon('var(--alert)')}</div>
+  <div class="title">${e.t}</div><div class="body">${e.b}</div>
+  <div class="btns"><div class="pill main">${e.safe}</div><div class="pill quietRed">${e.act}</div></div></div></div>`;
+const B = (e) => `<div class="center"><div class="B">
+  <div class="face"><img src="${FACE}"></div>
+  <div class="bubble"><div class="title">${e.t}</div><div class="body">${e.b}</div>
+  <div class="btns"><div class="pill quietRed">${e.act}</div><div class="pill main">${e.safe}</div></div></div></div></div>`;
+const C = (e) => `<div class="C"><div class="handle"></div>
+  <div class="head"><div class="ico" style="background:var(--alertSoft)">${e.icon('var(--alert)')}</div><div><div class="title">${e.t}</div><div class="body" style="margin-top:2px">${e.b}</div></div></div>
+  <div class="btns"><div class="pill main">${e.safe}</div><div class="pill quietRed">${e.act}</div></div></div>`;
+const styles = { A: ['A · Sticker card + badge', A], B: ['B · Rin asks (her bubble)', B], C: ['C · Bottom sheet', C] };
+let html = '';
+for (const [theme, e] of [['day', ex.del], ['night', ex.quit]]) {
+  html += '<div class="row">';
+  for (const k of ['A', 'B', 'C']) {
+    const [name, f] = styles[k];
+    html += `<div><div class="label">${name} · ${theme}</div><div class="phone ${theme}">${page}${f(e)}</div></div>`;
+  }
+  html += '</div>';
+}
+document.body.innerHTML = html;
+</script>
+</body>
+</html>

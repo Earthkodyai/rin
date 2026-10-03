@@ -94,6 +94,7 @@
     <string name="delete_text">The %1$s alarm will be removed.</string>
     <string name="delete_confirm">Delete</string>
     <string name="discard_title">Discard changes?</string>
+    <string name="discard_text">Your changes to this alarm won’t be saved.</string>
     <string name="discard_keep">Keep editing</string>
     <string name="discard_confirm">Discard</string>
     <string name="rings_in">Rings in %1$s</string>
