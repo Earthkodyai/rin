@@ -32,7 +32,7 @@ java -jar D:/RinAlarm-keys/pepk.jar --keystore=D:/RinAlarm-keys/rinalarm-release
 ## 5. The release
 
 1. Upload `app/build/outputs/bundle/release/app-release.aab` (versionCode 1, 1.0.0; `./gradlew bundleRelease` refuses a bundle without Rin's model, voice or music, or with the VRoid sample).
-2. Release name `1.0.0`. Release notes (en-US): `First closed test: three wake-up games, Rin's voice, alarm themes, rest and sick days, a tour and practice rounds.`
+2. Release name `1.0.0`. Release notes (en-US): `First closed test: three wake-up games with four levels, Rin's voice, alarm themes, rest and sick days, a tour and practice rounds, and a tournament with an optional online leaderboard.`
 3. Save → Review release → **Send for review** (Publishing overview). Review usually takes hours to a few days.
 
 ## 6. After review
