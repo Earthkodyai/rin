@@ -1,17 +1,23 @@
 package io.github.earthkodyai.rinalarm.ui.tournament
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,11 +28,13 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -52,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.R
+import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.data.TournamentEntry
 import io.github.earthkodyai.rinalarm.data.TournamentStore
 import io.github.earthkodyai.rinalarm.mission.TournamentGame
@@ -71,13 +81,18 @@ import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.RinConfirmDialog
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
+import io.github.earthkodyai.rinalarm.ui.common.SpotTargets
+import io.github.earthkodyai.rinalarm.ui.common.Spotlight
 import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
+import io.github.earthkodyai.rinalarm.ui.common.spotTarget
 import io.github.earthkodyai.rinalarm.ui.common.sticker
+import io.github.earthkodyai.rinalarm.ui.editor.GuideCard
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -91,19 +106,37 @@ data class TournamentStartState(
   val best: Map<TournamentGame, TournamentScore?> = emptyMap(),
   val configured: Boolean = false,
   val sync: SyncStatus = SyncStatus.OFF,
+  /** The walkthrough waits to be shown (6.10: the first visit, or after Settings > Home tour). */
+  val guide: Boolean = false,
 )
 
 @HiltViewModel
 class TournamentStartViewModel
 @Inject
-constructor(private val store: TournamentStore, private val sync: LeaderboardSync, board: Leaderboard) : ViewModel() {
+constructor(
+  private val store: TournamentStore,
+  private val sync: LeaderboardSync,
+  board: Leaderboard,
+  private val settings: AppSettings,
+) : ViewModel() {
   private val configured = board.configured
 
   val state: StateFlow<TournamentStartState?> =
-    combine(store.entry, store.best(TournamentGame.PADS), store.best(TournamentGame.CUPS), sync.status) { entry, pads, cups, status ->
-        TournamentStartState(entry, mapOf(TournamentGame.PADS to pads, TournamentGame.CUPS to cups), configured, status)
+    combine(
+        store.entry,
+        store.best(TournamentGame.PADS),
+        store.best(TournamentGame.CUPS),
+        sync.status,
+        settings.tournamentGuidePending.catch { emit(false) },
+      ) { entry, pads, cups, status, guide ->
+        TournamentStartState(entry, mapOf(TournamentGame.PADS to pads, TournamentGame.CUPS to cups), configured, status, guide)
       }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+  /** The walkthrough ended or was skipped: not shown again unless Settings > Home tour asks. */
+  fun endGuide() {
+    viewModelScope.launch { settings.setTournamentGuidePending(false) }
+  }
 
   /** On showing the page (and coming back from a run): post a new best, or retry what failed offline. */
   fun sync() = sync.sync()
@@ -171,6 +204,7 @@ fun TournamentStartScreen(onBack: () -> Unit, onLeaderboard: () -> Unit, viewMod
       onLeaderboard = onLeaderboard,
       onName = viewModel::saveName,
       onUniversity = viewModel::saveUniversity,
+      onGuideDone = viewModel::endGuide,
     )
   }
 }
@@ -184,6 +218,7 @@ internal fun TournamentStartScreen(
   onLeaderboard: () -> Unit,
   onName: (String) -> Unit = {},
   onUniversity: (String?) -> Unit = {},
+  onGuideDone: () -> Unit = {},
 ) {
   val p = RinTheme.palette
   var game by rememberSaveable { mutableStateOf(TournamentGame.PADS) }
@@ -197,10 +232,27 @@ internal fun TournamentStartScreen(
   var universitySaved by rememberSaveable { mutableStateOf(false) }
   // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
   // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
-  RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
-    Banner(state.best[game])
+  val targets = remember { SpotTargets<StartSpot>() }
+  val scroll = rememberScrollState()
+  var guideStep by rememberSaveable { mutableStateOf<StartGuideStep?>(null) }
+  LaunchedEffect(state.guide) { if (state.guide && guideStep == null) guideStep = StartGuideStep.entries.first() }
+  // Each step brings its card to the top of the page (the banner's place), clear of the tip card below.
+  LaunchedEffect(guideStep) {
+    val step = guideStep ?: return@LaunchedEffect
+    withFrameNanos {}
+    val banner = targets.bounds[StartSpot.BANNER]?.bounds ?: return@LaunchedEffect
+    val part = targets.bounds[step.spot]?.bounds ?: return@LaunchedEffect
+    scroll.animateScrollBy(part.top - (banner.top + scroll.value))
+  }
+  val endGuide = {
+    guideStep = null
+    onGuideDone()
+  }
+  Box(Modifier.fillMaxSize()) {
+  RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY, scrollState = scroll) {
+    Banner(state.best[game], Modifier.spotTarget(targets, StartSpot.BANNER, radius = 0.dp))
 
-    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.spotTarget(targets, StartSpot.GAME, radius = 22.dp, depth = 4.dp).rinCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       CardTitle(stringResource(R.string.tournament_pick_game))
       PillChoiceRow(
         TournamentGame.entries,
@@ -210,7 +262,7 @@ internal fun TournamentStartScreen(
       )
     }
 
-    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.spotTarget(targets, StartSpot.YOU, radius = 22.dp, depth = 4.dp).rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       CardTitle(stringResource(R.string.tournament_you))
       FieldLabel(stringResource(R.string.tournament_name))
       Row(verticalAlignment = Alignment.Top) {
@@ -256,9 +308,9 @@ internal fun TournamentStartScreen(
       }
     }
 
-    OnlineCard(state, onOnline, onLeaderboard)
+    OnlineCard(state, onOnline, onLeaderboard, Modifier.spotTarget(targets, StartSpot.ONLINE, radius = 22.dp, depth = 4.dp))
 
-    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.spotTarget(targets, StartSpot.RULES, radius = 22.dp, depth = 4.dp).rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       CardTitle(stringResource(R.string.tournament_rules_title))
       Text(stringResource(R.string.tournament_rules), style = MaterialTheme.typography.bodyMedium, color = p.muted)
       Row(
@@ -271,16 +323,65 @@ internal fun TournamentStartScreen(
     }
     PillButton(stringResource(R.string.tournament_start), { onStart(game, name, university) }, Modifier.padding(top = 6.dp).fillMaxWidth(), enabled = agreed && nameAllowed)
   }
+  guideStep?.let { step -> StartGuide(step, targets, onNext = { step.next?.let { guideStep = it } ?: endGuide() }, onSkip = endGuide) }
+  }
 }
+
+/** Where the start page's walkthrough shines; the banner only marks the page's top, for scrolling. */
+internal enum class StartSpot {
+  BANNER,
+  GAME,
+  YOU,
+  ONLINE,
+  RULES,
+}
+
+/**
+ * The start page's walkthrough (6.10): on the first visit Rin points at one card at a time, and the user can work the
+ * card under the light. Next moves on, the last says "Got it", Skip ends it; either way it is not shown again unless
+ * Settings > Home tour asks.
+ */
+internal enum class StartGuideStep(val spot: StartSpot, @StringRes val tip: Int) {
+  GAME(StartSpot.GAME, R.string.start_guide_game),
+  YOU(StartSpot.YOU, R.string.start_guide_you),
+  ONLINE(StartSpot.ONLINE, R.string.start_guide_online),
+  RULES(StartSpot.RULES, R.string.start_guide_rules),
+  ;
+
+  val next: StartGuideStep?
+    get() = entries.getOrNull(ordinal + 1)
+}
+
+/** The dim layer with one open hole on the step's card, and Rin's tip at the bottom (at the top for the last card). */
+@Composable
+private fun StartGuide(step: StartGuideStep, targets: SpotTargets<StartSpot>, onNext: () -> Unit, onSkip: () -> Unit) {
+  val lit = targets.bounds[step.spot]
+  Box(Modifier.fillMaxSize().testTag(START_GUIDE_TAG)) {
+    Spotlight(holes = listOfNotNull(lit), lit = lit, open = lit, onTap = {})
+    val last = step.next == null
+    val place =
+      if (last) Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 64.dp)
+      else Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+    GuideCard(
+      stringResource(step.tip),
+      onNext,
+      onSkip,
+      place.padding(16.dp),
+      nextLabel = stringResource(if (last) R.string.guide_done else R.string.guide_next),
+    )
+  }
+}
+
+internal const val START_GUIDE_TAG = "start_guide"
 
 /**
  * The gold banner on top, the home button's gold: the trophy, the challenge in two lines, and the best for the game
  * picked below (or none yet) on a white chip. The same by day and night.
  */
 @Composable
-private fun Banner(best: TournamentScore?) {
+private fun Banner(best: TournamentScore?, modifier: Modifier = Modifier) {
   Row(
-    Modifier.fillMaxWidth().padding(bottom = 4.dp).goldSticker(radius = 24.dp, depth = 5.dp).padding(horizontal = 14.dp, vertical = 16.dp),
+    modifier.fillMaxWidth().padding(bottom = 4.dp).goldSticker(radius = 24.dp, depth = 5.dp).padding(horizontal = 14.dp, vertical = 16.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Image(painterResource(R.drawable.ic_trophy_badge), contentDescription = null, modifier = Modifier.size(76.dp))
@@ -308,14 +409,14 @@ private fun Banner(best: TournamentScore?) {
  * the way to the board. Switching off asks first, because it deletes the rows online.
  */
 @Composable
-private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit, onLeaderboard: () -> Unit) {
+private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit, onLeaderboard: () -> Unit, modifier: Modifier = Modifier) {
   val p = RinTheme.palette
   var confirmOff by remember { mutableStateOf(false) }
   // The user's pick A (2026-10-03, docs/ux/g6-online): the theme's card in a gold frame with a gold header strip and
   // the home button's gold pill, so it stands out from the plain cards without matching the banner's full gold.
   val shape = RoundedCornerShape(22.dp)
   Column(
-    Modifier.fillMaxWidth()
+    modifier.fillMaxWidth()
       .sticker(fill = p.card, radius = 22.dp, shadow = TrophyGold.deep, outline = null)
       .border(3.dp, TrophyGold.base, shape)
       .clip(shape)

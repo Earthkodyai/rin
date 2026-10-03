@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,8 @@ fun RinPage(
   scroll: Boolean = true,
   /** The ring screen's drifting wallpaper instead of the plain ground (the tournament's trophies, 2026-10-03). */
   pattern: PatternMotif? = null,
+  /** The page's scroll, for a screen that scrolls it itself (a walkthrough bringing a part into view). */
+  scrollState: ScrollState? = null,
   content: @Composable ColumnScope.() -> Unit,
 ) {
   Box(
@@ -68,7 +71,7 @@ fun RinPage(
         Column(
           Modifier.weight(1f)
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState ?: rememberScrollState())
             .padding(horizontal = 16.dp)
             .padding(top = 8.dp, bottom = 24.dp)
             .navigationBarsPadding(),

@@ -56,10 +56,11 @@ class SettingsViewModel @Inject constructor(private val settings: AppSettings) :
     viewModelScope.launch { settings.setThemeMode(mode) }
   }
 
-  /** "Show the tour again" (UX.8): the home screen runs it as soon as it shows; then [onDone]. */
+  /** "Show the tour again" (UX.8): the home screen runs it as soon as it shows, the tournament page on its next visit; then [onDone]. */
   fun replayTour(onDone: () -> Unit) {
     viewModelScope.launch {
       settings.setTutorialPending(true)
+      settings.setTournamentGuidePending(true)
       onDone()
     }
   }

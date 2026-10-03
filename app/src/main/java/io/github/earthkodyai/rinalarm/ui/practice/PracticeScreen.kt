@@ -13,7 +13,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,19 +32,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.alarm.ring.PracticeActivity
+import io.github.earthkodyai.rinalarm.data.AppSettings
+import io.github.earthkodyai.rinalarm.mission.Difficulty
 import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
+import io.github.earthkodyai.rinalarm.mission.hasLevels
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
+import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import io.github.earthkodyai.rinalarm.ui.common.sticker
 import io.github.earthkodyai.rinalarm.setup.rememberRuntimePermissionAction
 import io.github.earthkodyai.rinalarm.ui.editor.TileBadge
 import io.github.earthkodyai.rinalarm.ui.editor.TileMark
+import io.github.earthkodyai.rinalarm.ui.editor.levelName
+import javax.inject.Inject
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * "Try the games" (UX.8, D30): a practice round of each game with no alarm, the end of the home tour and an entry in
@@ -47,9 +66,13 @@ import io.github.earthkodyai.rinalarm.ui.editor.TileMark
  * plays, with the word chips to tap.
  */
 @Composable
-fun PracticeScreen(onBack: () -> Unit) {
+fun PracticeScreen(onBack: () -> Unit, viewModel: PracticeViewModel = hiltViewModel()) {
   val context = LocalContext.current
-  val launch = { game: MissionType -> context.startActivity(PracticeActivity.intent(context, game)) }
+  val newAlarmLevel by viewModel.newAlarmLevel.collectAsStateWithLifecycle()
+  // Starts at the level a new alarm gets, and stays this page's own: trying Nightmare here changes no alarm.
+  var picked by rememberSaveable { mutableStateOf<Difficulty?>(null) }
+  val level = picked ?: newAlarmLevel ?: Difficulty.NEW_ALARM
+  val launch = { game: MissionType -> context.startActivity(PracticeActivity.intent(context, game, level.takeIf { game.hasLevels })) }
   val askMic = rememberRuntimePermissionAction(Manifest.permission.RECORD_AUDIO) { launch(MissionType.SPEECH) }
   PracticeScreen(
     onPlay = { game ->
@@ -58,14 +81,39 @@ fun PracticeScreen(onBack: () -> Unit) {
       if (game == MissionType.SPEECH && micMissing) askMic() else launch(game)
     },
     onBack = onBack,
+    level = level,
+    onLevel = { picked = it },
   )
 }
 
+/** The level a new alarm gets ([AppSettings.lastDifficulty]), where the page's level starts. */
+@HiltViewModel
+class PracticeViewModel @Inject constructor(settings: AppSettings) : ViewModel() {
+  val newAlarmLevel: StateFlow<Difficulty?> = settings.lastDifficulty.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+}
+
 @Composable
-internal fun PracticeScreen(onPlay: (MissionType) -> Unit, onBack: () -> Unit) {
+internal fun PracticeScreen(
+  onPlay: (MissionType) -> Unit,
+  onBack: () -> Unit,
+  level: Difficulty = Difficulty.NEW_ALARM,
+  onLevel: (Difficulty) -> Unit = {},
+) {
   val p = RinTheme.palette
   RinPage(stringResource(R.string.practice_title), onBack) {
     Text(stringResource(R.string.practice_intro), style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.padding(horizontal = 4.dp))
+    // The level (6.10): the pads hint said "3 colours", true only at Easy, while the round played at the new-alarm level.
+    Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text(
+        stringResource(R.string.editor_level),
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+        color = p.ink,
+      )
+      Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Difficulty.entries.chunked(2).forEach { pair -> PillChoiceRow(options = pair, selected = level, label = { levelName(it) }, onSelect = onLevel) }
+      }
+      Text(stringResource(R.string.level_one), style = MaterialTheme.typography.bodySmall, color = p.muted)
+    }
     PRACTICE_GAMES.forEach { (game, title, hint) -> GameCard(game, stringResource(title), stringResource(hint)) { onPlay(game) } }
     Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
       Text(

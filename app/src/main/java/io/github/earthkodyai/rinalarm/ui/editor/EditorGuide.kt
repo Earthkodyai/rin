@@ -58,6 +58,7 @@ enum class GuideTarget {
   DAY_MODE,
   DAYS,
   GAME,
+  LEVEL,
   TRY,
   SOUND,
   SAVE,
@@ -73,6 +74,8 @@ enum class GuideStep(val target: GuideTarget, @StringRes val tip: Int) {
   DAY_MODE(GuideTarget.DAY_MODE, R.string.guide_day_mode),
   DAYS(GuideTarget.DAYS, R.string.guide_days),
   GAME(GuideTarget.GAME, R.string.guide_game),
+  /** Only while a game is chosen: the level and the scold switch (G.1) sit in one card under the tiles (6.10). */
+  LEVEL(GuideTarget.LEVEL, R.string.guide_level),
   /** Only while a game is chosen (None has no Try button). Tapping it plays a practice round, then moves on. */
   TRY(GuideTarget.TRY, R.string.guide_try),
   /** Only in a build with the alarm themes (without them there is nothing to choose). */
@@ -87,7 +90,7 @@ enum class GuideStep(val target: GuideTarget, @StringRes val tip: Int) {
   fun next(mission: MissionChoice, hasSounds: Boolean): GuideStep? =
     entries.drop(ordinal + 1).firstOrNull {
       when (it) {
-        TRY -> mission != MissionChoice.None
+        LEVEL, TRY -> mission != MissionChoice.None
         SOUND -> hasSounds
         else -> true
       }
@@ -115,13 +118,19 @@ internal fun EditorGuide(
       } else {
         Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
       }
-    GuideCard(step, if (step.last) null else onNext, onSkip, place.padding(16.dp))
+    GuideCard(stringResource(step.tip), if (step.last) null else onNext, onSkip, place.padding(16.dp))
   }
 }
 
-/** Rin's face, her tip, and Skip / Next under it. */
+/** Rin's face, her [tip], and Skip / Next under it ([nextLabel] on the button; no button without [onNext]). */
 @Composable
-private fun GuideCard(step: GuideStep, onNext: (() -> Unit)?, onSkip: () -> Unit, modifier: Modifier) {
+internal fun GuideCard(
+  tip: String,
+  onNext: (() -> Unit)?,
+  onSkip: () -> Unit,
+  modifier: Modifier,
+  nextLabel: String = stringResource(R.string.guide_next),
+) {
   val p = RinTheme.palette
   Row(
     modifier.fillMaxWidth().sticker(fill = p.bubble, radius = 24.dp).padding(14.dp),
@@ -130,7 +139,7 @@ private fun GuideCard(step: GuideStep, onNext: (() -> Unit)?, onSkip: () -> Unit
     RinFace(Modifier.size(52.dp))
     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Text(
-        stringResource(step.tip),
+        tip,
         style = MaterialTheme.typography.titleSmall,
         color = p.ink,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -139,7 +148,7 @@ private fun GuideCard(step: GuideStep, onNext: (() -> Unit)?, onSkip: () -> Unit
         QuietPillButton(stringResource(R.string.guide_skip), onSkip, Modifier.testTag(GUIDE_SKIP_TAG), height = 40.dp)
         Spacer(Modifier.weight(1f))
         if (onNext != null) {
-          PillButton(stringResource(R.string.guide_next), onNext, Modifier.height(44.dp).width(112.dp).testTag(GUIDE_NEXT_TAG))
+          PillButton(nextLabel, onNext, Modifier.height(44.dp).width(112.dp).testTag(GUIDE_NEXT_TAG))
         }
       }
     }

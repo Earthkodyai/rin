@@ -339,7 +339,7 @@
     <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
     <string name="tour_hello">I\'m Rin! Let me show you around.</string>
     <string name="tour_add">Let\'s set your first alarm. Tap Add alarm!</string>
-    <string name="tour_tournament">Up for a challenge? The tournament starts at Nightmare, and one miss ends it.</string>
+    <string name="tour_tournament">Up for a challenge? The tournament starts at Nightmare, and one miss ends it. Post your best online if you like.</string>
     <string name="tour_alarm">Tap an alarm to change it. The switch turns it off.</string>
     <string name="tour_top">Left: can your phone ring? Right: Settings, and this tour.</string>
     <string name="tour_skip">Skip tour</string>
@@ -347,15 +347,21 @@
     <string name="guide_day_mode">Day off, or sick? One tap here, and your next alarm has no game.</string>
     <string name="guide_days">Tap the days it repeats. No days means just once.</string>
     <string name="guide_game">Pick the game that stops it, or let me pick a new one each day.</string>
+    <string name="guide_level">How hard the game is, and whether I scold a miss. Too much? Switch my scolding off here.</string>
     <string name="guide_try">Try it now! It\'s only practice, no alarm.</string>
     <string name="guide_sound">Pick a sound. Tap one to hear it.</string>
     <string name="guide_save">All set? Tap Save alarm, and I\'ll be there.</string>
     <string name="guide_next">Next</string>
+    <string name="guide_done">Got it</string>
+    <string name="start_guide_game">Pick a game: Colour pads or Cup shuffle. Level 1 is already Nightmare!</string>
+    <string name="start_guide_you">A name and your university for the board. Both are optional.</string>
+    <string name="start_guide_online">Want to be on the online board? Switch this on. Switching it off deletes your scores.</string>
+    <string name="start_guide_rules">One miss ends the run. Tick the rules once, then Start. Good luck!</string>
     <string name="guide_skip">Skip</string>
     <string name="tour_next">Next · %1$d/%2$d</string>
     <string name="practice_title">Try the games</string>
     <string name="practice_intro">One short round of each game, with no alarm. Nothing is saved.</string>
-    <string name="practice_hint_pads">Watch Rin\'s hand, then tap the same 3 colours.</string>
+    <string name="practice_hint_pads">Watch Rin\'s hand, then tap the colours in the same order.</string>
     <string name="practice_hint_cups">Follow the ball and tap its cup, once.</string>
     <string name="practice_hint_speech">Say one short sentence after Rin. The mic listens only during the round.</string>
     <string name="practice_stop_title">When an alarm rings</string>

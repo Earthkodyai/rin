@@ -55,6 +55,12 @@ class FakeSettings(dayMode: DayMode? = null, legacyPoutOff: Boolean = false) : A
 
   override val tutorialPending = MutableStateFlow(false)
 
+  override val tournamentGuidePending = MutableStateFlow(true)
+
+  override suspend fun setTournamentGuidePending(pending: Boolean) {
+    tournamentGuidePending.value = pending
+  }
+
   override suspend fun setTutorialPending(pending: Boolean) {
     tutorialPending.value = pending
   }

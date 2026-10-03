@@ -492,7 +492,7 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
       color = p.muted,
       modifier = Modifier.padding(start = 4.dp),
     )
-    if (choice != MissionChoice.None) GameOptions(state.draft, actions)
+    if (choice != MissionChoice.None) GameOptions(state.draft, actions, targets)
     // A practice round right here (the user, 2026-10-02): the chosen game, or Rin's pick for the next ring.
     if (choice != MissionChoice.None) {
       QuietPillButton(
@@ -512,9 +512,12 @@ private fun MissionEditor(state: AlarmEditorUiState.Editing, actions: AlarmEdito
  * says so in place of the row; Nightmare carries a warning, as it is made to be lost.
  */
 @Composable
-private fun GameOptions(draft: Alarm, actions: AlarmEditorActions) {
+private fun GameOptions(draft: Alarm, actions: AlarmEditorActions, targets: SpotTargets<GuideTarget>?) {
   val p = RinTheme.palette
-  Column(Modifier.fillMaxWidth().sticker(radius = 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  Column(
+    Modifier.fillMaxWidth().spotTarget(targets, GuideTarget.LEVEL, radius = 22.dp, depth = 4.dp).sticker(radius = 22.dp).padding(16.dp),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
+  ) {
     OptionLabel(stringResource(R.string.editor_level))
     if (draft.mission == MissionChoice.Only(MissionType.SPEECH)) {
       Text(stringResource(R.string.level_one), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.testTag(LEVEL_ONE_TAG))
@@ -563,7 +566,7 @@ private fun GameOptions(draft: Alarm, actions: AlarmEditorActions) {
 }
 
 @Composable
-private fun levelName(level: Difficulty): String =
+internal fun levelName(level: Difficulty): String =
   stringResource(
     when (level) {
       Difficulty.EASY -> R.string.level_easy

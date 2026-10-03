@@ -61,6 +61,14 @@ interface AppSettings {
   val tutorialPending: Flow<Boolean>
 
   suspend fun setTutorialPending(pending: Boolean)
+
+  /**
+   * The tournament start page's walkthrough waits to be shown (6.10): on everyone's first visit, and again after
+   * Settings > Home tour; cleared when it ends or is skipped.
+   */
+  val tournamentGuidePending: Flow<Boolean>
+
+  suspend fun setTournamentGuidePending(pending: Boolean)
 }
 
 /** [AppSettings] in a Preferences DataStore in device-protected storage. */
@@ -126,6 +134,12 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     store.edit { it[TUTORIAL_PENDING] = pending }
   }
 
+  override val tournamentGuidePending: Flow<Boolean> = store.data.map { !(it[TOURNAMENT_GUIDE_DONE] ?: false) }
+
+  override suspend fun setTournamentGuidePending(pending: Boolean) {
+    store.edit { it[TOURNAMENT_GUIDE_DONE] = !pending }
+  }
+
   private fun Preferences.dayMode(): DayMode? {
     val kind = DayModeKind.fromStored(this[DAY_MODE]) ?: return null
     return DayMode(kind, this[DAY_MODE_AT] ?: return null)
@@ -141,5 +155,6 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     val DAY_MODE_AT = longPreferencesKey("day_mode_at")
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val TUTORIAL_PENDING = booleanPreferencesKey("tutorial_pending")
+    val TOURNAMENT_GUIDE_DONE = booleanPreferencesKey("tournament_guide_done")
   }
 }
