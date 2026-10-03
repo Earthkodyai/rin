@@ -40,11 +40,25 @@ class PrivacyTextTest {
   }
 
   @Test
-  fun noInternet_holds_theManifestRemovesThePermissionLibrariesAddIt() {
-    assertTrue("no internet permission" in english)
-    // ML Kit merges INTERNET in (6.2); the manifest must keep removing it.
-    val internet = Regex("""<uses-permission\s+android:name="android.permission.INTERNET"\s+tools:node="remove"""")
-    assertTrue(internet.containsMatchIn(manifest))
+  fun theLeaderboardIsTheOnlyNetworkUse_asTheNoticeSays() {
+    assertTrue("Its only network use is the optional tournament leaderboard" in english)
+    // G.6 (ADR 0008): only tournament/online (in any source set) may reach the network; no other code imports
+    // Firebase or a network API.
+    val network = Regex("""^import (com\.google\.firebase|java\.net\.|javax\.net\.|okhttp3|android\.net\.http)""", RegexOption.MULTILINE)
+    val outside =
+      File("src").walkTopDown()
+        .filter { it.isFile && it.extension == "kt" && "/rinalarm/tournament/online/" !in it.invariantSeparatorsPath }
+        .filter { network.containsMatchIn(it.readText()) }
+        .map { it.path }
+        .toList()
+    assertEquals(emptyList<String>(), outside)
+  }
+
+  @Test
+  fun firebaseNeverStartsWithTheApp_soTheRingPathNeverWaitsForIt() {
+    val provider =
+      Regex("""android:name="com.google.firebase.provider.FirebaseInitProvider"\s+android:authorities="\$\{applicationId}.firebaseinitprovider"\s+tools:node="remove"""")
+    assertTrue(provider.containsMatchIn(manifest))
   }
 
   @Test

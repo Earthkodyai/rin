@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Debug builds only: adb hooks for smoke tests (alarms, and crashing the character renderer). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application>
+    <!-- Plain http to the Firebase emulators on this PC (rin.firebase.emulator, G.6); release builds allow none. -->
+    <application android:networkSecurityConfig="@xml/network_security_config">
         <receiver
             android:name=".debug.DebugAlarmReceiver"
             android:directBootAware="true"

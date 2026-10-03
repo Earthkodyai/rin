@@ -15,12 +15,14 @@ import io.github.earthkodyai.rinalarm.alarm.log.RoomRingHistory
 import io.github.earthkodyai.rinalarm.data.AlarmRepository
 import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.data.DataStoreTournamentStore
-import io.github.earthkodyai.rinalarm.data.TournamentStore
-import io.github.earthkodyai.rinalarm.data.SettingsRepository
 import io.github.earthkodyai.rinalarm.data.RoomAlarmRepository
+import io.github.earthkodyai.rinalarm.data.SettingsRepository
 import io.github.earthkodyai.rinalarm.data.StorageFiles
+import io.github.earthkodyai.rinalarm.data.TournamentStore
 import io.github.earthkodyai.rinalarm.data.db.AlarmDao
 import io.github.earthkodyai.rinalarm.data.db.RinDatabase
+import io.github.earthkodyai.rinalarm.tournament.online.FirebaseLeaderboard
+import io.github.earthkodyai.rinalarm.tournament.online.Leaderboard
 import javax.inject.Singleton
 
 @Module
@@ -47,6 +49,8 @@ abstract class RepositoryModule {
   @Binds abstract fun appSettings(impl: SettingsRepository): AppSettings
 
   @Binds abstract fun tournamentStore(impl: DataStoreTournamentStore): TournamentStore
+
+  @Binds abstract fun leaderboard(impl: FirebaseLeaderboard): Leaderboard
 
   @Binds abstract fun ringHistory(impl: RoomRingHistory): RingHistoryRepository
 }

@@ -1,0 +1,16 @@
+{
+  "name": "rinalarm-firebase",
+  "private": true,
+  "type": "module",
+  "description": "The tournament leaderboard's Firestore rules and their emulator tests (G.6).",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-rinalarm \"node --test test/rules.test.mjs\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-rinalarm",
+    "deploy": "firebase deploy --only firestore"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.32.1"
+  }
+}

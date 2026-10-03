@@ -19,6 +19,9 @@ import kotlinx.serialization.Serializable
 /** The tournament's start page (G.5): game, name, university, rules. */
 @Serializable data object TournamentStart : NavKey
 
+/** The online leaderboard (G.6): players ranked per game, each with a university badge. */
+@Serializable data object Leaderboard : NavKey
+
 /** How Rin uses your data: PRIVACY.md (6.3). */
 @Serializable data object Privacy : NavKey
 

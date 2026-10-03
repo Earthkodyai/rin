@@ -95,6 +95,16 @@ class TournamentViewModelTest {
       bests.value = bests.value + (score.game to score)
       return true
     }
+
+    override suspend fun posted(game: TournamentGame): String? = null
+
+    override suspend fun markPosted(game: TournamentGame, signature: String) = Unit
+
+    override suspend fun stopPosting() = Unit
+
+    override suspend fun owesWithdraw(): Boolean = false
+
+    override suspend fun withdrawn() = Unit
   }
 
   private val store = FakeStore()

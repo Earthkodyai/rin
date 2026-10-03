@@ -2,13 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Offline by design (6.1 security review): ML Kit's bundled barcode model merges these in for Google's usage
-         logs (datatransport). Removed, so no library can reach the network; the scanner itself runs on the phone. -->
+    <!-- The tournament leaderboard only (G.6, ADR 0008): Firestore in tournament/online/. Everything else stays
+         offline, and the ring path never waits on the network (PrivacyTextTest checks who uses Firebase). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Firebase Auth merges this in for sign-in methods the app does not use (anonymous sign-in needs nothing). -->
     <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_NETWORK_STATE"
+        android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"
         tools:node="remove" />
 
     <!-- Exact alarms: USE_EXACT_ALARM (13+, alarm-clock apps only, cannot be revoked); SCHEDULE_EXACT_ALARM for 12-12L. -->
@@ -51,6 +51,12 @@
         <meta-data
             android:name="android.webkit.WebView.EnableSafeBrowsing"
             android:value="false" />
+        <!-- Firebase starts when the leaderboard is first used (FirebaseLeaderboard), never at app start: an alarm
+             waking the app must not wait for it. -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

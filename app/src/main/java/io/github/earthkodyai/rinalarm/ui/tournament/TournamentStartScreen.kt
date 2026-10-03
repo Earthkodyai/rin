@@ -14,13 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,12 +62,18 @@ import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.TrophyGold
 import io.github.earthkodyai.rinalarm.tournament.TournamentActivity
 import io.github.earthkodyai.rinalarm.tournament.formatTime
+import io.github.earthkodyai.rinalarm.tournament.online.Leaderboard
+import io.github.earthkodyai.rinalarm.tournament.online.LeaderboardSync
+import io.github.earthkodyai.rinalarm.tournament.online.NameFilter
+import io.github.earthkodyai.rinalarm.tournament.online.SyncStatus
 import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
+import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
 import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
+import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -78,21 +88,50 @@ import kotlinx.coroutines.launch
  */
 internal val TournamentUniversities: List<Pair<String, String>> = emptyList()
 
-data class TournamentStartState(val entry: TournamentEntry = TournamentEntry(), val best: Map<TournamentGame, TournamentScore?> = emptyMap())
+/**
+ * @property configured whether this build has a leaderboard (G.6); without one the Online card says so and nothing else.
+ * @property sync where the bests stand with the board, for the line under the switch.
+ */
+data class TournamentStartState(
+  val entry: TournamentEntry = TournamentEntry(),
+  val best: Map<TournamentGame, TournamentScore?> = emptyMap(),
+  val configured: Boolean = false,
+  val sync: SyncStatus = SyncStatus.OFF,
+)
 
 @HiltViewModel
-class TournamentStartViewModel @Inject constructor(private val store: TournamentStore) : ViewModel() {
+class TournamentStartViewModel
+@Inject
+constructor(private val store: TournamentStore, private val sync: LeaderboardSync, board: Leaderboard) : ViewModel() {
+  private val configured = board.configured
+
   val state: StateFlow<TournamentStartState?> =
-    combine(store.entry, store.best(TournamentGame.PADS), store.best(TournamentGame.CUPS)) { entry, pads, cups ->
-        TournamentStartState(entry, mapOf(TournamentGame.PADS to pads, TournamentGame.CUPS to cups))
+    combine(store.entry, store.best(TournamentGame.PADS), store.best(TournamentGame.CUPS), sync.status) { entry, pads, cups, status ->
+        TournamentStartState(entry, mapOf(TournamentGame.PADS to pads, TournamentGame.CUPS to cups), configured, status)
       }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-  /** Keeps the name, university and agreement, then [then] (the run starts). */
+  /** On showing the page (and coming back from a run): post a new best, or retry what failed offline. */
+  fun sync() = sync.sync()
+
+  /**
+   * The Online switch, kept at once (it is the user's consent, G.6): on posts the bests; off deletes the rows online,
+   * now or at the next sync if the phone is offline.
+   */
+  fun setOnline(on: Boolean) {
+    viewModelScope.launch {
+      if (on) store.setEntry(store.entry.first().copy(online = true)) else store.stopPosting()
+      sync.sync()
+    }
+  }
+
+  /** Keeps the name, university and agreement, then [then] (the run starts). A changed name goes to the board too. */
   fun save(name: String, university: String?, then: () -> Unit) {
     viewModelScope.launch {
-      store.setEntry(TournamentEntry(name, university, TournamentEntry.RULES_VERSION))
+      val online = store.entry.first().online
+      store.setEntry(TournamentEntry(name, university, TournamentEntry.RULES_VERSION, online))
       store.entry.first()
+      sync.sync()
       then()
     }
   }
@@ -103,9 +142,13 @@ class TournamentStartViewModel @Inject constructor(private val store: Tournament
  * university or "Not listed", accept the short rules once (asked again when they change), and play.
  */
 @Composable
-fun TournamentStartScreen(onBack: () -> Unit, viewModel: TournamentStartViewModel = hiltViewModel()) {
+fun TournamentStartScreen(onBack: () -> Unit, onLeaderboard: () -> Unit, viewModel: TournamentStartViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsStateWithLifecycle()
   val context = LocalContext.current
+  LifecycleResumeEffect(viewModel) {
+    viewModel.sync()
+    onPauseOrDispose {}
+  }
   state?.let { s ->
     TournamentStartScreen(
       s,
@@ -113,6 +156,8 @@ fun TournamentStartScreen(onBack: () -> Unit, viewModel: TournamentStartViewMode
       onStart = { game, name, university ->
         viewModel.save(name, university) { context.startActivity(TournamentActivity.intent(context, game)) }
       },
+      onOnline = viewModel::setOnline,
+      onLeaderboard = onLeaderboard,
     )
   }
 }
@@ -122,12 +167,15 @@ internal fun TournamentStartScreen(
   state: TournamentStartState,
   onBack: () -> Unit,
   onStart: (TournamentGame, String, String?) -> Unit,
+  onOnline: (Boolean) -> Unit,
+  onLeaderboard: () -> Unit,
 ) {
   val p = RinTheme.palette
   var game by rememberSaveable { mutableStateOf(TournamentGame.PADS) }
   var name by rememberSaveable { mutableStateOf(state.entry.name) }
   var university by rememberSaveable { mutableStateOf(state.entry.university) }
   var agreed by rememberSaveable { mutableStateOf(state.entry.agreedToCurrent) }
+  val nameAllowed = NameFilter.allowed(name.trim())
   // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
   // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
   RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
@@ -148,11 +196,15 @@ internal fun TournamentStartScreen(
       FieldLabel(stringResource(R.string.tournament_name))
       OutlinedTextField(
         name,
-        { name = it.take(TournamentEntry.NAME_MAX) },
+        { name = NameFilter.typed(it) },
         Modifier.fillMaxWidth(),
         singleLine = true,
+        isError = !nameAllowed,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-        supportingText = { Text("${name.length}/${TournamentEntry.NAME_MAX}", color = p.muted) },
+        supportingText = {
+          if (nameAllowed) Text("${name.length}/${TournamentEntry.NAME_MAX}", color = p.muted)
+          else Text(stringResource(R.string.tournament_name_not_allowed), color = p.alert)
+        },
         shape = RoundedCornerShape(16.dp),
         colors =
           OutlinedTextFieldDefaults.colors(
@@ -165,6 +217,8 @@ internal fun TournamentStartScreen(
       UniversityPicker(university) { university = it }
     }
 
+    OnlineCard(state, onOnline, onLeaderboard)
+
     Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       CardTitle(stringResource(R.string.tournament_rules_title))
       Text(stringResource(R.string.tournament_rules), style = MaterialTheme.typography.bodyMedium, color = p.muted)
@@ -176,7 +230,7 @@ internal fun TournamentStartScreen(
         Text(stringResource(R.string.tournament_agree), style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.padding(start = 8.dp))
       }
     }
-    PillButton(stringResource(R.string.tournament_start), { onStart(game, name, university) }, Modifier.padding(top = 6.dp).fillMaxWidth(), enabled = agreed)
+    PillButton(stringResource(R.string.tournament_start), { onStart(game, name, university) }, Modifier.padding(top = 6.dp).fillMaxWidth(), enabled = agreed && nameAllowed)
   }
 }
 
@@ -207,6 +261,56 @@ private fun Banner(best: TournamentScore?) {
         modifier = Modifier.padding(top = 4.dp).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 4.dp),
       )
     }
+  }
+}
+
+/**
+ * The online leaderboard (G.6): the consent switch, what it sends and where, how the bests stand with the board, and
+ * the way to the board. Switching off asks first, because it deletes the rows online.
+ */
+@Composable
+private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit, onLeaderboard: () -> Unit) {
+  val p = RinTheme.palette
+  var confirmOff by remember { mutableStateOf(false) }
+  Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    CardTitle(stringResource(R.string.tournament_online_title))
+    if (!state.configured) {
+      Text(stringResource(R.string.tournament_online_not_set_up), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+      return@Column
+    }
+    val online = state.entry.online
+    Row(
+      Modifier.fillMaxWidth().toggleable(online, role = Role.Switch) { if (it) onOnline(true) else confirmOff = true },
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(stringResource(R.string.tournament_online_switch), style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
+      Switch(checked = online, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 10.dp))
+    }
+    Text(stringResource(R.string.tournament_online_body), style = MaterialTheme.typography.bodySmall, color = p.muted)
+    if (online && state.best.values.any { it != null }) {
+      val line =
+        when (state.sync) {
+          SyncStatus.POSTED -> R.string.tournament_online_posted
+          SyncStatus.WAITING -> R.string.tournament_online_waiting
+          SyncStatus.OFF -> null
+        }
+      line?.let { Text(stringResource(it), style = MaterialTheme.typography.labelLarge, color = p.ink) }
+    }
+    QuietPillButton(stringResource(R.string.tournament_see_board), onLeaderboard, Modifier.padding(top = 4.dp).fillMaxWidth())
+  }
+  if (confirmOff) {
+    AlertDialog(
+      onDismissRequest = { confirmOff = false },
+      title = { Text(stringResource(R.string.tournament_stop_title)) },
+      text = { Text(stringResource(R.string.tournament_stop_body)) },
+      confirmButton = {
+        TextButton(onClick = {
+          confirmOff = false
+          onOnline(false)
+        }) { Text(stringResource(R.string.tournament_stop), color = p.alert) }
+      },
+      dismissButton = { TextButton(onClick = { confirmOff = false }) { Text(stringResource(R.string.tournament_keep_posting)) } },
+    )
   }
 }
 
@@ -274,9 +378,16 @@ private fun UniversityPicker(selected: String?, onSelect: (String?) -> Unit) {
 private fun TournamentStartPreview() {
   RinAlarmTheme {
     TournamentStartScreen(
-      TournamentStartState(best = mapOf(TournamentGame.PADS to TournamentScore(TournamentGame.PADS, 4, 83_400))),
+      TournamentStartState(
+        TournamentEntry(online = true),
+        best = mapOf(TournamentGame.PADS to TournamentScore(TournamentGame.PADS, 4, 83_400)),
+        configured = true,
+        sync = SyncStatus.POSTED,
+      ),
       onBack = {},
       onStart = { _, _, _ -> },
+      onOnline = {},
+      onLeaderboard = {},
     )
   }
 }

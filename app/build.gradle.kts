@@ -28,6 +28,21 @@ android {
         // Phones (64- and 32-bit ARM) and CI's x86_64 emulator. Vosk and JNA (task 3.5) also ship x86, armeabi and
         // mips builds, about 10 MB of APK that no supported device runs.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        // The tournament leaderboard's Firebase project (G.6, ADR 0008): `rin.firebase.projectId`, `.appId` and
+        // `.apiKey` in local.properties, from the Firebase console's Android app. They name the project rather than
+        // guard it (App Check and the rules do that), but they stay out of the public repo like google-services.json.
+        // Without them (CI, clones) the leaderboard says it is not set up, and the tournament plays offline.
+        val firebase =
+          Properties().apply { rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) } }
+        for ((field, key) in listOf("FIREBASE_PROJECT_ID" to "projectId", "FIREBASE_APP_ID" to "appId", "FIREBASE_API_KEY" to "apiKey")) {
+          buildConfigField("String", field, "\"${firebase.getProperty("rin.firebase.$key", "")}\"")
+        }
+        // Debug only: a host running `npm run emulators` in firebase/ (127.0.0.1 with `adb reverse tcp:8080 tcp:8080`
+        // and `adb reverse tcp:9099 tcp:9099`), so the app talks to the local emulators instead of the project.
+        buildConfigField("String", "FIREBASE_EMULATOR", "\"\"")
+        firebase.getProperty("rin.firebase.emulator")?.let { host ->
+          buildTypes.getByName("debug") { buildConfigField("String", "FIREBASE_EMULATOR", "\"$host\"") }
+        }
     }
 
     // Release signing (6.2): the key lives outside the repo, and `rin.signing` in local.properties points at its
@@ -75,7 +90,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 
@@ -607,4 +622,13 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+  // Tournament leaderboard (G.6, ADR 0008): the only code that reaches the network, in tournament/online/. Firestore,
+  // anonymous sign-in, and App Check (Play Integrity; the debug provider on debug builds, registered in the console).
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.firestore)
+  implementation(libs.firebase.auth)
+  implementation(libs.firebase.appcheck.playintegrity)
+  debugImplementation(libs.firebase.appcheck.debug)
+  implementation(libs.kotlinx.coroutines.play.services)
 }

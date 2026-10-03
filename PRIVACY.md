@@ -1,8 +1,8 @@
 # RinAlarm privacy notice
 
-Last updated: 2 October 2026. Applies to RinAlarm 1.0 for Android. ภาษาไทย: PRIVACY.th.md
+Last updated: 3 October 2026. Applies to RinAlarm 1.0 for Android. ภาษาไทย: PRIVACY.th.md
 
-RinAlarm works entirely on your phone. It has no internet permission, no camera permission, no account, no ads, no analytics and no crash reporting. Nothing you say or do in the app leaves your phone.
+RinAlarm works on your phone. Its only network use is the optional tournament leaderboard, described below, and it sends nothing unless you switch posting on. It has no camera permission, no account, no ads, no analytics and no crash reporting. Apart from what you choose to post to the leaderboard, nothing you say or do in the app leaves your phone.
 
 ## What the app keeps on your phone
 
@@ -24,6 +24,16 @@ Rin is drawn by a web page built into the app. It loads only files inside the ap
 
 Rin is an AI character. Her lines were written in advance with the help of AI and reviewed by the developer, and her voice was generated once with ElevenLabs. All of it is built into the app. Nothing is generated while you use the app, and none of your data is sent to any AI service.
 
+## Tournament leaderboard (optional)
+
+The tournament plays on your phone, and your bests are kept there. Only if you switch on "Post my best online" on the tournament's start page does the app send these to Google Firebase (Firestore, on Google's servers outside Thailand):
+
+- the name you typed, if any, and the university you picked, if any;
+- your best levels and time in each tournament game;
+- an anonymous ID that Firebase creates for this install, and a Play Integrity check that the request comes from RinAlarm.
+
+Everyone who opens the leaderboard sees the names, universities and scores on it. Opening the leaderboard also signs in with an anonymous ID, even if you never post. Reporting a name sends the reported row and your anonymous ID to the developer, who may delete rows and block IDs that break the rules. Switching posting off deletes your rows from the leaderboard.
+
 ## Sharing
 
 The app never shares anything by itself. One thing happens only when you tap it:
@@ -32,7 +42,7 @@ The app never shares anything by itself. One thing happens only when you tap it:
 
 ## Deleting your data
 
-Uninstall RinAlarm, or clear its storage (Android Settings, Apps, RinAlarm, Storage, Clear storage). Either removes everything above. Deleting an alarm removes that alarm; its old rows in the ring log stay until you clear storage. There is no account, so there is nothing to delete anywhere else.
+Uninstall RinAlarm, or clear its storage (Android Settings, Apps, RinAlarm, Storage, Clear storage). Either removes everything above that is kept on your phone. Switch off "Post my best online" first: it deletes your leaderboard rows, and clearing storage loses the anonymous ID that owns them. Deleting an alarm removes that alarm; its old rows in the ring log stay until you clear storage. There is no account, so apart from the leaderboard there is nothing to delete anywhere else.
 
 ## Children
 

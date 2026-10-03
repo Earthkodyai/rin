@@ -22,6 +22,7 @@ import io.github.earthkodyai.rinalarm.ui.onboarding.OnboardingScreen
 import io.github.earthkodyai.rinalarm.ui.practice.PracticeScreen
 import io.github.earthkodyai.rinalarm.ui.settings.PrivacyScreen
 import io.github.earthkodyai.rinalarm.ui.settings.SettingsScreen
+import io.github.earthkodyai.rinalarm.ui.tournament.LeaderboardScreen
 import io.github.earthkodyai.rinalarm.ui.tournament.TournamentStartScreen
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -100,7 +101,13 @@ private fun AppNavigation(first: NavKey, onTourEnd: () -> Unit) {
         }
         entry<Practice> { PracticeScreen(onBack = { if (backStack.lastOrNull() == Practice) backStack.removeLastOrNull() }) }
         entry<TournamentStart> {
-          TournamentStartScreen(onBack = { if (backStack.lastOrNull() == TournamentStart) backStack.removeLastOrNull() })
+          TournamentStartScreen(
+            onBack = { if (backStack.lastOrNull() == TournamentStart) backStack.removeLastOrNull() },
+            onLeaderboard = { if (backStack.lastOrNull() == TournamentStart) backStack.add(Leaderboard) },
+          )
+        }
+        entry<Leaderboard> {
+          LeaderboardScreen(onBack = { if (backStack.lastOrNull() == Leaderboard) backStack.removeLastOrNull() })
         }
         entry<Privacy> { PrivacyScreen(onBack = { if (backStack.lastOrNull() == Privacy) backStack.removeLastOrNull() }) }
         entry<Diagnostics> {

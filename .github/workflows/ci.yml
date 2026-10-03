@@ -63,6 +63,29 @@ jobs:
             app/build/test-results/
           retention-days: 7
 
+  firestore-rules:
+    name: Leaderboard rules (Firestore emulator)
+    # G.6: firebase/firestore.rules against its tests on the emulator; nothing here touches a real project.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The Firestore emulator needs Java 21 or newer.
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+
+      - name: Rules tests
+        run: npm ci --prefix firebase --no-audit --no-fund && npm test --prefix firebase
+
   instrumented:
     name: Instrumented tests (emulator)
     # Compose UI tests cannot run on the test phone (HyperOS denies the test activity), so they only run here.
