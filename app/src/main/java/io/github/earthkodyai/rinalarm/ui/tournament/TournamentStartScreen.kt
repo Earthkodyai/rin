@@ -25,6 +25,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +76,7 @@ import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -125,6 +127,17 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
     }
   }
 
+  /**
+   * The name or university changed on the page (after a pause in typing): kept, and posted when posting is on, so the
+   * board shows it without playing first (the user, 2026-10-03). The agreement is left as it was.
+   */
+  fun saveDetails(name: String, university: String?) {
+    viewModelScope.launch {
+      store.setEntry(store.entry.first().copy(name = name, university = university))
+      sync.sync()
+    }
+  }
+
   /** Keeps the name, university and agreement, then [then] (the run starts). A changed name goes to the board too. */
   fun save(name: String, university: String?, then: () -> Unit) {
     viewModelScope.launch {
@@ -158,6 +171,7 @@ fun TournamentStartScreen(onBack: () -> Unit, onLeaderboard: () -> Unit, viewMod
       },
       onOnline = viewModel::setOnline,
       onLeaderboard = onLeaderboard,
+      onDetails = viewModel::saveDetails,
     )
   }
 }
@@ -169,6 +183,7 @@ internal fun TournamentStartScreen(
   onStart: (TournamentGame, String, String?) -> Unit,
   onOnline: (Boolean) -> Unit,
   onLeaderboard: () -> Unit,
+  onDetails: (String, String?) -> Unit = { _, _ -> },
 ) {
   val p = RinTheme.palette
   var game by rememberSaveable { mutableStateOf(TournamentGame.PADS) }
@@ -176,6 +191,13 @@ internal fun TournamentStartScreen(
   var university by rememberSaveable { mutableStateOf(state.entry.university) }
   var agreed by rememberSaveable { mutableStateOf(state.entry.agreedToCurrent) }
   val nameAllowed = NameFilter.allowed(name.trim())
+  // Kept DETAILS_PAUSE_MS after the last keystroke or pick; a refused name is never kept.
+  LaunchedEffect(name, university) {
+    val trimmed = name.trim()
+    if (!NameFilter.allowed(trimmed) || (trimmed == state.entry.name && university == state.entry.university)) return@LaunchedEffect
+    delay(DETAILS_PAUSE_MS)
+    onDetails(trimmed, university)
+  }
   // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
   // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
   RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
@@ -313,6 +335,8 @@ private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit,
     )
   }
 }
+
+private const val DETAILS_PAUSE_MS = 1_500L
 
 /** A card's title, inside it (the page's own section titles sat loose on the wallpaper). */
 @Composable

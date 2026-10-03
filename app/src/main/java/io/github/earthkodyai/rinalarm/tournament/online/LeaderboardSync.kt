@@ -10,6 +10,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,8 +45,19 @@ constructor(private val store: TournamentStore, private val board: Leaderboard, 
   private val _status = MutableStateFlow(SyncStatus.OFF)
   val status: StateFlow<SyncStatus> = _status.asStateFlow()
 
+  /**
+   * One pass now, and up to [RETRIES] more [RETRY_MS] apart while something is still waiting: a second change within
+   * the rules' 5 s (a name typed right after a post) goes up on the retry instead of at the next visit.
+   */
   fun sync() {
-    scope.launch { syncNow() }
+    scope.launch {
+      syncNow()
+      repeat(RETRIES) {
+        if (_status.value != SyncStatus.WAITING) return@launch
+        delay(RETRY_MS)
+        syncNow()
+      }
+    }
   }
 
   /** One pass; public for tests. */
@@ -90,6 +102,10 @@ constructor(private val store: TournamentStore, private val board: Leaderboard, 
     }
 
   companion object {
+    const val RETRIES = 2
+    /** Longer than the rules' 5 s between two changes of one row. */
+    const val RETRY_MS = 6_000L
+
     /** What a posted row holds, as one string: a change to any part of it posts again. */
     fun signature(score: TournamentScore, name: String, university: String?): String =
       "${score.levels}/${score.timeMs}/${university.orEmpty()}/$name"

@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -128,6 +130,21 @@ class LeaderboardSyncTest {
     sync.syncNow()
     assertEquals(1, board.posts.size)
     assertEquals(SyncStatus.POSTED, sync.status.value)
+  }
+
+  @Test
+  fun aRefusedPost_isRetriedAfterTheRulesGap_withoutAnotherVisit() = runTest {
+    store.entryFlow.value = TournamentEntry("Earth", online = true)
+    store.bests.value = mapOf(TournamentGame.PADS to pads)
+    board.offline = true
+    val sync = sync()
+    sync.sync()
+    runCurrent()
+    assertEquals(SyncStatus.WAITING, sync.status.value)
+    board.offline = false
+    advanceTimeBy(LeaderboardSync.RETRY_MS + 1)
+    assertEquals(SyncStatus.POSTED, sync.status.value)
+    assertEquals(1, board.posts.size)
   }
 
   @Test
