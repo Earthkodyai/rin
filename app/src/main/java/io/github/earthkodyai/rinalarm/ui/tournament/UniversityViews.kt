@@ -121,9 +121,9 @@ internal fun UniversityBadge(id: String?, modifier: Modifier = Modifier) {
   }
 }
 
-/** The university, or "Not listed": boxed like the name; a tap opens the list. */
+/** The university, or "Not listed": boxed like the name; a tap opens the list, and a pick is kept at once ([saved]). */
 @Composable
-internal fun UniversityPicker(selected: String?, onSelect: (String?) -> Unit) {
+internal fun UniversityPicker(selected: String?, saved: Boolean, onSelect: (String?) -> Unit) {
   val p = RinTheme.palette
   var open by remember { mutableStateOf(false) }
   val university = Universities[selected]
@@ -148,6 +148,9 @@ internal fun UniversityPicker(selected: String?, onSelect: (String?) -> Unit) {
         modifier = Modifier.weight(1f).padding(vertical = if (university == null) 4.dp else 0.dp),
       )
       Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null, tint = p.muted, modifier = Modifier.size(22.dp))
+    }
+    if (saved) {
+      Text(stringResource(R.string.tournament_saved), style = MaterialTheme.typography.bodySmall, color = p.mintText, modifier = Modifier.padding(start = 16.dp))
     }
   }
   if (open) {

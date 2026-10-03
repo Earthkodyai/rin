@@ -121,12 +121,20 @@ constructor(private val store: TournamentStore, private val sync: LeaderboardSyn
   }
 
   /**
-   * The name or university changed on the page (after a pause in typing): kept, and posted when posting is on, so the
-   * board shows it without playing first (the user, 2026-10-03). The agreement is left as it was.
+   * The name, on Save: kept, and posted when posting is on, so the board shows it without playing first (the user,
+   * 2026-10-03). The agreement is left as it was.
    */
-  fun saveDetails(name: String, university: String?) {
+  fun saveName(name: String) {
     viewModelScope.launch {
-      store.setEntry(store.entry.first().copy(name = name, university = university))
+      store.setEntry(store.entry.first().copy(name = name))
+      sync.sync()
+    }
+  }
+
+  /** The university, as soon as it is picked (a pick is a deliberate tap; the user, 2026-10-03), posted likewise. */
+  fun saveUniversity(university: String?) {
+    viewModelScope.launch {
+      store.setEntry(store.entry.first().copy(university = university))
       sync.sync()
     }
   }
@@ -164,7 +172,8 @@ fun TournamentStartScreen(onBack: () -> Unit, onLeaderboard: () -> Unit, viewMod
       },
       onOnline = viewModel::setOnline,
       onLeaderboard = onLeaderboard,
-      onDetails = viewModel::saveDetails,
+      onName = viewModel::saveName,
+      onUniversity = viewModel::saveUniversity,
     )
   }
 }
@@ -176,7 +185,8 @@ internal fun TournamentStartScreen(
   onStart: (TournamentGame, String, String?) -> Unit,
   onOnline: (Boolean) -> Unit,
   onLeaderboard: () -> Unit,
-  onDetails: (String, String?) -> Unit = { _, _ -> },
+  onName: (String) -> Unit = {},
+  onUniversity: (String?) -> Unit = {},
 ) {
   val p = RinTheme.palette
   var game by rememberSaveable { mutableStateOf(TournamentGame.PADS) }
@@ -184,9 +194,10 @@ internal fun TournamentStartScreen(
   var university by rememberSaveable { mutableStateOf(state.entry.university) }
   var agreed by rememberSaveable { mutableStateOf(state.entry.agreedToCurrent) }
   val nameAllowed = NameFilter.allowed(name.trim())
-  // A changed name or university waits for Save (the user, 2026-10-03), or goes with Start.
-  val unsaved = name.trim() != state.entry.name || university != state.entry.university
+  // A changed name waits for Save (the user, 2026-10-03), or goes with Start; a picked university is kept at once.
+  val unsaved = name.trim() != state.entry.name
   var saved by rememberSaveable { mutableStateOf(false) }
+  var universitySaved by rememberSaveable { mutableStateOf(false) }
   // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
   // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
   RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
@@ -236,14 +247,15 @@ internal fun TournamentStartScreen(
         )
         if (unsaved) {
           SaveButton(enabled = nameAllowed, modifier = Modifier.padding(start = 8.dp, top = 6.dp)) {
-            onDetails(name.trim(), university)
+            onName(name.trim())
             saved = true
           }
         }
       }
-      UniversityPicker(university) {
+      UniversityPicker(university, saved = universitySaved) {
         university = it
-        saved = false
+        universitySaved = true
+        onUniversity(it)
       }
     }
 
@@ -374,7 +386,7 @@ private fun OnlineBody(state: TournamentStartState, onOnline: (Boolean) -> Unit,
   GoldButton(stringResource(R.string.tournament_see_board), onLeaderboard, Modifier.padding(top = 4.dp), height = 50.dp)
 }
 
-/** Save beside the name box, in the main pink, while the name or university differs from what is kept. */
+/** Save beside the name box, in the main pink, while the name differs from what is kept. */
 @Composable
 private fun SaveButton(enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
   val p = RinTheme.palette
