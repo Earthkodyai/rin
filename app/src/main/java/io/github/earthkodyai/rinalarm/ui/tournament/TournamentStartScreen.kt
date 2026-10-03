@@ -1,6 +1,11 @@
 package io.github.earthkodyai.rinalarm.ui.tournament
 
 import androidx.compose.foundation.Image
+import io.github.earthkodyai.rinalarm.ui.common.sticker
+import io.github.earthkodyai.rinalarm.ui.common.GoldButton
+import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,7 +30,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,13 +74,11 @@ import io.github.earthkodyai.rinalarm.tournament.online.SyncStatus
 import io.github.earthkodyai.rinalarm.ui.common.PatternMotif
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.PillChoiceRow
-import io.github.earthkodyai.rinalarm.ui.common.QuietPillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinPage
 import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.rinCard
 import io.github.earthkodyai.rinalarm.ui.common.rinSwitchColors
 import javax.inject.Inject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -191,13 +193,9 @@ internal fun TournamentStartScreen(
   var university by rememberSaveable { mutableStateOf(state.entry.university) }
   var agreed by rememberSaveable { mutableStateOf(state.entry.agreedToCurrent) }
   val nameAllowed = NameFilter.allowed(name.trim())
-  // Kept DETAILS_PAUSE_MS after the last keystroke or pick; a refused name is never kept.
-  LaunchedEffect(name, university) {
-    val trimmed = name.trim()
-    if (!NameFilter.allowed(trimmed) || (trimmed == state.entry.name && university == state.entry.university)) return@LaunchedEffect
-    delay(DETAILS_PAUSE_MS)
-    onDetails(trimmed, university)
-  }
+  // A changed name or university waits for Save (the user, 2026-10-03), or goes with Start.
+  val unsaved = name.trim() != state.entry.name || university != state.entry.university
+  var saved by rememberSaveable { mutableStateOf(false) }
   // The games' drifting wallpaper with trophies for clocks, and nothing loose on it (the user's pick B, 2026-10-03):
   // a gold banner, then cards. Text straight on the wallpaper blended into it, and faint plates behind it floated.
   RinPage(stringResource(R.string.tournament_title), onBack, pattern = PatternMotif.TROPHY) {
@@ -216,27 +214,46 @@ internal fun TournamentStartScreen(
     Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       CardTitle(stringResource(R.string.tournament_you))
       FieldLabel(stringResource(R.string.tournament_name))
-      OutlinedTextField(
-        name,
-        { name = NameFilter.typed(it) },
-        Modifier.fillMaxWidth(),
-        singleLine = true,
-        isError = !nameAllowed,
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-        supportingText = {
-          if (nameAllowed) Text("${name.length}/${TournamentEntry.NAME_MAX}", color = p.muted)
-          else Text(stringResource(R.string.tournament_name_not_allowed), color = p.alert)
-        },
-        shape = RoundedCornerShape(16.dp),
-        colors =
-          OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = p.card,
-            unfocusedContainerColor = p.card,
-            focusedBorderColor = p.primary,
-            unfocusedBorderColor = p.line,
-          ),
-      )
-      UniversityPicker(university) { university = it }
+      Row(verticalAlignment = Alignment.Top) {
+        OutlinedTextField(
+          name,
+          {
+            name = NameFilter.typed(it)
+            saved = false
+          },
+          Modifier.weight(1f),
+          singleLine = true,
+          isError = !nameAllowed,
+          keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+          supportingText = {
+            val count = "${name.length}/${TournamentEntry.NAME_MAX}"
+            when {
+              !nameAllowed -> Text(stringResource(R.string.tournament_name_not_allowed), color = p.alert)
+              unsaved -> Text("$count · ${stringResource(R.string.tournament_not_saved)}", color = p.muted)
+              saved -> Text("$count · ${stringResource(R.string.tournament_saved)}", color = p.mintText)
+              else -> Text(count, color = p.muted)
+            }
+          },
+          shape = RoundedCornerShape(16.dp),
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedContainerColor = p.card,
+              unfocusedContainerColor = p.card,
+              focusedBorderColor = p.primary,
+              unfocusedBorderColor = p.line,
+            ),
+        )
+        if (unsaved) {
+          SaveButton(enabled = nameAllowed, modifier = Modifier.padding(start = 8.dp, top = 6.dp)) {
+            onDetails(name.trim(), university)
+            saved = true
+          }
+        }
+      }
+      UniversityPicker(university) {
+        university = it
+        saved = false
+      }
     }
 
     OnlineCard(state, onOnline, onLeaderboard)
@@ -294,31 +311,32 @@ private fun Banner(best: TournamentScore?) {
 private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit, onLeaderboard: () -> Unit) {
   val p = RinTheme.palette
   var confirmOff by remember { mutableStateOf(false) }
-  Column(Modifier.rinCard(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    CardTitle(stringResource(R.string.tournament_online_title))
-    if (!state.configured) {
-      Text(stringResource(R.string.tournament_online_not_set_up), style = MaterialTheme.typography.bodyMedium, color = p.muted)
-      return@Column
-    }
-    val online = state.entry.online
+  // The user's pick A (2026-10-03, docs/ux/g6-online): the theme's card in a gold frame with a gold header strip and
+  // the home button's gold pill, so it stands out from the plain cards without matching the banner's full gold.
+  val shape = RoundedCornerShape(22.dp)
+  Column(
+    Modifier.fillMaxWidth()
+      .sticker(fill = p.card, radius = 22.dp, shadow = TrophyGold.deep, outline = null)
+      .border(3.dp, TrophyGold.base, shape)
+      .clip(shape)
+  ) {
     Row(
-      Modifier.fillMaxWidth().toggleable(online, role = Role.Switch) { if (it) onOnline(true) else confirmOff = true },
+      Modifier.fillMaxWidth()
+        .background(Brush.verticalGradient(listOf(TrophyGold.light, TrophyGold.base)))
+        .padding(horizontal = 16.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(stringResource(R.string.tournament_online_switch), style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
-      Switch(checked = online, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 10.dp))
+      Image(painterResource(R.drawable.ic_trophy_badge), contentDescription = null, modifier = Modifier.size(24.dp))
+      Text(
+        stringResource(R.string.tournament_online_title).uppercase(),
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 0.5.sp),
+        color = TrophyGold.ink,
+        modifier = Modifier.padding(start = 8.dp).semantics { heading() },
+      )
     }
-    Text(stringResource(R.string.tournament_online_body), style = MaterialTheme.typography.bodySmall, color = p.muted)
-    if (online && state.best.values.any { it != null }) {
-      val line =
-        when (state.sync) {
-          SyncStatus.POSTED -> R.string.tournament_online_posted
-          SyncStatus.WAITING -> R.string.tournament_online_waiting
-          SyncStatus.OFF -> null
-        }
-      line?.let { Text(stringResource(it), style = MaterialTheme.typography.labelLarge, color = p.ink) }
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      OnlineBody(state, onOnline, onLeaderboard) { confirmOff = true }
     }
-    QuietPillButton(stringResource(R.string.tournament_see_board), onLeaderboard, Modifier.padding(top = 4.dp).fillMaxWidth())
   }
   if (confirmOff) {
     AlertDialog(
@@ -336,7 +354,52 @@ private fun OnlineCard(state: TournamentStartState, onOnline: (Boolean) -> Unit,
   }
 }
 
-private const val DETAILS_PAUSE_MS = 1_500L
+/** The Online card's inside: the switch, what it sends, the posting line, and the gold way to the board. */
+@Composable
+private fun OnlineBody(state: TournamentStartState, onOnline: (Boolean) -> Unit, onLeaderboard: () -> Unit, askOff: () -> Unit) {
+  val p = RinTheme.palette
+  if (!state.configured) {
+    Text(stringResource(R.string.tournament_online_not_set_up), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+    return
+  }
+  val online = state.entry.online
+  Row(
+    Modifier.fillMaxWidth().toggleable(online, role = Role.Switch) { if (it) onOnline(true) else askOff() },
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(stringResource(R.string.tournament_online_switch), style = MaterialTheme.typography.bodyLarge, color = p.ink, modifier = Modifier.weight(1f))
+    Switch(checked = online, onCheckedChange = null, colors = rinSwitchColors(), modifier = Modifier.padding(start = 10.dp))
+  }
+  Text(stringResource(R.string.tournament_online_body), style = MaterialTheme.typography.bodySmall, color = p.muted)
+  if (online && state.best.values.any { it != null }) {
+    val line =
+      when (state.sync) {
+        SyncStatus.POSTED -> R.string.tournament_online_posted
+        SyncStatus.WAITING -> R.string.tournament_online_waiting
+        SyncStatus.OFF -> null
+      }
+    line?.let { Text(stringResource(it), style = MaterialTheme.typography.labelLarge, color = p.ink) }
+  }
+  GoldButton(stringResource(R.string.tournament_see_board), onLeaderboard, Modifier.padding(top = 4.dp), height = 50.dp)
+}
+
+/** Save beside the name box, in the main pink, while the name or university differs from what is kept. */
+@Composable
+private fun SaveButton(enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+  val p = RinTheme.palette
+  Box(
+    modifier
+      .height(50.dp)
+      .alpha(if (enabled) 1f else 0.5f)
+      .sticker(fill = p.primary, radius = 25.dp, shadow = p.primaryShadow, outline = null)
+      .clip(RoundedCornerShape(25.dp))
+      .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+      .padding(horizontal = 18.dp),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(stringResource(R.string.tournament_save), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold, fontSize = 15.sp), color = p.onPrimary)
+  }
+}
 
 /** A card's title, inside it (the page's own section titles sat loose on the wallpaper). */
 @Composable

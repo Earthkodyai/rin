@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>G.6 Online card options</title>
+<style>
+  body { margin: 0; padding: 24px; background: #2a2a2a; font-family: "Nunito", "Segoe UI", sans-serif; }
+  .row { display: flex; gap: 24px; margin-bottom: 24px; }
+  .label { color: #fff; font: 700 22px "Segoe UI", sans-serif; margin: 0 0 10px 4px; }
+  .phone { width: 390px; height: 760px; border-radius: 28px; overflow: hidden; position: relative; }
+  .day { --ground:#FFF4EA; --card:#FFFFFF; --pink:#CC3169; --pinkShadow:#9E2350; --onPink:#FFFFFF; --ink:#3A2A33; --muted:#7A5A68; --line:#F1D2C2; --hard:#F1D2C2; --rin:#FFE1E9; --motif:rgba(234,160,18,.16); --mint:#167A5D; }
+  .night { --ground:#121836; --card:#1C2350; --pink:#FF8FB8; --pinkShadow:#B85C82; --onPink:#121836; --ink:#F3EEFF; --muted:#B9B3D9; --line:#3B4687; --hard:#0B1028; --rin:#2A2350; --motif:rgba(255,208,74,.12); --mint:#7FE3C4; }
+  .phone { background: var(--ground); }
+  .wall { position:absolute; inset:0; background-image:
+      radial-gradient(circle at 20px 20px, var(--motif) 9px, transparent 10px),
+      radial-gradient(circle at 70px 60px, var(--motif) 6px, transparent 7px);
+    background-size: 96px 96px; }
+  .content { position: relative; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .top { display:flex; align-items:center; gap:12px; color:var(--ink); font-size:20px; font-weight:600; }
+  .back { width:44px; height:44px; border-radius:50%; background:var(--card); box-shadow:0 3px 0 var(--hard); display:grid; place-items:center; font-size:22px; color:var(--ink); }
+  .card { background: var(--card); border-radius: 22px; padding: 16px; box-shadow: 0 4px 0 var(--hard); }
+  .title { color: var(--ink); font-weight: 800; font-size: 17px; margin-bottom: 8px; }
+  .fl { color: var(--muted); font-size: 13px; margin: 2px 0 6px 2px; }
+  .field { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; color: var(--ink); font-size: 16px; background: var(--card); }
+  .field.focus { border: 2px solid var(--pink); }
+  .namerow { display: flex; gap: 8px; align-items: center; }
+  .namerow .field { flex: 1; }
+  .save { background: var(--pink); color: var(--onPink); font-weight: 800; border-radius: 26px; padding: 0 18px; height: 50px; display: grid; place-items: center; box-shadow: 0 4px 0 var(--pinkShadow); font-size: 15px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0 4px; }
+  .text { color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .switchrow { display:flex; align-items:center; justify-content:space-between; color:var(--ink); font-size:16px; margin: 6px 0; }
+  .sw { width: 52px; height: 32px; border-radius: 16px; background: var(--pink); position: relative; }
+  .sw::after { content:""; position:absolute; right:4px; top:4px; width:24px; height:24px; border-radius:50%; background: var(--onPink); }
+  .status { color: var(--ink); font-weight: 700; font-size: 14px; margin-top: 6px; }
+  .status b { color: var(--mint); }
+  .quiet { margin-top: 12px; height: 50px; border-radius: 25px; border: 2px solid var(--line); background: var(--card); display:grid; place-items:center; color: var(--ink); font-weight: 700; }
+  .banner { border-radius: 24px; padding: 12px 14px; display:flex; gap:12px; align-items:center; color:#4A2A06; font-weight:800;
+    background: linear-gradient(#FFD04A, #FCB918 55%, #EAA012); box-shadow: 0 5px 0 #B8720A, inset 0 2px 0 rgba(255,255,255,.7); }
+  .banner small { display:block; font-weight:600; font-size:13px; }
+  .cut { height: 60px; overflow: hidden; }
+
+  /* A: gold frame */
+  .A { border: 3px solid #FCB918; box-shadow: 0 4px 0 #B8720A; padding-top: 0; overflow: hidden; }
+  .A .head { margin: 0 -16px 12px; padding: 10px 16px; background: linear-gradient(#FFD04A, #FCB918); color: #4A2A06; font-weight: 900; font-size: 16px; display:flex; align-items:center; gap:8px; box-shadow: inset 0 2px 0 rgba(255,255,255,.6); }
+  .A .gold { margin-top: 12px; height: 50px; border-radius: 25px; display:grid; place-items:center; font-weight:900; color:#fff;
+    background: linear-gradient(#FFD04A, #FCB918 55%, #EAA012); box-shadow: 0 4px 0 #B8720A, inset 0 2px 0 rgba(255,255,255,.7);
+    -webkit-text-stroke: 1px #4A2A06; paint-order: stroke fill; font-size: 17px; letter-spacing: .3px; }
+
+  /* B: all gold, like the banner */
+  .B { background: linear-gradient(#FFD04A, #FCB918 45%, #EAA012); box-shadow: 0 5px 0 #B8720A, inset 0 2px 0 rgba(255,255,255,.7); }
+  .B .title { color: #4A2A06; display:flex; gap:8px; align-items:center; font-size: 18px; }
+  .B .inner { background: rgba(255,255,255,.9); border-radius: 16px; padding: 10px 12px; }
+  .B .switchrow { color: #4A2A06; font-weight: 700; }
+  .B .text { color:#7A5A68; }
+  .B .status { color:#4A2A06; } .B .status b { color:#167A5D; }
+  .B .white { margin-top: 12px; height: 50px; border-radius: 25px; display:grid; place-items:center; font-weight:900; color:#4A2A06; background:#fff; box-shadow: 0 4px 0 #B8720A; font-size: 16px; }
+
+  /* C: pink, Rin's own colour */
+  .C { background: var(--rin); border: 2px solid var(--pink); box-shadow: 0 4px 0 var(--pinkShadow); }
+  .C .title { display:flex; gap:8px; align-items:center; color: var(--pink); }
+  .C .pod { display:flex; align-items:flex-end; gap:3px; }
+  .C .pod i { display:block; width:8px; border-radius:2px 2px 0 0; background: var(--pink); }
+  .C .pinkbtn { margin-top: 12px; height: 52px; border-radius: 26px; background: var(--pink); color: var(--onPink); display:grid; place-items:center; font-weight: 800; box-shadow: 0 4px 0 var(--pinkShadow); }
+  .tro { font-size: 22px; }
+</style>
+</head>
+<body>
+<script>
+const trophy = '<svg width="26" height="26" viewBox="0 0 24 24"><path d="M6 3h12v3a6 6 0 0 1-12 0z" fill="#FFF" stroke="#4A2A06" stroke-width="1.6"/><path d="M6 5H3a3 3 0 0 0 3 4M18 5h3a3 3 0 0 1-3 4" fill="none" stroke="#4A2A06" stroke-width="1.6"/><path d="M10 12h4v3h-4zM8 18h8v3H8z" fill="#FFF" stroke="#4A2A06" stroke-width="1.6"/></svg>';
+const you = (theme) => `
+  <div class="card">
+    <div class="title">You</div>
+    <div class="fl">Name (optional)</div>
+    <div class="namerow"><div class="field focus">Earth KU</div><div class="save">Save</div></div>
+    <div class="hint">8/20 · not saved yet</div>
+    <div class="fl" style="margin-top:8px">University</div>
+    <div class="field">Not listed</div>
+  </div>`;
+const head = () => `
+  <div class="top"><div class="back">←</div>Tournament</div>
+  <div class="banner cut">${trophy.replace('26','40').replace('26','40')}<div>How far can you go?<small>Level 1 is Nightmare.</small></div></div>`;
+const body = `
+    <div class="switchrow"><span>Post my best online</span><span class="sw"></span></div>
+    <div class="text">Sends your name, university and best levels and times to Google Firebase (servers outside Thailand), where every player can see them. Switch it off to delete them.</div>
+    <div class="status"><b>✓</b> Your bests are on the board.</div>`;
+const cards = {
+  A: () => `<div class="card A"><div class="head">${trophy} ONLINE LEADERBOARD</div>${body}<div class="gold">See the leaderboard</div></div>`,
+  B: () => `<div class="card B"><div class="title">${trophy} Online leaderboard</div><div class="inner">${body}</div><div class="white">See the leaderboard</div></div>`,
+  C: () => `<div class="card C"><div class="title"><span class="pod"><i style="height:10px"></i><i style="height:16px"></i><i style="height:7px"></i></span> Online leaderboard</div>${body}<div class="pinkbtn">See the leaderboard</div></div>`,
+};
+const names = { A: 'A · Gold frame', B: 'B · All gold (like the banner)', C: 'C · Rin pink' };
+let html = '';
+for (const theme of ['day', 'night']) {
+  html += '<div class="row">';
+  for (const k of ['A', 'B', 'C']) {
+    html += `<div><div class="label">${names[k]} · ${theme}</div><div class="phone ${theme}"><div class="wall"></div><div class="content">${head()}${you(theme)}${cards[k]()}<div class="card cut"><div class="title">Rules</div></div></div></div></div>`;
+  }
+  html += '</div>';
+}
+document.body.innerHTML = html;
+</script>
+</body>
+</html>

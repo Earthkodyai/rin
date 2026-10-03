@@ -15,6 +15,9 @@
     <string name="tournament_university_soon">The list of universities comes with the leaderboard.</string>
     <string name="tournament_rules_title">Rules</string>
     <string name="tournament_rules">• One miss ends the run.\n• Every level is one pad or one swap longer, and every third one is faster.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• Your name, university and best scores stay on this phone, unless you switch on posting to the leaderboard below.</string>
+    <string name="tournament_save">Save</string>
+    <string name="tournament_not_saved">not saved yet</string>
+    <string name="tournament_saved">saved ✓</string>
     <string name="tournament_online_title">Online leaderboard</string>
     <string name="tournament_online_switch">Post my best online</string>
     <string name="tournament_online_body">Sends your name, university and best levels and times to Google Firebase (servers outside Thailand), where every player can see them. Switch it off to delete them.</string>

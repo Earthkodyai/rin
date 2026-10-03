@@ -1,11 +1,13 @@
 package io.github.earthkodyai.rinalarm.ui.common
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,14 +28,18 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.earthkodyai.rinalarm.theme.RinTheme
@@ -128,4 +134,33 @@ fun Modifier.goldSticker(radius: Dp, depth: Dp = 4.dp): Modifier {
   return sticker(fill = TrophyGold.base, radius = radius, depth = depth, shadow = TrophyGold.deep, outline = null)
     .background(Brush.verticalGradient(listOf(TrophyGold.light, TrophyGold.base, TrophyGold.shade)), shape)
     .border(1.5.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.8f), TrophyGold.deep.copy(alpha = 0.6f))), shape)
+}
+
+/**
+ * The tournament's gold pill (the home Tournament button, the Online card's "See the leaderboard"): a white label
+ * outlined in dark brown (the outline drawn first, the white over it), after an optional full-colour [icon].
+ */
+@Composable
+fun GoldButton(
+  text: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  icon: Int? = null,
+  height: Dp = 48.dp,
+  fontSize: TextUnit = 17.sp,
+) {
+  val shape = RoundedCornerShape(height / 2)
+  Row(
+    modifier.fillMaxWidth().height(height).goldSticker(radius = height / 2).clip(shape).clickable(role = Role.Button, onClick = onClick),
+    horizontalArrangement = Arrangement.Center,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    if (icon != null) Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(26.dp).padding(end = 0.dp))
+    val style = MaterialTheme.typography.labelLarge.copy(fontSize = fontSize, fontWeight = FontWeight.ExtraBold)
+    val outline = with(LocalDensity.current) { 4.dp.toPx() }
+    Box(Modifier.padding(start = if (icon != null) 8.dp else 0.dp)) {
+      Text(text, style = style.copy(drawStyle = Stroke(width = outline, join = StrokeJoin.Round)), color = TrophyGold.ink)
+      Text(text, style = style, color = Color.White)
+    }
+  }
 }

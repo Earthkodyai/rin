@@ -49,10 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -80,14 +77,13 @@ import io.github.earthkodyai.rinalarm.mission.MissionChoice
 import io.github.earthkodyai.rinalarm.mission.MissionType
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
-import io.github.earthkodyai.rinalarm.theme.TrophyGold
+import io.github.earthkodyai.rinalarm.ui.common.GoldButton
 import io.github.earthkodyai.rinalarm.ui.common.AppLocale
 import io.github.earthkodyai.rinalarm.ui.common.PillButton
 import io.github.earthkodyai.rinalarm.ui.common.RinBackdrop
 import io.github.earthkodyai.rinalarm.ui.common.RinBubble
 import io.github.earthkodyai.rinalarm.ui.common.RoundIconButton
 import io.github.earthkodyai.rinalarm.ui.common.displayName
-import io.github.earthkodyai.rinalarm.ui.common.goldSticker
 import io.github.earthkodyai.rinalarm.ui.common.missionChoiceName
 import io.github.earthkodyai.rinalarm.ui.common.rememberClockText
 import io.github.earthkodyai.rinalarm.ui.common.rememberTimeFormatter
@@ -365,29 +361,9 @@ private val PANEL_DATE = DateTimeFormatter.ofPattern("EEE, MMM d", AppLocale)
  */
 @Composable
 private fun TournamentButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-  val shape = RoundedCornerShape(24.dp)
+  // White on a dark brown outline, with the trophy (the user's pick D); full colour, untinted.
   Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
-    Row(
-      modifier
-        .fillMaxWidth()
-        .height(48.dp)
-        .goldSticker(radius = 24.dp)
-        .clip(shape)
-        .clickable(role = Role.Button, onClick = onClick),
-      horizontalArrangement = Arrangement.Center,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // White on a dark brown outline like the label, with a gold shine (the user's pick D); full colour, untinted.
-      Image(painterResource(R.drawable.ic_trophy_badge), contentDescription = null, modifier = Modifier.size(26.dp))
-      // White, outlined in the dark brown (the user): the outline drawn first, the white over it.
-      val label = stringResource(R.string.home_tournament)
-      val style = MaterialTheme.typography.labelLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
-      val outline = with(LocalDensity.current) { 4.dp.toPx() }
-      Box(Modifier.padding(start = 8.dp)) {
-        Text(label, style = style.copy(drawStyle = Stroke(width = outline, join = StrokeJoin.Round)), color = TrophyGold.ink)
-        Text(label, style = style, color = Color.White)
-      }
-    }
+    GoldButton(stringResource(R.string.home_tournament), onClick, modifier, icon = R.drawable.ic_trophy_badge)
   }
 }
 
