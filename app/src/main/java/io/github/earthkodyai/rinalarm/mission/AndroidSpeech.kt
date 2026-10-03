@@ -69,6 +69,8 @@ class VoskModels @Inject constructor(@ApplicationContext private val context: Co
   private fun unpack() {
     val done = File(dir, ".unpacked")
     if (done.isFile) return
+    // Every other model folder is an earlier unpack (6.9 dropped Gr.fst under a new name): 68 MB that nothing reads.
+    dir.parentFile?.listFiles()?.filter { it != dir }?.forEach { it.deleteRecursively() }
     dir.deleteRecursively()
     val started = SystemClock.elapsedRealtime()
     copy(ASSET_DIR, dir)
@@ -90,7 +92,7 @@ class VoskModels @Inject constructor(@ApplicationContext private val context: Co
   companion object {
     const val ASSET_DIR = "vosk"
     /** Bump with the model: a new name unpacks afresh. */
-    const val MODEL = "small-en-us-0.15"
+    const val MODEL = "small-en-us-0.15-grammar"
     private const val TAG = "RinSpeech"
   }
 }

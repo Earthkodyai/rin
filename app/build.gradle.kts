@@ -1,4 +1,6 @@
 import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.security.MessageDigest
 import java.util.Properties
 import java.util.zip.ZipFile
@@ -474,6 +476,11 @@ abstract class GestureCheck : NodeTask() {
  * Fetches Vosk's small en-US model (Apache-2.0, ~41 MB zip) for Repeat after Rin (task 3.5, S3's pick O10) and unpacks
  * it into generated assets at vosk/, so every build, CI's included, can listen offline. The zip is checked against its
  * SHA-256 and cached under .gradle/vosk (git-ignored), so it downloads once per checkout.
+ *
+ * `graph/Gr.fst` (23 MB, 13 MB in the APK) is left out (6.9): it is the model's general English grammar, and the game
+ * always gives Vosk its own (the try's words), built over `graph/HCLr.fst`. Vosk still needs the word list it carries,
+ * so its output symbol table is written out as `graph/words.txt` (2.2 MB), which Vosk reads in its place. The tester's
+ * held-out tries replayed on the phone gave the same words with and without it (docs/spikes/6.9-optimise.md).
  */
 abstract class VoskModelFetch : DefaultTask() {
   @get:Input abstract val url: Property<String>
@@ -505,11 +512,52 @@ abstract class VoskModelFetch : DefaultTask() {
         // Drop the zip's top folder (vosk-model-small-en-us-0.15/) and its README.
         val path = entry.name.substringAfter('/')
         if (path.isEmpty() || path == "README") return@forEach
+        if (path == UNUSED_GRAMMAR) {
+          val words = File(out, WORDS)
+          words.parentFile.mkdirs()
+          words.writeText(fstWords(z.getInputStream(entry).use { it.readBytes() }))
+          return@forEach
+        }
         val target = File(out, path)
         require(target.canonicalPath.startsWith(out.canonicalPath)) { "zip entry outside the model: ${entry.name}" }
         target.parentFile.mkdirs()
         z.getInputStream(entry).use { input -> target.outputStream().use { input.copyTo(it) } }
       }
+    }
+  }
+
+  private companion object {
+    const val UNUSED_GRAMMAR = "graph/Gr.fst"
+    const val WORDS = "graph/words.txt"
+    const val FST_MAGIC = 2125659606
+    const val SYMBOLS_MAGIC = 2125658996
+    const val HAS_OUTPUT_SYMBOLS = 2
+
+    /**
+     * An OpenFst binary's output symbol table as Kaldi's words.txt ("word id" per line, in the table's order). The
+     * header: magic, fst type, arc type, version, flags, properties, start, states, arcs; then the input table (flag 1)
+     * and the output table (flag 2), each a magic, a name, the next free key, a count and (word, key) pairs.
+     */
+    fun fstWords(bytes: ByteArray): String {
+      val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+      fun text(): String = ByteArray(b.int).also { b.get(it) }.toString(Charsets.UTF_8)
+      fun skipTable() = readTable(b, ::text).let {}
+      check(b.int == FST_MAGIC) { "Gr.fst is not an OpenFst binary" }
+      text()
+      text()
+      b.int // version
+      val flags = b.int
+      b.position(b.position() + 8 * 4) // properties, start, states, arcs
+      check((flags and HAS_OUTPUT_SYMBOLS) != 0) { "Gr.fst has no word list" }
+      if ((flags and 1) != 0) skipTable()
+      return readTable(b, ::text).joinToString("") { (word, key) -> "$word $key\n" }
+    }
+
+    private fun readTable(b: ByteBuffer, text: () -> String): List<Pair<String, Long>> {
+      check(b.int == SYMBOLS_MAGIC) { "bad symbol table in Gr.fst" }
+      text() // name
+      b.long // next free key
+      return List(b.long.toInt()) { text() to b.long }
     }
   }
 

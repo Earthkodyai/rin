@@ -37,6 +37,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 /**
  * The moving ground of the home screen and the alarm editor (the user, 2026-10-02): breakfast floating up by day
@@ -68,11 +69,30 @@ fun RinBackdrop(modifier: Modifier = Modifier, meteorRate: Float = 1f) {
 private fun backdropClock(): State<Long> {
   val moving = remember { ValueAnimator.areAnimatorsEnabled() }
   return if (moving) {
-    produceState(SystemClock.uptimeMillis()) { while (true) withFrameMillis { value = SystemClock.uptimeMillis() } }
+    decorClock()
   } else {
     remember { mutableLongStateOf(STILL_AT) }
   }
 }
+
+/**
+ * The phone's uptime for slow decoration (the backdrop, the drifting wallpaper), [DECOR_FPS] times a second. Updated
+ * on every frame, it redrew the whole screen, and Rin's WebView with it, 120 times a second on the 14T: 1.1 CPU cores
+ * on the home screen with nothing moving faster than a floating mug (6.9, docs/spikes/6.9-optimise.md).
+ */
+@Composable
+internal fun decorClock(): State<Long> =
+  produceState(SystemClock.uptimeMillis()) {
+    while (true) {
+      withFrameMillis { value = SystemClock.uptimeMillis() }
+      delay(1000L / DECOR_FPS - FRAME_SLACK_MS)
+    }
+  }
+
+/** Rin's own cap on the home screen (Framing.STRIP), so the two move at one pace. */
+internal const val DECOR_FPS = 30
+/** The next frame comes up to one vsync after the delay, so the delay leaves room for it. */
+private const val FRAME_SLACK_MS = 4L
 
 /** A moment when, with animations off, the still scene has a meteor and food spread over the screen. */
 private const val STILL_AT = 31_400L

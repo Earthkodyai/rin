@@ -1,13 +1,10 @@
 package io.github.earthkodyai.rinalarm.ui.common
 
 import android.graphics.Matrix
-import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -61,7 +58,7 @@ fun Modifier.rinPattern(shape: Shape, drift: Boolean = false, motif: PatternMoti
   // surface to another (the pads coming and going over the sheet) never makes it jump.
   val now: State<Long> =
     if (drift) {
-      produceState(SystemClock.uptimeMillis()) { while (true) withFrameMillis { value = SystemClock.uptimeMillis() } }
+      decorClock()
     } else {
       remember { mutableLongStateOf(0L) }
     }
