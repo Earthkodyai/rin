@@ -23,7 +23,7 @@ Pick a game per alarm, or let Rin pick a different one each day. Colour pads and
 
 TOURNAMENT
 How far can you go? A separate mode you open from the home screen, never part of an alarm.
-• Pick Colour pads or Cup shuffle. Level 1 is already Nightmare.
+• Pick Colour pads or Cup shuffle. Levels climb from Hard to Nightmare at level 6.
 • Every level adds one pad or one swap, and every third level gets faster.
 • One miss ends the run. Your score is the levels you cleared; on a tie, the faster time wins.
 • Rin stays quiet and just watches: no hints, no scolding.
@@ -72,7 +72,7 @@ The app is in English. Meant for adults (18+).
 
 ทัวร์นาเมนต์
 ไปได้ไกลแค่ไหน? โหมดแยกที่เข้าจากหน้าหลัก ไม่เกี่ยวกับการปลุก
-• เลือกกดตามสีหรือสลับแก้ว ด่านแรกก็เป็น Nightmare แล้ว
+• เลือกกดตามสีหรือสลับแก้ว เริ่มจาก Hard แล้วขึ้น Nightmare ตั้งแต่ด่าน 6
 • ทุกด่านเพิ่มปุ่มหรือการสลับอีกหนึ่งครั้ง และทุก 3 ด่านจะเร็วขึ้น
 • พลาดครั้งเดียวจบ คะแนนคือจำนวนด่านที่ผ่าน ถ้าเท่ากัน เวลาที่เร็วกว่าชนะ
 • รินเงียบและดูอยู่เฉยๆ ไม่ช่วย ไม่บ่น

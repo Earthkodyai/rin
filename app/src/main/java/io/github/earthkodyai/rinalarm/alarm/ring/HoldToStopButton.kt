@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.earthkodyai.rinalarm.R
 import io.github.earthkodyai.rinalarm.theme.RinTheme
@@ -101,8 +102,10 @@ internal fun HoldToStopButton(onStop: () -> Unit, modifier: Modifier = Modifier)
         label,
         style = MaterialTheme.typography.labelLarge,
         color = p.onStop,
-        maxLines = 1,
-        modifier = Modifier.padding(start = 6.dp),
+        textAlign = TextAlign.Center,
+        // Wraps on a narrow phone or with a large font; one line cut the text off (tester, 2026-10-06).
+        maxLines = 2,
+        modifier = Modifier.padding(start = 6.dp).weight(1f, fill = false),
       )
     }
   }

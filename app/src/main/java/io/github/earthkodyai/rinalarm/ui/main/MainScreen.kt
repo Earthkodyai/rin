@@ -367,7 +367,18 @@ private fun TournamentButton(onClick: () -> Unit, modifier: Modifier = Modifier)
   }
 }
 
-/** "Alarms", and when the soonest one rings ("today", "tomorrow" or the weekday). */
+/** "Rings in 7 h 20 min": days and hours from a day up, where the minutes no longer matter. */
+@Composable
+private fun countdownText(minutes: Long): String {
+  val hours = minutes / 60
+  return when {
+    hours >= 24 -> stringResource(R.string.home_rings_days, hours / 24, hours % 24)
+    hours >= 1 -> stringResource(R.string.home_rings_hours, hours, minutes % 60)
+    else -> stringResource(R.string.home_rings_minutes, minutes)
+  }
+}
+
+/** "Alarms", when the soonest one rings ("today", "tomorrow" or the weekday), and how long until then. */
 @Composable
 private fun ListHeader(state: MainScreenUiState) {
   val p = RinTheme.palette
@@ -384,15 +395,20 @@ private fun ListHeader(state: MainScreenUiState) {
     if (next != null) {
       val time = clock(next.toLocalTime()).toString()
       val today = success.today
-      Text(
-        when (today?.let { next.toLocalDate().toEpochDay() - it.toEpochDay() }) {
-          0L -> stringResource(R.string.home_next_today, time)
-          1L -> stringResource(R.string.home_next_tomorrow, time)
-          else -> stringResource(R.string.home_next_day, next.dayOfWeek.displayName(TextStyle.SHORT), time)
-        },
-        style = MaterialTheme.typography.bodyMedium,
-        color = p.muted,
-      )
+      Column(horizontalAlignment = Alignment.End) {
+        Text(
+          when (today?.let { next.toLocalDate().toEpochDay() - it.toEpochDay() }) {
+            0L -> stringResource(R.string.home_next_today, time)
+            1L -> stringResource(R.string.home_next_tomorrow, time)
+            else -> stringResource(R.string.home_next_day, next.dayOfWeek.displayName(TextStyle.SHORT), time)
+          },
+          style = MaterialTheme.typography.bodyMedium,
+          color = p.muted,
+        )
+        success.minutesToNext?.let {
+          Text(countdownText(it), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = p.ink)
+        }
+      }
     }
   }
 }

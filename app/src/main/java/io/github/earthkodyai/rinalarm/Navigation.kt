@@ -75,8 +75,9 @@ private fun AppNavigation(first: NavKey, onTourEnd: () -> Unit) {
         }
         entry<Main> {
           MainScreen(
-            onAdd = { backStack.add(AlarmEditor(AlarmEditorViewModel.NEW_ALARM_ID)) },
-            onEdit = { backStack.add(AlarmEditor(it)) },
+            // Guarded like the rest: fast taps during the page's animation would stack equal keys, which share state.
+            onAdd = { if (backStack.lastOrNull() == Main) backStack.add(AlarmEditor(AlarmEditorViewModel.NEW_ALARM_ID)) },
+            onEdit = { if (backStack.lastOrNull() == Main) backStack.add(AlarmEditor(it)) },
             onDiagnostics = { if (backStack.lastOrNull() == Main) backStack.add(Diagnostics) },
             onSettings = { if (backStack.lastOrNull() == Main) backStack.add(Settings) },
             onGuidedAdd = { if (backStack.lastOrNull() == Main) backStack.add(AlarmEditor(AlarmEditorViewModel.NEW_ALARM_ID, guided = true)) },

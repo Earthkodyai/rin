@@ -17,12 +17,15 @@ enum class TournamentGame(val stored: String) {
 }
 
 /**
- * The levels. Level 1 is Nightmare's first round (pads: 7 on the 3×3 board; cups: 8 swaps of 5). Each level adds a pad
- * or a swap, and every [SPEED_EVERY] levels Rin gets [SPEED_STEP] faster, down to floors that keep each move several
- * frames long on a 60 fps screen (pads: hand glide 120 ms = 7 frames, press 110 ms; cups: swap 150 ms = 9 frames, gap
- * 30 ms). The time to answer a pad stays Nightmare's: the climb is in length and speed, not a shrinking window.
+ * The levels. The first [WARM_UP_LEVELS] are Hard, each a pad or a swap longer (tester, 2026-10-06: starting at
+ * Nightmare was too hard). Cups keep the five cups of Nightmare's table, so it never changes size in the middle of a
+ * run. After them comes Nightmare's first round (pads: 7 on the 3×3 board; cups: 8 swaps of 5): each level adds a pad or
+ * a swap, and every [SPEED_EVERY] levels Rin gets [SPEED_STEP] faster, down to floors that keep each move several frames
+ * long on a 60 fps screen (pads: hand glide 120 ms = 7 frames, press 110 ms; cups: swap 150 ms = 9 frames, gap 30 ms).
+ * The time to answer a pad stays Nightmare's: the climb is in length and speed, not a shrinking window.
  */
 object TournamentLadder {
+  const val WARM_UP_LEVELS = 5
   const val SPEED_EVERY = 3
   const val SPEED_STEP = 0.93
 
@@ -33,26 +36,32 @@ object TournamentLadder {
 
   private val padsBase = PadsRules.forLevel(Difficulty.NIGHTMARE)
   private val cupsBase = CupsRules.forLevel(Difficulty.NIGHTMARE)
+  private val padsWarmUp = PadsRules.forLevel(Difficulty.HARD)
+  private val cupsWarmUp = CupsRules.forLevel(Difficulty.HARD).copy(cups = cupsBase.cups)
 
-  /** How much faster than level 1 Rin is at [level]: 1, 1, 1, 0.93, 0.93, 0.93, 0.8649… */
-  fun pace(level: Int): Double {
-    require(level >= 1)
-    return SPEED_STEP.pow((level - 1) / SPEED_EVERY)
+  /** How much faster than Nightmare's first round Rin is at its [round]: 1, 1, 1, 0.93, 0.93, 0.93, 0.8649… */
+  fun pace(round: Int): Double {
+    require(round >= 1)
+    return SPEED_STEP.pow((round - 1) / SPEED_EVERY)
   }
 
   fun pads(level: Int): PadsRules {
-    val k = pace(level)
+    if (level <= WARM_UP_LEVELS) return padsWarmUp.copy(lengths = listOf(padsWarmUp.lengths.first() + level - 1))
+    val round = level - WARM_UP_LEVELS
+    val k = pace(round)
     return padsBase.copy(
-      lengths = listOf(padsBase.lengths.first() + level - 1),
+      lengths = listOf(padsBase.lengths.first() + round - 1),
       moveMs = maxOf(PADS_MOVE_FLOOR_MS, (padsBase.moveMs * k).roundToLong()),
       pressMs = maxOf(PADS_PRESS_FLOOR_MS, (padsBase.pressMs * k).roundToLong()),
     )
   }
 
   fun cups(level: Int): CupsRules {
-    val k = pace(level)
+    if (level <= WARM_UP_LEVELS) return cupsWarmUp.copy(swaps = listOf(cupsWarmUp.swaps.first() + level - 1))
+    val round = level - WARM_UP_LEVELS
+    val k = pace(round)
     return cupsBase.copy(
-      swaps = listOf(cupsBase.swaps.first() + level - 1),
+      swaps = listOf(cupsBase.swaps.first() + round - 1),
       swapMs = maxOf(CUPS_SWAP_FLOOR_MS, (cupsBase.swapMs * k).roundToLong()),
       gapMs = maxOf(CUPS_GAP_FLOOR_MS, (cupsBase.gapMs * k).roundToLong()),
     )

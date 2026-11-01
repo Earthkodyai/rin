@@ -5,7 +5,7 @@
     <string name="home_tournament">Tournament</string>
     <string name="tournament_title">Tournament</string>
     <string name="tournament_headline">How far can you go?</string>
-    <string name="tournament_intro">Level 1 is Nightmare.\nOne miss ends the run.</string>
+    <string name="tournament_intro">Hard to level 5, then Nightmare.\nOne miss ends the run.</string>
     <string name="tournament_pick_game">Game</string>
     <string name="tournament_no_best">No best yet.</string>
     <string name="tournament_you">You</string>
@@ -14,7 +14,7 @@
     <string name="tournament_not_listed">Not listed</string>
     <string name="tournament_universities_note">The list is the top 50 Thai universities in Webometrics (July 2026). Names and logos only show which university a player picked: RinAlarm is not affiliated with or endorsed by any university. A university can ask for its name or logo to be removed at github.com/Earthkodyai/rin/issues.</string>
     <string name="tournament_rules_title">Rules</string>
-    <string name="tournament_rules">• One miss ends the run.\n• Every level is one pad or one swap longer, and every third one is faster.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• University names and logos belong to their universities. RinAlarm is not affiliated with or endorsed by any of them, and shows them only so players can say where they are from.\n• Your name, university and best scores stay on this phone, unless you switch on posting to the leaderboard below.</string>
+    <string name="tournament_rules">• One miss ends the run.\n• Levels 1 to 5 are Hard, each one pad or one swap longer.\n• Level 6 starts Nightmare: shorter again but much faster, then one longer each level and faster every third.\n• Your score is the levels you clear; on a tie, the faster time from GO to your last level wins.\n• Rin stays quiet: no help, no scolding.\n• University names and logos belong to their universities. RinAlarm is not affiliated with or endorsed by any of them, and shows them only so players can say where they are from.\n• Your name, university and best scores stay on this phone, unless you switch on posting to the leaderboard below.</string>
     <string name="tournament_save">Save</string>
     <string name="tournament_not_saved">not saved yet</string>
     <string name="tournament_saved">saved ✓</string>
@@ -109,6 +109,9 @@
     <string name="home_next_today">Next: today %1$s</string>
     <string name="home_next_tomorrow">Next: tomorrow %1$s</string>
     <string name="home_next_day">Next: %1$s %2$s</string>
+    <string name="home_rings_minutes">Rings in %1$d min</string>
+    <string name="home_rings_hours">Rings in %1$d h %2$d min</string>
+    <string name="home_rings_days">Rings in %1$d d %2$d h</string>
     <string name="home_no_game">No game</string>
     <string name="repeat_once">Once</string>
     <string name="repeat_every_day">Every day</string>
@@ -339,7 +342,7 @@
     <!-- UX.8: the home tour (Rin's bubble, so keep each tip short) and the practice rounds. -->
     <string name="tour_hello">I\'m Rin! Let me show you around.</string>
     <string name="tour_add">Let\'s set your first alarm. Tap Add alarm!</string>
-    <string name="tour_tournament">Up for a challenge? The tournament starts at Nightmare, and one miss ends it. Post your best online if you like.</string>
+    <string name="tour_tournament">Up for a challenge? The tournament climbs from Hard to Nightmare, and one miss ends it. Post your best online if you like.</string>
     <string name="tour_alarm">Tap an alarm to change it. The switch turns it off.</string>
     <string name="tour_top">Left: can your phone ring? Right: Settings, and this tour.</string>
     <string name="tour_skip">Skip tour</string>
@@ -353,7 +356,7 @@
     <string name="guide_save">All set? Tap Save alarm, and I\'ll be there.</string>
     <string name="guide_next">Next</string>
     <string name="guide_done">Got it</string>
-    <string name="start_guide_game">Pick a game: Colour pads or Cup shuffle. Level 1 is already Nightmare!</string>
+    <string name="start_guide_game">Pick a game: Colour pads or Cup shuffle. Nightmare starts at level 6!</string>
     <string name="start_guide_you">A name and your university for the board. Both are optional.</string>
     <string name="start_guide_online">Want to be on the online board? Switch this on. Switching it off deletes your scores.</string>
     <string name="start_guide_rules">One miss ends the run. Tick the rules once, then Start. Good luck!</string>

@@ -50,7 +50,7 @@ import io.github.earthkodyai.rinalarm.mission.TournamentGame
 import io.github.earthkodyai.rinalarm.theme.RinAlarmTheme
 import io.github.earthkodyai.rinalarm.theme.RinTheme
 import io.github.earthkodyai.rinalarm.theme.TrophyGold
-import io.github.earthkodyai.rinalarm.tournament.formatTime
+import io.github.earthkodyai.rinalarm.tournament.formatBoardTime
 import io.github.earthkodyai.rinalarm.tournament.online.BoardPage
 import io.github.earthkodyai.rinalarm.tournament.online.BoardRow
 import io.github.earthkodyai.rinalarm.tournament.online.Leaderboard
@@ -257,7 +257,8 @@ private fun Entry(rank: Int, row: BoardRow, state: LeaderboardUi, onReport: (Boa
     }
   val shown = if (mine) "$name · ${stringResource(R.string.leaderboard_you)}" else name
   val university = row.university?.let(::universityShort) ?: stringResource(R.string.tournament_not_listed)
-  val spoken = stringResource(R.string.leaderboard_row, rank, shown, university, row.levels, formatTime(row.timeMs))
+  val time = formatBoardTime(row.timeMs)
+  val spoken = stringResource(R.string.leaderboard_row, rank, shown, university, row.levels, time)
   Row(
     Modifier.fillMaxWidth()
       .clip(RoundedCornerShape(14.dp))
@@ -286,7 +287,7 @@ private fun Entry(rank: Int, row: BoardRow, state: LeaderboardUi, onReport: (Boa
           style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
           color = p.ink,
         )
-        Text(formatTime(row.timeMs), style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text(time, style = MaterialTheme.typography.bodySmall, color = p.muted)
       }
     }
     if (!mine && !reported) ReportMenu(name) { onReport(row) } else Box(Modifier.size(40.dp))

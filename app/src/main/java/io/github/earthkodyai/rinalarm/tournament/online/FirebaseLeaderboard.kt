@@ -49,6 +49,9 @@ class FirebaseLeaderboard @Inject constructor(@ApplicationContext private val co
             .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
             .setApplicationId(BuildConfig.FIREBASE_APP_ID)
             .setApiKey(BuildConfig.FIREBASE_API_KEY)
+            // Play Integrity reads the Cloud project number from here; without it every attestation failed before
+            // reaching App Check (1.0.0: 79 challenges, no exchanges, 79% of reads unverified).
+            .setGcmSenderId(projectNumber(BuildConfig.FIREBASE_APP_ID))
             .build(),
         )
         .also { FirebaseAppCheck.getInstance(it).installAppCheckProviderFactory(appCheckProviderFactory()) }
@@ -144,10 +147,14 @@ class FirebaseLeaderboard @Inject constructor(@ApplicationContext private val co
     return BoardRow(doc.id, doc.getString("name").orEmpty(), doc.getString("uni"), levels.toInt(), timeMs)
   }
 
-  private companion object {
+  companion object {
+    /** The Cloud project number inside a Firebase app id ("1:<number>:android:<hash>"). */
+    internal fun projectNumber(appId: String): String =
+      requireNotNull(Regex("""^\d+:(\d+):""").find(appId)) { "not a Firebase app id" }.groupValues[1]
+
     /** A write waits for the server's answer; offline it would wait for ever. */
-    const val TIMEOUT_MS = 15_000L
-    const val AUTH_PORT = 9099
-    const val FIRESTORE_PORT = 8080
+    private const val TIMEOUT_MS = 15_000L
+    private const val AUTH_PORT = 9099
+    private const val FIRESTORE_PORT = 8080
   }
 }

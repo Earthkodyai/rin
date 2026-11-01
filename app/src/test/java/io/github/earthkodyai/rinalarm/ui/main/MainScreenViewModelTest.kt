@@ -8,6 +8,7 @@ import io.github.earthkodyai.rinalarm.testing.FakeDeviceStatus
 import io.github.earthkodyai.rinalarm.testing.FakeSettings
 import io.github.earthkodyai.rinalarm.testing.FixedTimeSource
 import io.github.earthkodyai.rinalarm.testing.MainDispatcherRule
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -69,6 +70,38 @@ class MainScreenViewModelTest {
     assertEquals(listOf(daily, off), state.alarms.map { it.alarm })
     assertEquals("2026-09-28T07:00+07:00", state.alarms[0].nextRing?.toOffsetDateTime().toString())
     assertNull(state.alarms[1].nextRing)
+  }
+
+  @Test
+  fun uiState_countsDownToTheSoonestRingOnly() = runTest {
+    val later = Alarm(id = 1, time = LocalTime.of(9, 0), repeatDays = RepeatDays.EVERY_DAY)
+    val sooner = Alarm(id = 2, time = LocalTime.of(7, 0), repeatDays = RepeatDays.EVERY_DAY)
+    val alarms = FakeAlarms(listOf(later, sooner))
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), FakeSettings())
+
+    val state = viewModel.uiState.first { it is MainScreenUiState.Success } as MainScreenUiState.Success
+
+    // The clock stands at 06:00: an hour to the 07:00 alarm, not three to the first one in the list.
+    assertEquals(60L, state.minutesToNext)
+  }
+
+  @Test
+  fun uiState_withNothingArmed_hasNoCountdown() = runTest {
+    val alarms = FakeAlarms(listOf(Alarm(id = 1, time = LocalTime.of(7, 0), enabled = false)))
+    val viewModel = MainScreenViewModel(alarms, alarms, time, FakeDeviceStatus(), FakeSettings())
+
+    val state = viewModel.uiState.first { it is MainScreenUiState.Success } as MainScreenUiState.Success
+
+    assertNull(state.minutesToNext)
+  }
+
+  @Test
+  fun minutesUntil_roundsUp() {
+    val now = Instant.parse("2026-09-28T00:00:00Z")
+    assertEquals(0L, minutesUntil(now, now))
+    assertEquals(1L, minutesUntil(now, now.plusSeconds(1)))
+    assertEquals(1L, minutesUntil(now, now.plusSeconds(60)))
+    assertEquals(440L, minutesUntil(now, now.plusSeconds(26_399)))
   }
 
   @Test

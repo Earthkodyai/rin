@@ -9,30 +9,56 @@ import org.junit.Test
 /** The tournament's levels and runs (G.5). */
 class TournamentTest {
   @Test
-  fun levelOne_isNightmaresFirstRound() {
-    val nightmarePads = PadsRules.forLevel(Difficulty.NIGHTMARE)
-    val pads = TournamentLadder.pads(1)
-    assertEquals(listOf(7), pads.lengths)
-    assertEquals(nightmarePads.copy(lengths = listOf(7)), pads)
-    val nightmareCups = CupsRules.forLevel(Difficulty.NIGHTMARE)
+  fun levelOne_isHardsFirstRound_onTheFiveCupTable() {
+    val hardPads = PadsRules.forLevel(Difficulty.HARD)
+    assertEquals(hardPads.copy(lengths = listOf(5)), TournamentLadder.pads(1))
+    val hardCups = CupsRules.forLevel(Difficulty.HARD)
     val cups = TournamentLadder.cups(1)
-    assertEquals(listOf(8), cups.swaps)
-    assertEquals(nightmareCups.copy(swaps = listOf(8)), cups)
+    assertEquals(hardCups.copy(swaps = listOf(6), cups = 5), cups)
     assertEquals(1, cups.streak)
   }
 
   @Test
-  fun eachLevel_addsOne_andEveryThirdIsSevenPercentFaster() {
-    for (level in 1..30) {
-      assertEquals(7 + level - 1, TournamentLadder.pads(level).lengths.single())
-      assertEquals(8 + level - 1, TournamentLadder.cups(level).swaps.single())
+  fun theLevelAfterTheWarmUp_isNightmaresFirstRound() {
+    val first = TournamentLadder.WARM_UP_LEVELS + 1
+    assertEquals(6, first)
+    val nightmarePads = PadsRules.forLevel(Difficulty.NIGHTMARE)
+    assertEquals(nightmarePads.copy(lengths = listOf(7)), TournamentLadder.pads(first))
+    val nightmareCups = CupsRules.forLevel(Difficulty.NIGHTMARE)
+    assertEquals(nightmareCups.copy(swaps = listOf(8)), TournamentLadder.cups(first))
+  }
+
+  @Test
+  fun theCupsTable_neverChangesSizeDuringARun() {
+    assertTrue((1..30).all { TournamentLadder.cups(it).cups == 5 })
+  }
+
+  @Test
+  fun warmUpLevels_addOne_atHardsSpeed() {
+    for (level in 1..TournamentLadder.WARM_UP_LEVELS) {
+      val pads = TournamentLadder.pads(level)
+      assertEquals(5 + level - 1, pads.lengths.single())
+      assertEquals(300L, pads.moveMs)
+      assertEquals(2_000L, pads.tapTimeoutMs)
+      val cups = TournamentLadder.cups(level)
+      assertEquals(6 + level - 1, cups.swaps.single())
+      assertEquals(320L, cups.swapMs)
+    }
+  }
+
+  @Test
+  fun eachNightmareLevel_addsOne_andEveryThirdIsSevenPercentFaster() {
+    val warmUp = TournamentLadder.WARM_UP_LEVELS
+    for (round in 1..30) {
+      assertEquals(7 + round - 1, TournamentLadder.pads(warmUp + round).lengths.single())
+      assertEquals(8 + round - 1, TournamentLadder.cups(warmUp + round).swaps.single())
     }
     assertEquals(listOf(1.0, 1.0, 1.0, 0.93, 0.93, 0.93), (1..6).map(TournamentLadder::pace))
-    assertEquals(220L, TournamentLadder.pads(3).moveMs)
-    assertEquals(205L, TournamentLadder.pads(4).moveMs)
-    assertEquals(214L, TournamentLadder.cups(4).swapMs)
+    assertEquals(220L, TournamentLadder.pads(warmUp + 3).moveMs)
+    assertEquals(205L, TournamentLadder.pads(warmUp + 4).moveMs)
+    assertEquals(214L, TournamentLadder.cups(warmUp + 4).swapMs)
     // The time to answer a pad never shrinks.
-    assertTrue((1..30).all { TournamentLadder.pads(it).tapTimeoutMs == 1_200L })
+    assertTrue((1..30).all { TournamentLadder.pads(warmUp + it).tapTimeoutMs == 1_200L })
   }
 
   @Test

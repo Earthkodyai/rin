@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.map
  * @property name optional, as typed (trimmed, at most [NAME_MAX] characters); "" when not given.
  * @property university an id from [io.github.earthkodyai.rinalarm.tournament.Universities], or null for "Not listed".
  * @property agreed the version of the rules the user accepted; the start page asks again when [RULES_VERSION] is newer
- *   (2: posting online is mentioned; 3: university names and logos, not affiliated, G.7).
+ *   (2: posting online is mentioned; 3: university names and logos, not affiliated, G.7; 4: levels 1 to 5 are Hard).
  * @property online the user's consent to post their name, university and bests to the leaderboard (off by default).
  */
 data class TournamentEntry(
@@ -36,7 +36,7 @@ data class TournamentEntry(
 
   companion object {
     const val NAME_MAX = 20
-    const val RULES_VERSION = 3
+    const val RULES_VERSION = 4
   }
 }
 
@@ -145,10 +145,11 @@ class DataStoreTournamentStore @Inject constructor(private val store: DataStore<
     val ONLINE = booleanPreferencesKey("tournament_online")
     val WITHDRAW = booleanPreferencesKey("tournament_withdraw")
 
-    fun postedKey(game: TournamentGame) = stringPreferencesKey("tournament_posted_${game.stored}")
+    // "_v2": 1.0.1's easier levels make a level count from before mean something else, and the board started over.
+    fun postedKey(game: TournamentGame) = stringPreferencesKey("tournament_posted_v2_${game.stored}")
 
-    fun levelsKey(game: TournamentGame) = intPreferencesKey("tournament_best_${game.stored}_levels")
+    fun levelsKey(game: TournamentGame) = intPreferencesKey("tournament_best_v2_${game.stored}_levels")
 
-    fun timeKey(game: TournamentGame) = longPreferencesKey("tournament_best_${game.stored}_time_ms")
+    fun timeKey(game: TournamentGame) = longPreferencesKey("tournament_best_v2_${game.stored}_time_ms")
   }
 }

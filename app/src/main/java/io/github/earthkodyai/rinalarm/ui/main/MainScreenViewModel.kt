@@ -10,6 +10,8 @@ import io.github.earthkodyai.rinalarm.data.AppSettings
 import io.github.earthkodyai.rinalarm.setup.DeviceStatusSource
 import io.github.earthkodyai.rinalarm.setup.SetupChecks
 import io.github.earthkodyai.rinalarm.time.TimeSource
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import javax.inject.Inject
@@ -42,7 +44,8 @@ constructor(
         val now = timeSource.now()
         val zone = timeSource.zone()
         val rows = alarms.map { AlarmRow(it, it.nextTrigger(now, zone)?.atZone(zone)) }
-        MainScreenUiState.Success(rows, today = now.atZone(zone).toLocalDate())
+        val next = rows.mapNotNull { it.nextRing }.minOrNull()
+        MainScreenUiState.Success(rows, today = now.atZone(zone).toLocalDate(), minutesToNext = next?.let { minutesUntil(now, it.toInstant()) })
       }
       .catch { emit(MainScreenUiState.Error(it)) }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainScreenUiState.Loading)
@@ -67,6 +70,9 @@ constructor(
   }
 }
 
+/** Whole minutes from [now] to [ring], rounded up: 30 seconds away still reads "1 min", never "0". */
+internal fun minutesUntil(now: Instant, ring: Instant): Long = (Duration.between(now, ring).toMillis() + 59_999) / 60_000
+
 /** An alarm plus when it rings next in the current zone (null while switched off). */
 data class AlarmRow(val alarm: Alarm, val nextRing: ZonedDateTime?)
 
@@ -75,6 +81,9 @@ sealed interface MainScreenUiState {
 
   data class Error(val throwable: Throwable) : MainScreenUiState
 
-  /** [today] in the current zone, so the list can say "today" or "tomorrow" for the next ring (null: weekday names). */
-  data class Success(val alarms: List<AlarmRow>, val today: LocalDate? = null) : MainScreenUiState
+  /**
+   * [today] in the current zone, so the list can say "today" or "tomorrow" for the next ring (null: weekday names).
+   * [minutesToNext] is the wait for that ring (null: nothing armed, or no countdown shown).
+   */
+  data class Success(val alarms: List<AlarmRow>, val today: LocalDate? = null, val minutesToNext: Long? = null) : MainScreenUiState
 }

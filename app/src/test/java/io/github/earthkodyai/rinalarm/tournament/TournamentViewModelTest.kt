@@ -268,4 +268,13 @@ class TournamentViewModelTest {
     assertEquals("1:23.4", formatTime(83_456))
     assertEquals("12:05.0", formatTime(725_000))
   }
+
+  @Test
+  fun boardTimeCarriesItsUnit() {
+    assertEquals("0.0 s", formatBoardTime(0))
+    assertEquals("6.4 s", formatBoardTime(6_456))
+    assertEquals("59.9 s", formatBoardTime(59_999))
+    assertEquals("1 min 0.0 s", formatBoardTime(60_000))
+    assertEquals("12 min 5.0 s", formatBoardTime(725_000))
+  }
 }

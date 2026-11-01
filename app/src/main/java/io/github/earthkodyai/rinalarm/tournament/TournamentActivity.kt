@@ -409,3 +409,10 @@ internal fun formatTime(ms: Long): String {
   val tenths = ms / 100
   return "%d:%02d.%d".format(tenths / 600, (tenths / 10) % 60, tenths % 10)
 }
+
+/** A leaderboard time with its unit, read at a glance: "6.4 s", or "1 min 23.4 s" from a minute up. */
+internal fun formatBoardTime(ms: Long): String {
+  val tenths = ms / 100
+  val seconds = "%d.%d s".format((tenths / 10) % 60, tenths % 10)
+  return if (tenths < 600) seconds else "%d min %s".format(tenths / 600, seconds)
+}

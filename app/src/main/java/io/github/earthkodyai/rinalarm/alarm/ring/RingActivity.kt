@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,6 +70,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -496,7 +496,7 @@ private fun Controls(
     if (request.snoozesLeft > 0) SnoozeButton(request, onSnooze, Modifier.weight(1f))
     HoldToStopButton(
       onEmergencyStop,
-      (if (request.snoozesLeft > 0) Modifier.width(HOLD_WIDTH) else Modifier.fillMaxWidth()).height(CONTROL_HEIGHT),
+      (if (request.snoozesLeft > 0) Modifier.weight(1f) else Modifier.fillMaxWidth()).height(controlHeight()),
     )
   }
 }
@@ -579,7 +579,7 @@ private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: M
   val shape = RoundedCornerShape(24.dp)
   Box(
     modifier
-      .height(CONTROL_HEIGHT)
+      .height(controlHeight())
       .clip(shape)
       .background(p.card)
       .border(2.dp, p.line, shape)
@@ -592,7 +592,7 @@ private fun SnoozeButton(request: RingRequest, onSnooze: () -> Unit, modifier: M
       color = p.ink,
       textAlign = TextAlign.Center,
       maxLines = 2,
-      modifier = Modifier.padding(horizontal = 10.dp),
+      modifier = Modifier.padding(horizontal = 6.dp),
     )
   }
 }
@@ -616,11 +616,15 @@ private fun PracticeControls(passed: Boolean, onPlayAgain: () -> Unit, onDone: (
   }
 }
 
-/** Room for the warning sign and "Hold 3 s to stop" on one line (150 dp cut "stop" off). */
-private val HOLD_WIDTH = 176.dp
-
 /** Snooze and the emergency hold: big enough for a sleepy thumb, small enough to leave her the screen. */
 private val CONTROL_HEIGHT = 48.dp
+
+/** Two lines of the controls' text, with a little room, in sp so it grows with the phone's font size. */
+private val TWO_LINES = 44.sp
+
+/** Snooze and the hold share a row: taller than [CONTROL_HEIGHT] only when a large font needs it (tester, 2026-10-06). */
+@Composable
+private fun controlHeight(): Dp = maxOf(CONTROL_HEIGHT, with(LocalDensity.current) { TWO_LINES.toDp() })
 
 /** Compact, so it fits in the game row it covers and the sheet keeps its height at the pass. */
 @Composable
